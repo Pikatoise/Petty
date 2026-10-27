@@ -6,12 +6,15 @@ namespace Petty.Core.Domain;
 /// </summary>
 public sealed class Bowl
 {
-    public const double EmptyEpsilon = 0.001;
+    private const double EmptyEpsilon = 0.001;
 
     public Bowl(double food, double capacity)
     {
-        if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity));
+        if (capacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(capacity));
+
         Capacity = capacity;
+
         Food = ClampFood(food);
     }
 
@@ -21,24 +24,35 @@ public sealed class Bowl
 
     public bool HasFood => Food > EmptyEpsilon;
 
-    public double FillLevel01 => Math.Clamp(Food / Capacity, 0, 1);
-
-    /// <summary>Adds food and returns how much actually fitted into the bowl.</summary>
+    /// <summary>
+    /// Adds food and returns how much actually fitted into the bowl.
+    /// </summary>
     public double Fill(double amount)
     {
-        if (amount <= 0 || double.IsNaN(amount)) return 0;
-        var added = Math.Min(amount, Capacity - Food);
-        Food += added;
-        return added;
+        if (amount <= 0 || double.IsNaN(amount))
+            return 0;
+
+        var addedAmount = Math.Min(amount, Capacity - Food);
+
+        Food += addedAmount;
+
+        return addedAmount;
     }
 
-    /// <summary>Removes food and returns how much was actually consumed.</summary>
+    /// <summary>
+    /// Removes food and returns how much was actually consumed.
+    /// </summary>
     public double Consume(double amount)
     {
-        if (amount <= 0 || double.IsNaN(amount)) return 0;
+        if (amount <= 0 || double.IsNaN(amount))
+            return 0;
         var consumed = Math.Min(amount, Food);
+
         Food -= consumed;
-        if (Food <= EmptyEpsilon) Food = 0;
+
+        if (Food <= EmptyEpsilon)
+            Food = 0;
+
         return consumed;
     }
 

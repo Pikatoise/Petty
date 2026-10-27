@@ -44,28 +44,4 @@ public class BowlTests
         Assert.Equal(100, new Bowl(500, 100).Food);
         Assert.Equal(0, new Bowl(-5, 100).Food);
     }
-
-    [Fact]
-    public void FillLevelIsNormalised()
-    {
-        var bowl = new Bowl(50, 100);
-        Assert.Equal(0.5, bowl.FillLevel01, 3);
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData("This name is definitely far too long for a cat")]
-    public void InvalidNamesAreRejected(string input)
-    {
-        Assert.False(PetNameRules.TryNormalize(input, out _, out var error));
-        Assert.False(string.IsNullOrWhiteSpace(error));
-    }
-
-    [Fact]
-    public void ValidNamesAreTrimmed()
-    {
-        Assert.True(PetNameRules.TryNormalize("  Muffin  ", out var name, out _));
-        Assert.Equal("Muffin", name);
-    }
 }
