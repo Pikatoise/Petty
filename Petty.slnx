@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="AGENTS.md" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Petty.App/Petty.App.csproj" />
     <Project Path="src/Petty.Assets/Petty.Assets.csproj" />
