@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Petty.App</RootNamespace>
+    <AssemblyName>Petty</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <!-- DllImport keeps the Win32 interop readable; the source generator is optional here. -->
+    <NoWarn>$(NoWarn);SYSLIB1054</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Petty.Core\Petty.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\assets\sprites\cat-orange-white.png"
+             Link="Assets\Sprites\cat-orange-white.png"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\sprites\cat-orange-white.json"
+             Link="Assets\Sprites\cat-orange-white.json"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

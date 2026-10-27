@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Petty.App/Petty.App.csproj" />
+    <Project Path="src/Petty.Assets/Petty.Assets.csproj" />
+    <Project Path="src/Petty.Core/Petty.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Petty.Tests/Petty.Tests.csproj" />
+  </Folder>
+</Solution>

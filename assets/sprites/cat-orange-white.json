@@ -1,0 +1,67 @@
+{
+  "character": "cat-orange-white",
+  "image": "cat-orange-white.png",
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "columns": 8,
+  "rows": 6,
+  "groundRow": 52,
+  "animations": [
+    {
+      "name": "idle",
+      "startIndex": 0,
+      "frameCount": 4,
+      "framesPerSecond": 5,
+      "loop": true
+    },
+    {
+      "name": "walk",
+      "startIndex": 4,
+      "frameCount": 8,
+      "framesPerSecond": 9,
+      "loop": true
+    },
+    {
+      "name": "run",
+      "startIndex": 12,
+      "frameCount": 8,
+      "framesPerSecond": 14,
+      "loop": true
+    },
+    {
+      "name": "eat",
+      "startIndex": 20,
+      "frameCount": 6,
+      "framesPerSecond": 7,
+      "loop": true
+    },
+    {
+      "name": "sleep",
+      "startIndex": 26,
+      "frameCount": 4,
+      "framesPerSecond": 3,
+      "loop": true
+    },
+    {
+      "name": "play",
+      "startIndex": 30,
+      "frameCount": 8,
+      "framesPerSecond": 11,
+      "loop": true
+    },
+    {
+      "name": "tired",
+      "startIndex": 38,
+      "frameCount": 4,
+      "framesPerSecond": 4,
+      "loop": true
+    },
+    {
+      "name": "exit",
+      "startIndex": 42,
+      "frameCount": 6,
+      "framesPerSecond": 9,
+      "loop": false
+    }
+  ]
+}
