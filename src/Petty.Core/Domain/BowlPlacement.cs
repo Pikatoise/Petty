@@ -9,7 +9,9 @@ public readonly record struct ScreenRect(double X, double Y, double Width, doubl
     public bool HasArea => Width > 0 && Height > 0;
 }
 
-/// <summary>Minimal, WPF-free description of a monitor as reported by the OS.</summary>
+/// <summary>
+/// Minimal, WPF-free description of a monitor as reported by the OS.
+/// </summary>
 public sealed record DisplayInfo(string DeviceName, bool IsPrimary, ScreenRect Bounds, ScreenRect WorkArea)
 {
     public ScreenRect UsableArea => WorkArea.HasArea ? WorkArea : Bounds;
@@ -59,7 +61,9 @@ public static class BowlPlacement
         return new ResolvedBowlPosition(left, top, display.DeviceName);
     }
 
-    /// <summary>Turns an absolute window position back into monitor-relative data for persistence.</summary>
+    /// <summary>
+    /// Turns an absolute window position back into monitor-relative data for persistence.
+    /// </summary>
     public static BowlPlacementState Capture(
         double left,
         double top,

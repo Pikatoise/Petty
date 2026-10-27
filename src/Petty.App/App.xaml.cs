@@ -1,7 +1,3 @@
-using System.IO;
-using System.Text.Json;
-using System.Windows;
-using System.Windows.Threading;
 using Petty.App.Desktop;
 using Petty.App.Pet;
 using Petty.App.Sprites;
@@ -10,6 +6,10 @@ using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
 using Petty.Core.Persistence;
 using Petty.Core.Runtime;
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace Petty.App;
 
@@ -18,7 +18,7 @@ namespace Petty.App;
 /// loaded pet; stage 4 adds the tray icon, the first-run wizard and the settings
 /// window around this same session.
 /// </summary>
-public partial class App : Application
+public partial class App: Application
 {
     private static readonly JsonSerializerOptions ReportJsonOptions = new() { WriteIndented = true };
 

@@ -38,6 +38,7 @@ public sealed class PetTuning
     public TimeSpan ExitDuration { get; init; } = TimeSpan.FromSeconds(3);
     public TimeSpan SleepAfterIdle { get; init; } = TimeSpan.FromMinutes(2);
     public TimeSpan SleepDuration { get; init; } = TimeSpan.FromMinutes(10);
+
     /// <summary>
     /// Safety caps: a walk normally ends when the pet reaches its target (the view
     /// reports the arrival), these only stop a walk that never arrives.

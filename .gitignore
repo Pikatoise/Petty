@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Agent work specification
+AGENTS.md
+
 # dotenv files
 .env
 

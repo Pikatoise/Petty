@@ -1,7 +1,9 @@
 namespace Petty.Core.Diagnostics;
 
-/// <summary>Log implementation that discards everything; useful as a neutral default.</summary>
-public sealed class NullAppLog : IAppLog
+/// <summary>
+/// Log implementation that discards everything; useful as a neutral default.
+/// </summary>
+public sealed class NullAppLog: IAppLog
 {
     public static NullAppLog Instance { get; } = new();
 

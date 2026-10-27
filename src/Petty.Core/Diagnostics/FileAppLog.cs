@@ -1,16 +1,7 @@
 namespace Petty.Core.Diagnostics;
 
-public interface IAppLog
-{
-    void Info(string message);
-
-    void Warn(string message);
-
-    void Error(string message, Exception? exception = null);
-}
-
 /// <summary>Tiny append-only log with size rotation; enough for diagnosing a desktop app.</summary>
-public sealed class FileAppLog : IAppLog
+public sealed class FileAppLog: IAppLog
 {
     private const long MaxBytes = 512 * 1024;
     private readonly object _gate = new();

@@ -1,6 +1,8 @@
 namespace Petty.Core.Domain;
 
-/// <summary>Normalised pet needs. Both values always stay inside 0..100.</summary>
+/// <summary>
+/// Normalised pet needs. Both values always stay inside 0..100.
+/// </summary>
 public readonly record struct Needs(double Satiety, double Happiness)
 {
     public const double Minimum = 0d;
@@ -13,8 +15,11 @@ public readonly record struct Needs(double Satiety, double Happiness)
 
     public Needs Advance(TimeSpan elapsed, PetTuning tuning)
     {
-        if (elapsed <= TimeSpan.Zero) return this;
+        if (elapsed <= TimeSpan.Zero)
+            return this;
+
         var hours = elapsed.TotalHours;
+
         return FromValues(
             Satiety - (tuning.SatietyDecayPerHour * hours),
             Happiness - (tuning.HappinessDecayPerHour * hours));

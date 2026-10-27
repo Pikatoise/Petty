@@ -47,18 +47,32 @@ public sealed class PetSnapshot
         return new PetSnapshot
         {
             SchemaVersion = CurrentSchemaVersion,
-            PetName = string.IsNullOrWhiteSpace(name) ? "Kitty" : name,
-            BreedId = string.IsNullOrWhiteSpace(BreedId) ? PetCatalog.DefaultBreedId : BreedId,
-            CoatId = string.IsNullOrWhiteSpace(CoatId) ? PetCatalog.DefaultCoatId : CoatId,
-            AssetId = string.IsNullOrWhiteSpace(AssetId) ? PetCatalog.DefaultAssetId : AssetId,
+            PetName = string.IsNullOrWhiteSpace(name) ?
+                "Kitty" : name,
+
+            BreedId = string.IsNullOrWhiteSpace(BreedId) ?
+                PetCatalog.DefaultBreedId : BreedId,
+
+            CoatId = string.IsNullOrWhiteSpace(CoatId) ?
+                PetCatalog.DefaultCoatId : CoatId,
+
+            AssetId = string.IsNullOrWhiteSpace(AssetId) ?
+                PetCatalog.DefaultAssetId : AssetId,
+
             Satiety = NeedClamp(Satiety),
             Happiness = NeedClamp(Happiness),
-            BowlFood = double.IsNaN(BowlFood) ? 0 : Math.Clamp(BowlFood, 0, tuning.BowlCapacity),
-            BowlRelativeX = double.IsNaN(BowlRelativeX)
-                ? 0.65
-                : Math.Clamp(BowlRelativeX, BowlPlacement.MinRelativeX, BowlPlacement.MaxRelativeX),
-            BowlBottomOffset = double.IsNaN(BowlBottomOffset) ? 120 : Math.Max(0, BowlBottomOffset),
-            DisplayDeviceName = string.IsNullOrWhiteSpace(DisplayDeviceName) ? null : DisplayDeviceName,
+            BowlFood = double.IsNaN(BowlFood) ?
+                0 : Math.Clamp(BowlFood, 0, tuning.BowlCapacity),
+
+            BowlRelativeX = double.IsNaN(BowlRelativeX) ?
+                0.65 : Math.Clamp(BowlRelativeX, BowlPlacement.MinRelativeX, BowlPlacement.MaxRelativeX),
+
+            BowlBottomOffset = double.IsNaN(BowlBottomOffset) ?
+                120 : Math.Max(0, BowlBottomOffset),
+
+            DisplayDeviceName = string.IsNullOrWhiteSpace(DisplayDeviceName) ?
+                null : DisplayDeviceName,
+
             CreatedUtc = CreatedUtc,
             LastUpdatedUtc = LastUpdatedUtc,
         };
