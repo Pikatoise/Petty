@@ -42,13 +42,14 @@ public sealed class PetSnapshot
     /// <summary>Repairs values that would otherwise break rendering or save the pet in an invalid state.</summary>
     public PetSnapshot Normalized(PetTuning tuning)
     {
-        PetNameRules.TryNormalize(PetName, out var name, out _);
+        var petName = PetNameRules.TryNormalize(PetName, out var name, out _)
+            ? name
+            : PetNameRules.DefaultName;
 
         return new PetSnapshot
         {
             SchemaVersion = CurrentSchemaVersion,
-            PetName = string.IsNullOrWhiteSpace(name) ?
-                "Kitty" : name,
+            PetName = petName,
 
             BreedId = string.IsNullOrWhiteSpace(BreedId) ?
                 PetCatalog.DefaultBreedId : BreedId,

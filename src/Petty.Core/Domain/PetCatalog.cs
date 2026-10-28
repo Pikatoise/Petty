@@ -9,10 +9,4 @@ public static class PetCatalog
     public const string DefaultBreedId = "cat";
     public const string DefaultCoatId = "orange-white-01";
     public const string DefaultAssetId = "cat-orange-white";
-
-    public static string BreedDisplayName(string breedId) => breedId switch
-    {
-        DefaultBreedId => "Cat",
-        _ => breedId,
-    };
 }

@@ -26,8 +26,6 @@ public sealed record DesktopAttachment(
     string HostClass,
     string Detail)
 {
-    public bool IsDesktopLayer => Mode == DesktopLayerMode.WorkerW;
-
     public static DesktopAttachment Disabled() =>
         new(DesktopLayerMode.Disabled, 0, string.Empty, "Desktop integration disabled by the command line.");
 }

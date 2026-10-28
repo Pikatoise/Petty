@@ -47,7 +47,7 @@ public class NeedsTests
 
         Assert.True(Needs.FromValues(30, 100).IsHungry(tuning));
         Assert.False(Needs.FromValues(31, 100).IsHungry(tuning));
-        Assert.True(Needs.FromValues(20, 100).IsTired(tuning));
-        Assert.False(Needs.FromValues(21, 100).IsTired(tuning));
+        Assert.True(Needs.FromValues(20, 100).IsStarving(tuning));
+        Assert.False(Needs.FromValues(21, 100).IsStarving(tuning));
     }
 }

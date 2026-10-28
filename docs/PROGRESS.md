@@ -6,7 +6,7 @@ Read this together with `AGENTS.md`; `AGENTS.md` is the specification.
 ## Environment
 
 - Windows 11 Pro 26H1 (build 28000), .NET SDK 10.0.402, xUnit 2.9.3.
-- Repo root: `C:\Users\wierw\Desktop\Projects\Petty` (not a git repo yet).
+- Repo root: `C:\Users\wierw\Desktop\Projects\Petty` (git repo, `AGENTS.md` is git-ignored).
 - Solution file is `Petty.slnx` (SDK 10 default, not `.sln`).
 - Display used for verification: single 2560x1600 monitor at 200 % DPI, auto-hidden taskbar.
 
@@ -29,7 +29,7 @@ Petty.slnx
 Directory.Build.props            nullable+implicit usings, LangVersion latest
 src/Petty.Core/                  net10.0, no WPF/Win32
   Domain/Needs.cs                satiety/happiness 0..100, decay, thresholds
-  Domain/PetTuning.cs            every rate/duration, Validate() + Sanitized()
+  Domain/PetTuning.cs            every rate/duration, Sanitized()
   Domain/Bowl.cs                 food inventory, Fill/Consume, capacity clamp
   Domain/PetSnapshot.cs          persisted schema v1 (camelCase JSON)
   Domain/BowlPlacement.cs        monitor-relative bowl position (relativeX + bottomOffset + device)
@@ -44,7 +44,7 @@ src/Petty.Core/                  net10.0, no WPF/Win32
   Animation/PetAnimationMap.cs   PetActivity -> clip name (single mapping point)
   Persistence/PetStateStore.cs   atomic JSON (tmp -> File.Replace), .bak, corrupt/version handling
   Assets/SpriteMetadata.cs       metadata model + validator (required clips, overlap, grid)
-  Diagnostics/FileAppLog.cs      rotating log; NullAppLog
+  Diagnostics/FileAppLog.cs      rotating log
 src/Petty.Assets/                net10.0-windows console, System.Drawing (WinForms ref)
   PixelCanvas.cs                 ARGB buffer, hard-edge primitives, outline, PNG I/O
   CatSpriteRenderer.cs           cat drawing, CatPose, groundRow = 52
@@ -62,7 +62,7 @@ src/Petty.App/                   WPF WinExe, net10.0-windows10.0.19041.0, per-mo
   Desktop/DesktopWindowService.cs desktop placement, shell host discovery, hit-test probes
   Desktop/ShellBarProbe.cs       taskbar rect per monitor + "is it really on screen" hit test
   Pet/PetSession.cs              timers (20 ms frames, 200 ms simulation), motion, exit flow
-tests/Petty.Tests/               xUnit, 98 tests, all green (Debug)
+tests/Petty.Tests/               xUnit, 120 tests, all green
 assets/sprites/                  atlas + metadata + 48 frames + previews + README
 scripts/generate-assets.ps1      regenerate / --verify the atlas
 scripts/verify-desktop.ps1       run the app, minimise other windows, screenshot, click the cat
@@ -81,7 +81,8 @@ scripts/verify-taskbar.ps1       reveal the auto-hide taskbar and watch the pet 
 - Persistence: `PetStateStore` atomic save, `.bak` fallback, schema v1, JSON camelCase.
 - Needs thresholds: hungry <= 30, tired <= 20, full recovery > 45.
 - Tuning defaults: satiety -4/h, happiness -3/h, play 12 s (+30 happiness, -2 satiety),
-  eat bite 1.2 s (5 food -> 9 satiety), bowl 100 cap / +25 per click, autosave 2 min.
+  eat bite 1.2 s (5 food -> 9 satiety), bowl 100 cap / +25 per click, autosave 2 min,
+  seek safety cap 120 s (walks end on arrival).
 - Pet window geometry: 3 screen pixels per sprite pixel (64 -> 192 px, independent of DPI);
   window top = floor - (groundRow + 1) * 3, so on a 1600 px tall screen top = 1441 at the
   bottom edge and 1345 while standing on a 96 px taskbar.
@@ -195,6 +196,39 @@ returns blank screenshots and the shell does not animate its auto-hide taskbar, 
 verification scripts call `SetThreadExecutionState(ES_DISPLAY_REQUIRED)` and jiggle the mouse
 first. If the session is locked, no desktop verification is possible at all.
 
+## Audit pass (before stage 4)
+
+Applied all findings from the repo audit except the two deliberately skipped ones:
+
+- Periodic autosave every `PetTuning.AutoSaveInterval` (2 min) through the same `SaveState`
+  used at shutdown; state is saved before the diagnostics report, and report errors never
+  block saving.
+- Seeking food now really ends at the bowl: the view calls `PetRuntime.NotifyArrived()`,
+  which dispatches `ArriveAtBowl` while `SeekingFood`. The seek safety cap was raised to
+  120 s (walking speed 26 px/s × 45 s was shorter than the screen), so a hungry cat reaches
+  even a far bowl. Verified live with a saved state (`bowlFood 60`, `satiety 10`): Idle ->
+  SeekingFood -> Eating (bowl-reached) -> Idle (bowl-emptied).
+- Simulation delta is clamped to `MaxOfflineSpan` (7 days) instead of 5 minutes, so time the
+  PC spent asleep decays needs like offline time.
+- A named `Local\Petty.SingleInstance` mutex makes a second launch exit (code 3); verified
+  live.
+- A changed display layout or walk range re-applies the window position immediately, and a
+  running walk's target is clamped into the new band.
+- `PetSnapshot.Normalized` now replaces invalid stored names (empty, too long, control
+  characters) with the default name instead of keeping them.
+- The frame timer runs at 20 ms while the pet moves or the floor eases, otherwise at the
+  current clip's fps (capped at 250 ms); animation stays time-based.
+- Dead code removed: `PetTuning.Validate()`, `Needs.IsTired`, `NullAppLog`,
+  `DesktopAttachment.IsDesktopLayer`, `PetCatalog.BreedDisplayName`, unused P/Invokes
+  (including `SetWindowLongPtr`), `PetWindow.CurrentFrame/FacesLeft`, `AnimationPlayback.Reset`.
+- Root `README.md` rewritten (requirements, build/test/run, data location, asset regeneration).
+
+Skipped on purpose: #12 (`OnLocationChanged` warning noise) and #13 (committed derived frame
+PNGs).
+
+Build: `dotnet build Petty.slnx -c Release` → 0 warnings, 0 errors.
+Tests: `dotnet test Petty.slnx` → 120 passing.
+
 ## Stage 4 plan (next)
 
 1. `TrayService` — `NotifyIcon` + context menu: "Pet settings", "Exit application"; dispose on
@@ -213,4 +247,7 @@ first. If the session is locked, no desktop verification is possible at all.
   `assets/sprites/README.md`. It is a real, validated sprite sheet, not a placeholder.
 - No tray icon, wizard or settings window yet (stage 4); the app is currently started and
   stopped from the command line only.
-- No README at repo root yet (stage 6); assets README already exists.
+- Autosave only runs for an already persisted pet; the provisional "Kitty" is intentionally
+  not written until the creation wizard exists (stage 4).
+- Repositioning after a live display/taskbar change is implemented but only observed on a
+  single-monitor setup, so hot-plug remains unverified.

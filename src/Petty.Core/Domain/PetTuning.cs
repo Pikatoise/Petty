@@ -47,7 +47,7 @@ public sealed class PetTuning
     public TimeSpan RunDuration { get; init; } = TimeSpan.FromSeconds(60);
     public TimeSpan WanderMinInterval { get; init; } = TimeSpan.FromSeconds(3);
     public TimeSpan WanderMaxInterval { get; init; } = TimeSpan.FromSeconds(10);
-    public TimeSpan SeekTimeout { get; init; } = TimeSpan.FromSeconds(45);
+    public TimeSpan SeekTimeout { get; init; } = TimeSpan.FromSeconds(120);
     public double RunChance { get; init; } = 0.2;
 
     // Runtime.
@@ -55,41 +55,6 @@ public sealed class PetTuning
     public TimeSpan AutoSaveInterval { get; init; } = TimeSpan.FromMinutes(2);
 
     public static PetTuning Default { get; } = new();
-
-    /// <summary>Returns human readable problems; an empty list means the tuning is usable.</summary>
-    public IReadOnlyList<string> Validate()
-    {
-        var errors = new List<string>();
-        Require(errors, SatietyDecayPerHour >= 0, nameof(SatietyDecayPerHour));
-        Require(errors, HappinessDecayPerHour >= 0, nameof(HappinessDecayPerHour));
-        Require(errors, MaxOfflineSpan > TimeSpan.Zero, nameof(MaxOfflineSpan));
-        Require(errors, InRange(HungryThreshold), nameof(HungryThreshold));
-        Require(errors, InRange(TiredThreshold), nameof(TiredThreshold));
-        Require(errors, TiredThreshold <= HungryThreshold, "TiredThreshold must not exceed HungryThreshold");
-        Require(errors, InRange(SatietyRecoveryThreshold), nameof(SatietyRecoveryThreshold));
-        Require(errors, SatietyRecoveryThreshold >= HungryThreshold, "SatietyRecoveryThreshold must not be below HungryThreshold");
-        Require(errors, BowlCapacity > 0, nameof(BowlCapacity));
-        Require(errors, BowlFoodPerClick > 0 && BowlFoodPerClick <= BowlCapacity, nameof(BowlFoodPerClick));
-        Require(errors, EatFoodPerBite > 0, nameof(EatFoodPerBite));
-        Require(errors, EatSatietyPerBite > 0, nameof(EatSatietyPerBite));
-        Require(errors, EatBiteInterval >= TimeSpan.FromMilliseconds(100), nameof(EatBiteInterval));
-        Require(errors, MaxEatDuration > TimeSpan.Zero, nameof(MaxEatDuration));
-        Require(errors, PlayDuration > TimeSpan.Zero, nameof(PlayDuration));
-        Require(errors, PlayHappinessGain > 0, nameof(PlayHappinessGain));
-        Require(errors, PlaySatietyCost >= 0, nameof(PlaySatietyCost));
-        Require(errors, EnterDuration > TimeSpan.Zero, nameof(EnterDuration));
-        Require(errors, ExitDuration > TimeSpan.Zero, nameof(ExitDuration));
-        Require(errors, SleepAfterIdle > TimeSpan.Zero, nameof(SleepAfterIdle));
-        Require(errors, SleepDuration > TimeSpan.Zero, nameof(SleepDuration));
-        Require(errors, WalkDuration > TimeSpan.Zero, nameof(WalkDuration));
-        Require(errors, RunDuration > TimeSpan.Zero, nameof(RunDuration));
-        Require(errors, WanderMinInterval > TimeSpan.Zero && WanderMaxInterval >= WanderMinInterval, nameof(WanderMinInterval));
-        Require(errors, SeekTimeout > TimeSpan.Zero, nameof(SeekTimeout));
-        Require(errors, RunChance is >= 0 and <= 1, nameof(RunChance));
-        Require(errors, TickInterval >= TimeSpan.FromMilliseconds(16), nameof(TickInterval));
-        Require(errors, AutoSaveInterval >= TimeSpan.FromSeconds(5), nameof(AutoSaveInterval));
-        return errors;
-    }
 
     /// <summary>Applies values that cannot make the app fail, keeping the rest untouched.</summary>
     public PetTuning Sanitized()
@@ -123,19 +88,12 @@ public sealed class PetTuning
             RunDuration = Positive(RunDuration, TimeSpan.FromSeconds(60)),
             WanderMinInterval = Positive(WanderMinInterval, TimeSpan.FromSeconds(3)),
             WanderMaxInterval = Positive(WanderMaxInterval, TimeSpan.FromSeconds(10)),
-            SeekTimeout = Positive(SeekTimeout, TimeSpan.FromSeconds(45)),
+            SeekTimeout = Positive(SeekTimeout, TimeSpan.FromSeconds(120)),
             RunChance = Clamp(RunChance, 0, 1),
             TickInterval = Positive(TickInterval, TimeSpan.FromMilliseconds(200)),
             AutoSaveInterval = Positive(AutoSaveInterval, TimeSpan.FromMinutes(2)),
         };
     }
 
-    private static bool InRange(double value) => value is >= 0 and <= 100;
-
     private static TimeSpan Positive(TimeSpan value, TimeSpan fallback) => value > TimeSpan.Zero ? value : fallback;
-
-    private static void Require(List<string> errors, bool condition, string message)
-    {
-        if (!condition) errors.Add(message);
-    }
 }

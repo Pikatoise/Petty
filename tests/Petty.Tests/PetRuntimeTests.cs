@@ -65,7 +65,7 @@ public class PetRuntimeTests
         runtime.Update(TimeSpan.FromMilliseconds(200), Now);
         Assert.Equal(PetActivity.SeekingFood, runtime.Behavior.State);
 
-        runtime.NotifyArrivedAtBowl();
+        runtime.NotifyArrived();
         Assert.Equal(PetActivity.Eating, runtime.Behavior.State);
 
         runtime.Update(TimeSpan.FromSeconds(1), Now);
@@ -78,7 +78,7 @@ public class PetRuntimeTests
     {
         var runtime = CreateRuntime(bowlFood: 10);
         runtime.Update(TimeSpan.FromMilliseconds(200), Now);
-        runtime.NotifyArrivedAtBowl();
+        runtime.NotifyArrived();
 
         for (var i = 0; i < 10 && runtime.Bowl.HasFood; i++)
             runtime.Update(TimeSpan.FromSeconds(1), Now);
@@ -152,6 +152,17 @@ public class PetRuntimeTests
         Assert.Equal(90, snapshot.BowlBottomOffset, 3);
         Assert.Equal("DISPLAY1", snapshot.DisplayDeviceName);
         Assert.Equal(PetSnapshot.CurrentSchemaVersion, snapshot.SchemaVersion);
+    }
+
+    [Fact]
+    public void LongUpdateGapDecaysNeedsUpToMaxOfflineSpan()
+    {
+        var tuning = new PetTuning { SatietyDecayPerHour = 60, HappinessDecayPerHour = 0 };
+        var runtime = CreateRuntime(satiety: 100, happiness: 100, tuning: tuning);
+
+        runtime.Update(TimeSpan.FromHours(1), Now);
+
+        Assert.Equal(40, runtime.Needs.Satiety, 3);
     }
 
     [Fact]

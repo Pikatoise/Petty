@@ -37,8 +37,6 @@ public readonly record struct Needs(double Satiety, double Happiness)
 
     public bool IsStarving(PetTuning tuning) => Satiety <= tuning.TiredThreshold;
 
-    public bool IsTired(PetTuning tuning) => Satiety <= tuning.TiredThreshold;
-
     public static double Clamp(double value) =>
         double.IsNaN(value) ? Minimum : Math.Clamp(value, Minimum, Maximum);
 }

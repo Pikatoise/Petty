@@ -4,6 +4,7 @@ public static class PetNameRules
 {
     public const int MinLength = 1;
     public const int MaxLength = 24;
+    public const string DefaultName = "Kitty";
 
     /// <summary>Trims the input and rejects empty, over-long or control-character names.</summary>
     public static bool TryNormalize(string? input, out string name, out string? error)

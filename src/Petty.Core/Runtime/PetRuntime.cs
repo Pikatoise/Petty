@@ -96,7 +96,7 @@ public sealed class PetRuntime
     public void Update(TimeSpan delta, DateTimeOffset nowUtc)
     {
         if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
-        if (delta > TimeSpan.FromMinutes(5)) delta = TimeSpan.FromMinutes(5);
+        if (delta > _tuning.MaxOfflineSpan) delta = _tuning.MaxOfflineSpan;
 
         Needs = Needs.Advance(delta, _tuning);
         Behavior.Update(delta, Needs, Bowl);
@@ -140,7 +140,14 @@ public sealed class PetRuntime
 
     public void OnUserInteraction() => Behavior.OnUserInteraction();
 
-    public void NotifyArrivedAtBowl() => Behavior.ArriveAtBowl(Bowl);
+    /// <summary>The view reports that the pet reached its walk target; food seekers also eat here.</summary>
+    public void NotifyArrived()
+    {
+        if (Behavior.State is PetActivity.SeekingFood)
+            Behavior.ArriveAtBowl(Bowl);
+        else
+            Behavior.NotifyArrived();
+    }
 
     /// <summary>Adds one portion to the bowl; returns the amount that actually fitted.</summary>
     public double RefillBowl(double? amount = null) => Bowl.Fill(amount ?? _tuning.BowlFoodPerClick);

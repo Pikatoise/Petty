@@ -74,12 +74,4 @@ public sealed class AnimationPlayback
         FrameIndex = next;
         return true;
     }
-
-    /// <summary>Jumps to the first frame without changing the clip (used when a state restarts).</summary>
-    public void Reset()
-    {
-        _elapsedSeconds = 0;
-        FrameIndex = 0;
-        IsFinished = false;
-    }
 }

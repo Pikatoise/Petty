@@ -130,19 +130,6 @@ public class AnimationPlaybackTests
         Assert.False(playback.IsFinished);
     }
 
-    [Fact]
-    public void ResetRewindsTheSameClip()
-    {
-        var playback = new AnimationPlayback();
-        playback.Play(Clip(frames: 8, fps: 8));
-        playback.Advance(TimeSpan.FromMilliseconds(300));
-
-        playback.Reset();
-
-        Assert.Equal(0, playback.FrameIndex);
-        Assert.False(playback.IsFinished);
-    }
-
     [Theory]
     [InlineData(PetActivity.Entering, "walk")]
     [InlineData(PetActivity.Walking, "walk")]

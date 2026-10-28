@@ -21,6 +21,7 @@ namespace Petty.App.Pet;
 /// </summary>
 public sealed class PetSession : IDisposable
 {
+    private static readonly TimeSpan MinFrameInterval = TimeSpan.FromMilliseconds(20);
     private static readonly TimeSpan MaxFrameDelta = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan ExitSafetyTimeout = TimeSpan.FromSeconds(20);
 
@@ -80,7 +81,7 @@ public sealed class PetSession : IDisposable
 
         _frameTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
-            Interval = TimeSpan.FromMilliseconds(20),
+            Interval = MinFrameInterval,
         };
         _frameTimer.Tick += OnFrameTick;
 
@@ -188,13 +189,32 @@ public sealed class PetSession : IDisposable
         var climbed = AdvanceFloor(delta);
 
         if (wasMoving && !_motion.IsMoving && !_exitRequested)
-            _runtime.Behavior.NotifyArrived();
+            _runtime.NotifyArrived();
 
         if (moved || climbed)
         {
             FaceMovement();
             ApplyPosition();
         }
+
+        SyncFrameInterval();
+    }
+
+    /// <summary>
+    /// A still pet ticks at its clip's own frame rate; movement and the floor easing
+    /// keep the fast timer so both stay smooth. Playback is time-based either way.
+    /// </summary>
+    private void SyncFrameInterval()
+    {
+        var busy = _motion.IsMoving || (_area.FloorY > 0 && !_floor.IsAt(_area.FloorY));
+        var fps = _animation.CurrentClip?.FramesPerSecond ?? 0;
+
+        var interval = busy || fps <= 0
+            ? MinFrameInterval
+            : TimeSpan.FromSeconds(1 / Math.Clamp(fps, 1, 60));
+
+        if (interval > MaxFrameDelta) interval = MaxFrameDelta;
+        if (_frameTimer.Interval != interval) _frameTimer.Interval = interval;
     }
 
     /// <summary>Eases the paws onto the current target floor; true when the row changed.</summary>
@@ -322,6 +342,7 @@ public sealed class PetSession : IDisposable
 
         FaceMovement();
         ApplyPosition();
+        SyncFrameInterval();
     }
 
     private void OnFrameChanged(object? sender, EventArgs e)
@@ -379,7 +400,8 @@ public sealed class PetSession : IDisposable
         if (force)
         {
             _floor.Snap(area.FloorY);
-            _motion.KeepInside(area);
+            if (!_exitRequested) _motion.KeepInside(area);
+            ApplyPosition();
             _log.Info(
                 $"Walk area: x {area.Left:F0}..{area.Right:F0}, floor {area.FloorY:F0} " +
                 $"(display {FormatRect(display.Bounds)}, work {FormatRect(display.UsableArea)}, " +
@@ -399,7 +421,8 @@ public sealed class PetSession : IDisposable
         if (area.Left != previous.Left || area.Right != previous.Right)
         {
             _log.Info($"Walk range changed to x {area.Left:F0}..{area.Right:F0}.");
-            _motion.KeepInside(area);
+            if (!_exitRequested) _motion.KeepInside(area);
+            ApplyPosition();
         }
     }
 

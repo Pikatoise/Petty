@@ -67,10 +67,6 @@ public partial class PetWindow : Window
 
     public double DpiScale => _dpiScale;
 
-    public SpriteFrame? CurrentFrame => _frame;
-
-    public bool FacesLeft => _faceLeft;
-
     /// <summary>Floor row used by the last <see cref="MoveTo"/> call, for diagnostics.</summary>
     public double PlacementFloorY { get; private set; }
 

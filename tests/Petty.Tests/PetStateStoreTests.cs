@@ -144,6 +144,19 @@ public sealed class PetStateStoreTests : IDisposable
     }
 
     [Fact]
+    public void InvalidNameIsReplacedWithTheDefault()
+    {
+        File.WriteAllText(_path, """
+            { "schemaVersion": 1, "petName": "Bad\u0001Name" }
+            """);
+
+        var result = new PetStateStore(_path).Load();
+
+        Assert.Equal(LoadStatus.Loaded, result.Status);
+        Assert.Equal(PetNameRules.DefaultName, result.Snapshot!.PetName);
+    }
+
+    [Fact]
     public void DeleteRemovesStateAndBackup()
     {
         var store = new PetStateStore(_path);

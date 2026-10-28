@@ -35,6 +35,8 @@ public partial class App: Application
     private PetWindow? _window;
     private PetSession? _session;
     private DispatcherTimer? _exitTimer;
+    private DispatcherTimer? _autoSaveTimer;
+    private System.Threading.Mutex? _singleInstance;
     private bool _stateWasPersisted;
     private bool _shutdownStarted;
 
@@ -65,6 +67,15 @@ public partial class App: Application
 
         _log.Info($"Petty starting (pid {Environment.ProcessId}). Data directory: {_paths.DataDirectory}");
 
+        // Two instances would fight over the same state file and tray icon.
+        _singleInstance = new System.Threading.Mutex(initiallyOwned: true, @"Local\Petty.SingleInstance", out var isFirst);
+        if (!isFirst)
+        {
+            _log.Warn("Another Petty instance is already running; this one exits.");
+            Shutdown(3);
+            return;
+        }
+
         try
         {
             StartPet();
@@ -86,10 +97,13 @@ public partial class App: Application
     protected override void OnExit(ExitEventArgs e)
     {
         _exitTimer?.Stop();
+        _autoSaveTimer?.Stop();
         _session?.Dispose();
         _session = null;
         _window = null;
         _sheet = null;
+        _singleInstance?.Dispose();
+        _singleInstance = null;
         _log?.Info("Petty stopped.");
         base.OnExit(e);
     }
@@ -115,7 +129,7 @@ public partial class App: Application
         {
             // Deliberately not saved: the first-run wizard (stage 4) must still see a
             // missing state file. Until then this provisional pet keeps the API alive.
-            runtime = PetRuntime.CreateNew("Kitty", tuning, now);
+            runtime = PetRuntime.CreateNew(PetNameRules.DefaultName, tuning, now);
             _log.Warn("No usable pet state; running a provisional pet without saving it (the creation wizard arrives in stage 4).");
         }
 
@@ -141,6 +155,10 @@ public partial class App: Application
         _session = new PetSession(runtime, _sheet, _window, _displayService, tuning, _log);
         _session.ExitAnimationCompleted += OnExitAnimationCompleted;
         _session.Start();
+
+        _autoSaveTimer = new DispatcherTimer { Interval = tuning.AutoSaveInterval };
+        _autoSaveTimer.Tick += OnAutoSaveTick;
+        _autoSaveTimer.Start();
 
         // WPF finishes applying the window styles after the first frame, so the style
         // audit waits until the dispatcher is idle instead of reporting a false alarm.
@@ -172,31 +190,39 @@ public partial class App: Application
         FinishAndShutdown();
     }
 
+    private void OnAutoSaveTick(object? sender, EventArgs e) => SaveState("autosave");
+
+    private void SaveState(string reason)
+    {
+        if (!_stateWasPersisted || _runtime is null || _store is null) return;
+
+        try
+        {
+            _store.Save(_runtime.ToSnapshot());
+            _log?.Info($"Pet state saved ({reason}).");
+        }
+        catch (Exception ex)
+        {
+            _log?.Error($"Could not save pet state ({reason}).", ex);
+        }
+    }
+
     private void FinishAndShutdown()
     {
         if (_shutdownStarted) return;
         _shutdownStarted = true;
 
         _exitTimer?.Stop();
+        _autoSaveTimer?.Stop();
         _log?.Info("Shutdown requested.");
+
+        // Save first: a broken diagnostics report must never cost the pet's state.
+        SaveState("shutdown");
 
         if (_paths is not null) WriteReport(_paths.FinalReportFile, "final");
 
         _session?.Dispose();
         _session = null;
-
-        if (_stateWasPersisted && _runtime is not null && _store is not null)
-        {
-            try
-            {
-                _store.Save(_runtime.ToSnapshot());
-                _log?.Info("Pet state saved.");
-            }
-            catch (Exception ex)
-            {
-                _log?.Error("Could not save pet state.", ex);
-            }
-        }
 
         _window?.Close();
         _window = null;
@@ -292,7 +318,7 @@ public partial class App: Application
             File.WriteAllText(path, JsonSerializer.Serialize(report, ReportJsonOptions));
             _log.Info($"Diagnostics report ({phase}) written to {path}.");
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex)
         {
             _log.Warn($"Could not write the diagnostics report ({phase}): {ex.Message}");
         }

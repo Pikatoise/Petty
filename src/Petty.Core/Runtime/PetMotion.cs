@@ -152,11 +152,14 @@ public sealed class PetMotion
         HasTarget = false;
     }
 
-    /// <summary>Keeps the pet inside a changed display area without starting a new walk.</summary>
+    /// <summary>Keeps the pet inside a changed display area without teleporting an active walk.</summary>
     public void KeepInside(MotionArea area)
     {
-        if (HasTarget) return;
-        X = Math.Clamp(X, Math.Min(area.Left, area.Right), Math.Max(area.Left, area.Right));
+        var left = Math.Min(area.Left, area.Right);
+        var right = Math.Max(area.Left, area.Right);
+
+        _targetX = Math.Clamp(_targetX, left, right);
+        if (!HasTarget) X = Math.Clamp(X, left, right);
     }
 
     /// <summary>Advances the position. Returns true when the pet actually moved.</summary>

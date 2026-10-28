@@ -13,7 +13,6 @@ internal static class NativeMethods
     public const int GwlExStyle = -20;
 
     public const long WsExTopmost = 0x00000008L;
-    public const long WsExTransparent = 0x00000020L;
     public const long WsExToolWindow = 0x00000080L;
     public const long WsExLayered = 0x00080000L;
     public const long WsExNoActivate = 0x08000000L;
@@ -32,8 +31,6 @@ internal static class NativeMethods
     public const uint SwpNoMove = 0x0002;
     public const uint SwpNoZOrder = 0x0004;
     public const uint SwpNoActivate = 0x0010;
-
-    public static readonly IntPtr HwndBottom = new(1);
 
     public const uint SmtoNormal = 0x0000;
     public const uint SmtoAbortIfHung = 0x0002;
@@ -85,18 +82,11 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern IntPtr WindowFromPoint(Point point);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool EnumChildWindows(IntPtr parent, EnumWindowsProc callback, IntPtr lParam);
-
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern IntPtr SendMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
     public static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
-    public static extern IntPtr SetWindowLongPtr(IntPtr hwnd, int index, IntPtr value);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -116,10 +106,6 @@ internal static class NativeMethods
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ScreenToClient(IntPtr hwnd, ref Point point);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool ClientToScreen(IntPtr hwnd, ref Point point);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern int MapWindowPoints(IntPtr from, IntPtr to, ref Point points, int count);

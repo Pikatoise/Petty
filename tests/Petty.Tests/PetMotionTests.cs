@@ -153,7 +153,7 @@ public class PetMotionTests
     }
 
     [Fact]
-    public void KeepInsideClampsOnlyWhenIdle()
+    public void KeepInsideClampsPositionAndActiveTarget()
     {
         var motion = new PetMotion(x: 5000);
         motion.KeepInside(new MotionArea(0, 800, 800));
@@ -162,6 +162,7 @@ public class PetMotionTests
         motion.MoveTo(1200, 50);
         motion.KeepInside(new MotionArea(0, 300, 800));
         Assert.Equal(800, motion.X); // an active walk is not teleported
+        Assert.Equal(300, motion.TargetX); // but it is retargeted inside
     }
 
     [Fact]
