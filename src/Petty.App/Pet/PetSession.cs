@@ -115,10 +115,6 @@ public sealed class PetSession : IDisposable
     /// <summary>Raised with a short reason whenever the saved state should be written now.</summary>
     public event EventHandler<string>? StateChanged;
 
-    public PetActivity CurrentActivity => _runtime.Behavior.State;
-
-    public bool IsExiting => _exitRequested;
-
     /// <summary>Current walkable band, for diagnostics.</summary>
     public MotionArea WalkArea => _area;
 

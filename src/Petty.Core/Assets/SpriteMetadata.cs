@@ -14,9 +14,6 @@ public sealed class AnimationClipMetadata
     public double FramesPerSecond { get; set; } = 8;
 
     public bool Loop { get; set; } = true;
-
-    [JsonIgnore]
-    public int EndIndex => StartIndex + FrameCount - 1;
 }
 
 public sealed class SpriteSheetMetadata

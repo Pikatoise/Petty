@@ -71,8 +71,6 @@ public partial class PropWindow : Window
 
     public int PhysicalHeight => _physicalHeight;
 
-    public bool IsInteractive => _interactive;
-
     /// <summary>True while the user holds the prop; the session must not move it then.</summary>
     public bool IsDragging => _dragging;
 
