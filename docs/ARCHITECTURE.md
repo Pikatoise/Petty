@@ -1,8 +1,7 @@
 # Petty architecture
 
 One page of orientation for the prototype: what lives where, how a running pet is wired,
-and which decisions are deliberate. The verified behaviour and its limits are summarised in
-the [README](../README.md); the sprite sheet is described in
+and which decisions are deliberate. The sprite sheet is described in
 [../assets/sprites/README.md](../assets/sprites/README.md).
 
 ## Shape
@@ -149,8 +148,7 @@ progression, feeding and bowl inventory, hunger-driven seeking, play happiness, 
 transition, JSON round-trip and recovery, bowl clamping, motion and floor easing, walk
 surface, animation playback, metadata validation and the shipped asset files. Desktop
 behaviour (z-order, click-through, taskbar, drag) is checked with the PowerShell scripts in
-`scripts/` and manually on a real desktop; the README's *Known limits* lists what is not
-verified.
+`scripts/` and manually on a real desktop.
 
 ## Deliberate constraints
 
