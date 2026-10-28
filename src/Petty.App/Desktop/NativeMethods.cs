@@ -22,7 +22,10 @@ internal static class NativeMethods
 
     public const uint WmNcHitTest = 0x0084;
     public const uint WmMouseActivate = 0x0021;
+    public const uint WmMouseMove = 0x0200;
+    public const uint WmLButtonDown = 0x0201;
     public const uint WmLButtonUp = 0x0202;
+    public const uint WmCaptureChanged = 0x0215;
     public const int MaNoActivate = 3;
     public const int HtTransparent = -1;
     public const int HtClient = 1;
@@ -88,6 +91,9 @@ internal static class NativeMethods
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
     public static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
 
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    public static extern IntPtr SetWindowLongPtr(IntPtr hwnd, int index, IntPtr value);
+
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetWindowPos(
@@ -122,6 +128,17 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SetCapture(IntPtr hwnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool ReleaseCapture();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetCursorPos(out Point point);
 
     public const int SmCxVirtualScreen = 78;
     public const int SmCyVirtualScreen = 79;

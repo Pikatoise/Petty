@@ -38,6 +38,7 @@ public static class AtlasWriter
 
         TrayIconBuilder.Write(outputDirectory);
         TrayIconBuilder.WriteIcon(outputDirectory);
+        PropSpriteBuilder.Write(outputDirectory);
 
         Console.WriteLine($"Wrote {AtlasBuilder.ImageName} ({build.Atlas.Width}x{build.Atlas.Height})");
         Console.WriteLine($"Wrote {AtlasBuilder.MetadataName} ({build.Metadata.Animations.Count} clips, {build.Frames.Count} frames)");
@@ -45,6 +46,8 @@ public static class AtlasWriter
         Console.WriteLine($"Wrote previews to {previewDirectory}");
         Console.WriteLine($"Wrote {TrayIconBuilder.ImageName} ({TrayIconBuilder.Size}x{TrayIconBuilder.Size})");
         Console.WriteLine($"Wrote {TrayIconBuilder.IconFileName} (32x32 icon)");
+        Console.WriteLine($"Wrote bowl and ball sprites ({PropSpriteBuilder.BowlWidth}x{PropSpriteBuilder.BowlHeight}, " +
+                          $"{PropSpriteBuilder.BallSize}x{PropSpriteBuilder.BallSize})");
     }
 
     private static void WriteContactSheet(AtlasBuildResult build, string path)

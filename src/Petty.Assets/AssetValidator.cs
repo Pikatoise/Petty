@@ -149,7 +149,16 @@ public static class AssetValidator
             errors.Add($"{emptyCells} atlas cells are not covered by any animation.");
 
         CheckWalkLoop(atlas, metadata, errors, notes);
-        CheckTrayIcon(directory, errors, notes);
+        CheckSmallSprite(directory, errors, notes,
+            TrayIconBuilder.ImageName, TrayIconBuilder.Size, TrayIconBuilder.Size, "tray icon", keepMargin: true);
+        CheckSmallSprite(directory, errors, notes,
+            PropSpriteBuilder.BowlEmptyName, PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, "empty bowl", keepMargin: false);
+        CheckSmallSprite(directory, errors, notes,
+            PropSpriteBuilder.BowlFullName, PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, "full bowl", keepMargin: false);
+        CheckSmallSprite(directory, errors, notes,
+            PropSpriteBuilder.BallName, PropSpriteBuilder.BallSize, PropSpriteBuilder.BallSize, "ball", keepMargin: true);
+
+        CheckBowlMasks(directory, errors);
 
         notes.Add($"atlas {atlas.Width}x{atlas.Height}, {metadata.Animations.Count} clips, {occupiedCells.Count} frames");
         notes.Add($"palette colours used: {CountPaletteColors(atlas)}");
@@ -157,43 +166,82 @@ public static class AssetValidator
         return new ValidationReport(errors.Count == 0, errors, notes);
     }
 
-    private static void CheckTrayIcon(string directory, List<string> errors, List<string> notes)
+    /// <summary>
+    /// Small hand-drawn props share the atlas rules (hard alpha, palette, a real
+    /// silhouette). The click-through masks of the two bowls must match, because the
+    /// bowl window hit-tests one mask while showing either picture.
+    /// </summary>
+    private static void CheckSmallSprite(
+        string directory,
+        List<string> errors,
+        List<string> notes,
+        string fileName,
+        int width,
+        int height,
+        string label,
+        bool keepMargin)
     {
-        var path = Path.Combine(directory, TrayIconBuilder.ImageName);
+        var path = Path.Combine(directory, fileName);
 
         if (!File.Exists(path))
         {
-            errors.Add($"Missing tray icon: {path}");
+            errors.Add($"Missing {label}: {path}");
             return;
         }
 
-        var icon = PixelCanvas.LoadPng(path);
+        var sprite = PixelCanvas.LoadPng(path);
 
-        if (icon.Width != TrayIconBuilder.Size || icon.Height != TrayIconBuilder.Size)
+        if (sprite.Width != width || sprite.Height != height)
         {
-            errors.Add($"Tray icon is {icon.Width}x{icon.Height}, expected {TrayIconBuilder.Size}x{TrayIconBuilder.Size}.");
+            errors.Add($"The {label} is {sprite.Width}x{sprite.Height}, expected {width}x{height}.");
             return;
         }
 
-        var bounds = Measure(icon);
-        if (bounds.OpaqueCount == 0) errors.Add("Tray icon is empty.");
-        if (bounds.MinX < 1 || bounds.MinY < 1 || bounds.MaxX >= icon.Width - 1 || bounds.MaxY >= icon.Height - 1)
-            errors.Add($"Tray icon touches its edge ({bounds}).");
+        var bounds = Measure(sprite);
+        if (bounds.OpaqueCount == 0) errors.Add($"The {label} is empty.");
 
-        for (var y = 0; y < icon.Height; y++)
+        if (keepMargin && (bounds.MinX < 1 || bounds.MinY < 1 ||
+                           bounds.MaxX >= sprite.Width - 1 || bounds.MaxY >= sprite.Height - 1))
         {
-            for (var x = 0; x < icon.Width; x++)
+            errors.Add($"The {label} touches its edge ({bounds}).");
+        }
+
+        for (var y = 0; y < sprite.Height; y++)
+        {
+            for (var x = 0; x < sprite.Width; x++)
             {
-                var color = icon[x, y];
+                var color = sprite[x, y];
                 var alpha = (color >> 24) & 0xFF;
 
-                if (alpha != 0 && alpha != 255) errors.Add("Tray icon has semi-transparent pixels.");
+                if (alpha != 0 && alpha != 255) errors.Add($"The {label} has semi-transparent pixels.");
                 if (alpha == 255 && !Palette.Set.Contains(color))
-                    errors.Add($"Tray icon uses a colour outside the palette: #{color & 0xFFFFFF:X6}.");
+                    errors.Add($"The {label} uses a colour outside the palette: #{color & 0xFFFFFF:X6}.");
             }
         }
 
-        notes.Add($"tray icon {icon.Width}x{icon.Height}, {bounds.OpaqueCount} opaque pixels");
+        notes.Add($"{label} {sprite.Width}x{sprite.Height}, {bounds.OpaqueCount} opaque pixels");
+    }
+
+    private static void CheckBowlMasks(string directory, List<string> errors)
+    {
+        var empty = Path.Combine(directory, PropSpriteBuilder.BowlEmptyName);
+        var full = Path.Combine(directory, PropSpriteBuilder.BowlFullName);
+        if (!File.Exists(empty) || !File.Exists(full)) return;
+
+        var a = PixelCanvas.LoadPng(empty);
+        var b = PixelCanvas.LoadPng(full);
+        if (a.Width != b.Width || a.Height != b.Height) return;
+
+        for (var y = 0; y < a.Height; y++)
+        {
+            for (var x = 0; x < a.Width; x++)
+            {
+                if (a.IsOpaque(x, y) == b.IsOpaque(x, y)) continue;
+
+                errors.Add($"The empty and full bowl differ in opacity at {x},{y}; the window hit-tests one mask.");
+                return;
+            }
+        }
     }
 
     private static void CheckWalkLoop(

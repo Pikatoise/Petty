@@ -114,6 +114,28 @@ public static class DesktopWindowService
             $"no-activate bit={noActivate}); owner 0x{owner.ToInt64():X} hides the taskbar button.");
     }
 
+    /// <summary>
+    /// Adds <c>WS_EX_TOOLWINDOW</c> so the window stays out of Alt+Tab and the taskbar.
+    /// WPF has no property for this on a borderless layered window. Only the one bit is
+    /// added on top of the style WPF created; replacing the whole style word makes the
+    /// layered window stop rendering, so everything else is left alone.
+    /// </summary>
+    public static void MarkAsToolWindow(IntPtr hwnd, IAppLog log)
+    {
+        var before = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
+        if ((before & NativeMethods.WsExToolWindow) != 0) return;
+
+        NativeMethods.SetWindowLongPtr(
+            hwnd,
+            NativeMethods.GwlExStyle,
+            new IntPtr(before | NativeMethods.WsExToolWindow));
+
+        var after = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
+        log.Info(
+            $"Window 0x{hwnd.ToInt64():X} hidden from Alt+Tab (ex-style 0x{before:X} -> 0x{after:X}, " +
+            $"layered={((after & NativeMethods.WsExLayered) != 0)}).");
+    }
+
     public static DesktopAttachment Attach(IntPtr hwnd, IAppLog log, DesktopLayerMode requested = DesktopLayerMode.AboveDesktop)
     {
         ArgumentNullException.ThrowIfNull(log);

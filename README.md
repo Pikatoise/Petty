@@ -1,8 +1,8 @@
 # Petty
 
 A small pixel-art cat that lives on the Windows desktop. It walks around on its own,
-sleeps, gets hungry and is controlled from the system tray. Prototype, not a finished
-product.
+sleeps, gets hungry, eats from a bowl you can refill and drag around, and plays with a
+ball when you click the Play chip over its head. Prototype, not a finished product.
 
 ## Requirements
 

@@ -27,6 +27,8 @@ public sealed class PetSession : IDisposable
 
     private readonly PetRuntime _runtime;
     private readonly PetWindow _window;
+    private readonly PropWindow _bowl;
+    private readonly PropWindow _ball;
     private readonly DisplayService _displays;
     private readonly IAppLog _log;
     private readonly AnimationController _animation;
@@ -65,12 +67,16 @@ public sealed class PetSession : IDisposable
         PetRuntime runtime,
         SpriteSheet sheet,
         PetWindow window,
+        PropWindow bowl,
+        PropWindow ball,
         DisplayService displays,
         PetTuning tuning,
         IAppLog log)
     {
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _window = window ?? throw new ArgumentNullException(nameof(window));
+        _bowl = bowl ?? throw new ArgumentNullException(nameof(bowl));
+        _ball = ball ?? throw new ArgumentNullException(nameof(ball));
         _displays = displays ?? throw new ArgumentNullException(nameof(displays));
         _log = log ?? throw new ArgumentNullException(nameof(log));
 
@@ -98,10 +104,16 @@ public sealed class PetSession : IDisposable
         _shellBarTimer.Tick += OnShellBarTick;
 
         _window.PetClicked += OnPetClicked;
+        _window.PlayRequested += OnPlayRequested;
         _window.GeometryChanged += OnWindowGeometryChanged;
+        _bowl.Clicked += OnBowlClicked;
+        _bowl.DragCompleted += OnBowlDragged;
     }
 
     public event EventHandler? ExitAnimationCompleted;
+
+    /// <summary>Raised with a short reason whenever the saved state should be written now.</summary>
+    public event EventHandler<string>? StateChanged;
 
     public PetActivity CurrentActivity => _runtime.Behavior.State;
 
@@ -128,6 +140,9 @@ public sealed class PetSession : IDisposable
         _lastSimulationTick = _lastFrameTick;
 
         _animation.Play(PetAnimationMap.ClipFor(_runtime.Behavior.State));
+
+        _bowl.ShowFilled(_runtime.Bowl.HasFood);
+        _ball.Hide();
 
         _frameTimer.Start();
         _simulationTimer.Start();
@@ -167,8 +182,13 @@ public sealed class PetSession : IDisposable
 
         _runtime.Behavior.Transitioned -= OnBehaviorTransition;
         _window.PetClicked -= OnPetClicked;
+        _window.PlayRequested -= OnPlayRequested;
         _window.GeometryChanged -= OnWindowGeometryChanged;
+        _bowl.Clicked -= OnBowlClicked;
+        _bowl.DragCompleted -= OnBowlDragged;
         _animation.FrameChanged -= OnFrameChanged;
+
+        _ball.Hide();
     }
 
     private void OnFrameTick(object? sender, EventArgs e)
@@ -196,6 +216,10 @@ public sealed class PetSession : IDisposable
             FaceMovement();
             ApplyPosition();
         }
+
+        if (climbed) ApplyBowlPosition();
+
+        UpdateBall();
 
         SyncFrameInterval();
     }
@@ -290,6 +314,7 @@ public sealed class PetSession : IDisposable
 
         if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
         _runtime.Update(delta, now);
+        _bowl.ShowFilled(_runtime.Bowl.HasFood);
 
         if (!_exitRequested || _exitCompleted) return;
 
@@ -327,11 +352,18 @@ public sealed class PetSession : IDisposable
                 break;
 
             case PetActivity.SeekingFood:
-                // Stage 5 replaces this with the bowl's position.
-                _motion.Seek(_area.Left + (_area.Width * 0.55));
+                _motion.Seek(SeekTargetX());
+                break;
+
+            case PetActivity.Playing:
+                _window.AllowPlayAffordance(false);
+                _ball.Show();
+                UpdateBall();
                 break;
 
             case PetActivity.Exiting:
+                _window.HidePlayAffordance();
+                _ball.Hide();
                 _motion.Exit(_area, _window.PhysicalWidth);
                 break;
 
@@ -339,6 +371,15 @@ public sealed class PetSession : IDisposable
                 _motion.Stop();
                 break;
         }
+
+        if (transition.From is PetActivity.Playing)
+        {
+            _ball.Hide();
+            _window.AllowPlayAffordance(true);
+        }
+
+        if (transition.From is PetActivity.Playing or PetActivity.Eating)
+            StateChanged?.Invoke(this, transition.From is PetActivity.Eating ? "eat" : "play");
 
         FaceMovement();
         ApplyPosition();
@@ -356,6 +397,110 @@ public sealed class PetSession : IDisposable
         _log.Info("Pet clicked.");
         _runtime.OnUserInteraction();
     }
+
+    private void OnPlayRequested(object? sender, EventArgs e)
+    {
+        _log.Info("Play requested from the pet.");
+        _runtime.RequestPlay();
+    }
+
+    private void OnBowlClicked(object? sender, EventArgs e)
+    {
+        var added = _runtime.RefillBowl();
+        _bowl.ShowFilled(_runtime.Bowl.HasFood);
+        _log.Info($"Bowl filled with {added:F0}; food {_runtime.Bowl.Food:F0}/{_runtime.Bowl.Capacity:F0}.");
+
+        if (added > 0) StateChanged?.Invoke(this, "feed");
+    }
+
+    private void OnBowlDragged(object? sender, EventArgs e)
+    {
+        var rect = _bowl.ScreenRect;
+
+        // The user can drop the bowl anywhere on the screen; only the horizontal place is
+        // kept, and it goes back onto the floor line where the cat eats from it.
+        var placement = BowlPlacement.Capture(
+            rect.Left,
+            BowlFloor() - rect.Height,
+            rect.Width,
+            rect.Height,
+            CurrentDisplays());
+
+        _runtime.UpdateBowlPlacement(placement);
+        ApplyBowlPosition();
+
+        _log.Info($"Bowl dropped at x {rect.Left} ({(placement.RelativeX * 100):F0} % of {placement.DisplayDeviceName}).");
+        StateChanged?.Invoke(this, "bowl-move");
+
+        // The cat may be walking towards the old spot right now.
+        if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(SeekTargetX());
+    }
+
+    /// <summary>
+    /// Where the cat should stand to eat: its head (about 68 % into the frame, mirrored
+    /// when facing left) lands on the bowl's centre instead of a fixed screen position.
+    /// </summary>
+    private double SeekTargetX()
+    {
+        var rect = _bowl.ScreenRect;
+        if (rect.Width <= 0) return _area.Left + (_area.Width * 0.55);
+
+        var center = rect.Left + (rect.Width / 2.0);
+        var fromLeft = _motion.X + (_window.PhysicalWidth / 2.0) < center;
+        var head = _window.PhysicalWidth * (fromLeft ? 0.68 : 0.32);
+
+        return Math.Clamp(center - head, _area.Left, _area.Right);
+    }
+
+    /// <summary>Rolls and bounces the ball beside the cat while it plays; no ball otherwise.</summary>
+    private void UpdateBall()
+    {
+        if (_runtime.Behavior.State is not PetActivity.Playing) return;
+        if (_area.FloorY <= 0) return;
+
+        var time = _runtime.Behavior.StateElapsed.TotalSeconds;
+        var center = _motion.X + (_window.PhysicalWidth / 2.0);
+        var amplitude = Math.Clamp(_area.Width * 0.06, 48, 90);
+        var swing = Math.Sin(time * 2.2);
+        var floor = _floor.Current > 0 ? _floor.Current : _area.FloorY;
+        var left = Math.Clamp(
+            center + (swing * amplitude) - (_ball.PhysicalWidth / 2.0),
+            _area.Left,
+            _area.Right);
+
+        _ball.PlaceAt(left, floor - _ball.PhysicalHeight - (Math.Abs(swing) * 26));
+    }
+
+    private IReadOnlyList<DisplayInfo> CurrentDisplays() =>
+        _displayLayout.Count > 0 ? _displayLayout : _displays.GetDisplays();
+
+    /// <summary>
+    /// Puts the bowl on the floor line — the same row the cat's paws rest on, so it follows
+    /// the eased taskbar — at the saved monitor-relative horizontal position. A bowl the
+    /// user is holding is left where the cursor put it.
+    /// </summary>
+    private void ApplyBowlPosition()
+    {
+        if (_bowl.Handle == IntPtr.Zero || _bowl.IsDragging) return;
+
+        var resolved = BowlPlacement.Resolve(
+            _runtime.Snapshot.Placement,
+            CurrentDisplays(),
+            _bowl.PhysicalWidth,
+            _bowl.PhysicalHeight);
+
+        var floor = BowlFloor();
+        if (floor <= 0)
+        {
+            _bowl.PlaceAt(resolved.Left, resolved.Top);
+            return;
+        }
+
+        _bowl.PlaceOnFloor(resolved.Left, floor);
+    }
+
+    /// <summary>The floor row the bowl stands on: the eased one while it is still moving.</summary>
+    private double BowlFloor() => _floor.Current > 0 ? _floor.Current : _area.FloorY;
 
     private void OnWindowGeometryChanged(object? sender, EventArgs e)
     {
@@ -402,6 +547,7 @@ public sealed class PetSession : IDisposable
             _floor.Snap(area.FloorY);
             if (!_exitRequested) _motion.KeepInside(area);
             ApplyPosition();
+            ApplyBowlPosition();
             _log.Info(
                 $"Walk area: x {area.Left:F0}..{area.Right:F0}, floor {area.FloorY:F0} " +
                 $"(display {FormatRect(display.Bounds)}, work {FormatRect(display.UsableArea)}, " +

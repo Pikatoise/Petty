@@ -35,6 +35,10 @@ public partial class App: Application
     private PetRuntime? _runtime;
     private SpriteSheet? _sheet;
     private PetWindow? _window;
+    private PropWindow? _bowlWindow;
+    private PropWindow? _ballWindow;
+    private PropImage? _bowlEmptyImage;
+    private PropImage? _bowlFullImage;
     private PetSession? _session;
     private TrayService? _tray;
     private SettingsWindow? _settings;
@@ -109,6 +113,10 @@ public partial class App: Application
         _window = null;
         _sheet = null;
         _runtime = null;
+        _bowlWindow = null;
+        _ballWindow = null;
+        _bowlEmptyImage = null;
+        _bowlFullImage = null;
         _tray?.Dispose();
         _tray = null;
         _singleInstance?.Dispose();
@@ -219,9 +227,13 @@ public partial class App: Application
             _window.AttachToDesktop(_options.DesktopLayer, _log!);
         }
 
+        if (_bowlWindow is null) CreatePropWindows();
+
         _session?.Dispose();
-        _session = new PetSession(runtime, _sheet!, _window, _displayService, tuning, _log!);
+        _session = new PetSession(
+            runtime, _sheet!, _window, _bowlWindow!, _ballWindow!, _displayService, tuning, _log!);
         _session.ExitAnimationCompleted += OnExitAnimationCompleted;
+        _session.StateChanged += (_, reason) => SaveState(reason);
         _session.Start();
 
         if (_autoSaveTimer is null)
@@ -232,6 +244,30 @@ public partial class App: Application
         }
 
         if (_tray is null) CreateTray();
+    }
+
+    /// <summary>
+    /// Bowl and ball live in their own layered windows, created with the first pet.
+    /// The bowl is interactive (click = food, drag = move); the ball never takes input.
+    /// </summary>
+    private void CreatePropWindows()
+    {
+        _bowlEmptyImage = PropImage.Load(Path.Combine(_assetDirectory!, "bowl-empty.png"));
+        _bowlFullImage = PropImage.Load(Path.Combine(_assetDirectory!, "bowl-full.png"));
+        var ballImage = PropImage.Load(Path.Combine(_assetDirectory!, "ball.png"));
+
+        _bowlWindow = new PropWindow(_bowlEmptyImage, _bowlFullImage, interactive: true, _log!);
+        _bowlWindow.Show();
+        _bowlWindow.AttachToDesktop(_options.DesktopLayer, _log!);
+
+        _ballWindow = new PropWindow(ballImage, fullImage: null, interactive: false, _log!);
+        _ballWindow.Show();
+        _ballWindow.AttachToDesktop(_options.DesktopLayer, _log!);
+        _ballWindow.Hide();
+
+        _log!.Info(
+            $"Prop windows ready (bowl {_bowlWindow.PhysicalWidth}x{_bowlWindow.PhysicalHeight}, " +
+            $"ball {_ballWindow.PhysicalWidth}x{_ballWindow.PhysicalHeight}).");
     }
 
     private void CreateTray()
@@ -344,6 +380,13 @@ public partial class App: Application
         _window?.Close();
         _window = null;
 
+        _bowlWindow?.Close();
+        _bowlWindow = null;
+        _ballWindow?.Close();
+        _ballWindow = null;
+        _bowlEmptyImage = null;
+        _bowlFullImage = null;
+
         _tray?.Dispose();
         _tray = null;
 
@@ -415,6 +458,36 @@ public partial class App: Application
                     right = Math.Round(_session?.WalkArea.Right ?? 0, 1),
                     floorY = Math.Round(_session?.WalkArea.FloorY ?? 0, 1),
                 },
+                bowl = _bowlWindow is { } bowlWindow && _runtime is { } petRuntime
+                    ? new
+                    {
+                        handle = $"0x{bowlWindow.Handle.ToInt64():X}",
+                        rect = FormatRect(new ScreenRect(
+                            bowlWindow.ScreenRect.Left,
+                            bowlWindow.ScreenRect.Top,
+                            bowlWindow.ScreenRect.Width,
+                            bowlWindow.ScreenRect.Height)),
+                        hitTests = DesktopWindowService.ProbeHitTest(bowlWindow.Handle, new[]
+                        {
+                            (bowlWindow.ScreenRect.Left + (bowlWindow.ScreenRect.Width / 2),
+                             bowlWindow.ScreenRect.Top + (bowlWindow.ScreenRect.Height / 2)),
+                            (bowlWindow.ScreenRect.Left + 1, bowlWindow.ScreenRect.Top + 1),
+                        }),
+                        food = Math.Round(petRuntime.Bowl.Food, 1),
+                        filled = petRuntime.Bowl.HasFood,
+                    }
+                    : null,
+                ball = _ballWindow is { } ballWindow && ballWindow.IsVisible
+                    ? new
+                    {
+                        handle = $"0x{ballWindow.Handle.ToInt64():X}",
+                        rect = FormatRect(new ScreenRect(
+                            ballWindow.ScreenRect.Left,
+                            ballWindow.ScreenRect.Top,
+                            ballWindow.ScreenRect.Width,
+                            ballWindow.ScreenRect.Height)),
+                    }
+                    : null,
                 taskbar = _session?.ShellBar is { } bar
                     ? new
                     {

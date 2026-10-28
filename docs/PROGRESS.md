@@ -19,7 +19,7 @@ Read this together with `AGENTS.md`; `AGENTS.md` is the specification.
 | 3 | WPF pet window, desktop placement, click-through, animation playback | **done** (WorkerW layer limited, see below) |
 | 3.1 | Taskbar-aware walk line, full-width walking, arrival-driven walks | **done** |
 | 4 | Tray icon, lifecycle, animated exit, first-run wizard, settings | **done** |
-| 5 | Bowl window (drag/feed), ball, Play action, runtime wiring, autosave | not started |
+| 5 | Bowl window (drag/feed), ball, Play action, runtime wiring, autosave | **done** |
 | 6 | Release verification, README, architecture doc, limitations list | not started |
 
 ## Repository map
@@ -51,13 +51,16 @@ src/Petty.Assets/                net10.0-windows console, System.Drawing (WinFor
   Animations.cs                  the 8 clips and their poses
   AtlasBuilder/Writer/Validator  atlas 8x6, metadata, frames, previews, checks
   TrayIconBuilder.cs            32x32 cat head for the notification area
+  PropSpriteBuilder.cs           bowl (empty/full, one silhouette) and ball art
 src/Petty.App/                   WPF WinExe, net10.0-windows10.0.19041.0, per-monitor DPI v2
   App.xaml(.cs)                  composition root, wizard/settings/tray wiring, shutdown
   AppOptions.cs                  --data-dir, --create-name, --exit-after, --desktop-layer, --no-desktop-layer
   PetPaths.cs                    %LOCALAPPDATA%\Petty, PETTY_DATA_DIR override
   Sprites/SpriteSheetLoader.cs   atlas decode once -> frozen CroppedBitmap per frame + alpha plane
   Sprites/AnimationController.cs clip switching + FrameChanged only on visible changes
-  Views/PetWindow.xaml(.cs)      192x192 (64x64 x3) layered window, alpha hit-testing
+  Sprites/PropImage.cs           one prop PNG + alpha mask (click-through testing)
+  Views/PetWindow.xaml(.cs)      192x192 (64x64 x3) layered window, alpha hit-testing, Play chip
+  Views/PropWindow.xaml(.cs)     72x48 bowl / 48x48 ball windows: alpha hit-test, click, drag
   Views/CreationWizardWindow     first-run/new-pet name + live preview
   Views/SettingsWindow           rename + create-new-pet confirmation
   Tray/TrayService.cs            NotifyIcon, exactly two commands, HICON cleanup
@@ -65,9 +68,10 @@ src/Petty.App/                   WPF WinExe, net10.0-windows10.0.19041.0, per-mo
   Desktop/DisplayService.cs      physical-pixel monitor layout
   Desktop/DesktopWindowService.cs desktop placement, shell host discovery, hit-test probes
   Desktop/ShellBarProbe.cs       taskbar rect per monitor + "is it really on screen" hit test
-  Pet/PetSession.cs              timers (20 ms frames, 200 ms simulation), motion, exit flow
-tests/Petty.Tests/               xUnit, 122 tests, all green
-assets/sprites/                  atlas + metadata + 48 frames + previews + tray icon + petty.ico + README
+  Pet/PetSession.cs              timers (20 ms frames, 200 ms simulation), motion, props, exit flow
+tests/Petty.Tests/               xUnit, 123 tests, all green
+assets/sprites/                  atlas + metadata + 48 frames + previews + tray icon + petty.ico +
+                                 bowl-empty/bowl-full/ball + README
 scripts/generate-assets.ps1      regenerate / --verify the atlas
 scripts/verify-desktop.ps1       run the app, minimise other windows, screenshot, click the cat
 scripts/verify-zorder.ps1        prove a normal window covers the pet
@@ -80,7 +84,8 @@ scripts/verify-taskbar.ps1       reveal the auto-hide taskbar and watch the pet 
 - Clips/cells: idle 0-3, walk 4-11, run 12-19, eat 20-25, sleep 26-29, play 30-37,
   tired 38-41, exit 42-47. `groundRow = 52` (outline row that touches the ground).
 - Cat faces **right** in every frame; flip horizontally for leftward movement.
-- Ball and bowl are **not** in the atlas — draw them as separate objects.
+- Ball and bowl are **not** in the atlas — they are separate 3x PNG props (`bowl-empty`,
+  `bowl-full`, `ball`) drawn into their own layered windows, never into pet frames.
 - FSM priorities: exit > user play > eating > hunger > sleep > idle/wander.
 - Persistence: `PetStateStore` atomic save, `.bak` fallback, schema v1, JSON camelCase.
 - Needs thresholds: hungry <= 30, tired <= 20, full recovery > 45.
@@ -108,6 +113,24 @@ scripts/verify-taskbar.ps1       reveal the auto-hide taskbar and watch the pet 
   deliberately not topmost. Standing on the bar's top edge is the closest legal behaviour.
 - WPF sets `WS_EX_LAYERED|TOOLWINDOW|NOACTIVATE` itself. **Do not** call `SetWindowLongPtr`
   on the pet window: it breaks WPF's layered composition and the window renders nothing.
+- Props: bowl sprite 24x16 -> 72x48 px, ball 16x16 -> 48x48 px at the same 3x scale. They are
+  separate layered windows placed above `Progman` like the pet, never activate, and hit-test
+  their own alpha mask (`PropWindow.WndProc`), so their transparent corners click through. The
+  empty and full bowl share one silhouette on purpose: one mask serves both pictures.
+- Pet, bowl and ball are marked `WS_EX_TOOLWINDOW` (`DesktopWindowService.MarkAsToolWindow`,
+  add-only read-modify-write), which is what keeps all three out of Alt+Tab and the taskbar.
+  Adding that single bit keeps WPF's layered rendering intact (verified: screenshots still show
+  the sprites, hit tests and clicks still work).
+- Bowl: an opaque click adds `BowlFoodPerClick` (25), a pointer move of >= 4 px on either axis
+  turns the press into a free drag, and a drag never feeds. Only the x position is stored,
+  monitor-relative (`BowlPlacement.Capture/Resolve`), and it is re-clamped when the monitor
+  layout changes; the y comes from the walk floor, never from saved data.
+- Play: hovering the cat shows the small "Play" chip inside the pet window; only while it is
+  visible does its rectangle count in `WM_NCHITTEST`, and a click on it raises
+  `PlayRequested` -> `PetRuntime.RequestPlay()`. While Playing, the ball window bounces beside
+  the cat and is hidden when the clip ends (`PlayDuration` 12 s, +30 happiness, -2 satiety).
+  The chip is suppressed for the whole Playing state (`PetWindow.AllowPlayAffordance`), so
+  hovering the playing cat does not offer Play again; it comes back when play ends.
 
 ## Commands
 
@@ -234,7 +257,7 @@ Skipped on purpose: #12 (`OnLocationChanged` warning noise) and #13 (committed d
 PNGs).
 
 Build: `dotnet build Petty.slnx -c Release` → 0 warnings, 0 errors.
-Tests: `dotnet test Petty.slnx` → 122 passing.
+Tests: `dotnet test Petty.slnx` → 123 passing.
 
 ## Stage 4 — tray, wizard, settings (done)
 
@@ -279,13 +302,57 @@ before a clean shutdown.
 
 Not verified yet: the tray icon and window icons on other DPI settings/Windows versions.
 
-## Stage 5 plan (next)
+## Stage 5 — bowl, ball, play (done)
 
-1. Bowl window: drawn by the app, own food inventory, click to refill, horizontal drag with
-   persisted monitor-relative position, transparent area click-through.
-2. Seeking uses the real bowl position instead of the 55 % placeholder; eating already works.
-3. Ball and Play action with a hover/click affordance; happiness gain.
-4. Save after feed, eat, play and bowl move; keep autosave.
+- `PropSpriteBuilder` draws `bowl-empty.png` (24x16), `bowl-full.png` (24x16, same silhouette)
+  and `ball.png` (16x16) into the same asset folder; `AssetValidator` checks size, hard alpha,
+  palette and that the two bowls have identical opacity masks.
+- `PropImage` decodes a prop once and keeps its alpha plane; `PropWindow` hosts it in a small
+  layered window: alpha hit-testing, click on an opaque pixel, horizontal drag with
+  `SetCapture`, no activation, never topmost, and `PlaceAt` in physical pixels.
+- `PetSession` owns both prop windows: the bowl stands on the cat's floor line
+  (`PlaceOnFloor`, so it steps up with an appearing taskbar instead of hovering) at the
+  resolved monitor-relative x, switches to the full picture while food remains, seeks the
+  *real* bowl centre (`SeekTargetX`), and the ball swings beside the cat while `Playing`.
+  A drag is free on both axes; on release the bowl drops onto the floor and only x is saved.
+- `PetWindow` gained the hover `PlayChip`; `WM_NCHITTEST` treats the chip as interactive only
+  while it is visible, and `WM_LBUTTONUP` turns a chip click into `PlayRequested`.
+- The session raises `StateChanged("feed" | "eat" | "play" | "bowl-move")`; `App` saves on each
+  of those reasons and keeps the 2-minute autosave. Diagnostics reports now include `bowl`
+  (handle, rect, hit tests, food, filled) and `ball` (handle, rect while visible).
+
+Verified programmatically on this machine (fresh data dir + seeded state, real log output):
+
+- click on the bowl's opaque centre -> "Bowl filled with 25", state saved; a corner pixel of
+  the same window answers `HTTRANSPARENT`, so the transparent area does not take clicks;
+- the bowl stands on the floor line: window bottom 1603 with the sprite's last opaque row on
+  1600, and when the auto-hide bar slides up it rises to 1459 (floor 1504) with the cat, then
+  back down (verified over two reveal/retract cycles);
+- real mouse drag moves the bowl freely on both axes (grabbed at y 1555, carried to 1375), and
+  on release it drops back onto the floor line at the new x (1071 = 43 % of the monitor), state
+  saved, no extra food from the drag;
+- pet, bowl and ball get `WS_EX_TOOLWINDOW` (ex-style 0x80000 -> 0x80080) at startup: the
+  Alt+Tab enumeration returns no Petty windows, while the bowl still renders (2466 palette
+  pixels in its 72x48 rect) and still answers hit tests and clicks;
+- hungry cat (satiety 8, empty bowl) + one click -> food 25 -> the cat walks to the bowl,
+  `SeekingFood -> Eating (bowl-reached)`, eats it all, then `Eating -> Idle (bowl-emptied)`,
+  satiety ~53, state saved;
+- hovering the cat makes the chip hit-testable, clicking it logs "Play requested from the pet"
+  and `Idle -> Playing (user-play)`, the 48x48 ball window becomes visible and moves, after
+  12 s `Playing -> Idle (play-finished)`, happiness 40 -> 69.6, state saved;
+- the chip does not come back while the cat plays: hovering it again during `Playing` leaves the
+  chip band above the cat's head empty (0 cream pixels, versus 3502 when the idle chip is
+  shown), and after play ends a fresh hover paints it again (3502).
+
+Not verified: the real Alt+Tab switcher UI (only the window enumeration and the ex-style were
+checked), how the props look on a real desktop pass (user check), prop windows on mixed
+DPI/multi-monitor setups, and the ball's click-through is guaranteed by code (it always
+answers `HTTRANSPARENT`) but was not probed at runtime.
+
+Note for future sessions: this machine's display is at 200 % DPI. An ad-hoc PowerShell probe
+that does not call `SetProcessDpiAwarenessContext(-4)` first reads half-scale rectangles, sees
+`WindowFromPoint` fail past x 1280 and cannot click anything — that looked like the bowl window
+moving itself. The repo's `scripts/verify-*.ps1` all set it; keep doing that.
 
 ## Known limits / notes
 

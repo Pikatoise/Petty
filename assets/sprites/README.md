@@ -25,8 +25,16 @@ reproducible, versionable and free of AI artefacts.
 | tired | 4 | 38-41 | 4 | yes |
 | exit | 6 | 42-47 | 9 | no |
 
-The ball and the food bowl are **not** part of the atlas: the app draws both as separate
-objects, so the play and eat animations stay reusable.
+The ball and the food bowl are **not** part of the atlas: the app draws both from their own
+small PNGs, so the play and eat animations stay reusable.
+
+| Prop | Size | Used as |
+|---|---|---|
+| `bowl-empty.png` / `bowl-full.png` | 24x16 | 72x48 px window, food is the only difference |
+| `ball.png` | 16x16 | 48x48 px window while the cat plays |
+
+Both bowls share one silhouette, so the bowl window hit-tests a single alpha mask while it
+swaps the picture.
 
 ## Regenerate
 

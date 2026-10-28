@@ -127,6 +127,27 @@ public class SpriteAssetFileTests
         Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, bytes[22..26]); // PNG payload
     }
 
+    [Fact]
+    public void PropSpritesAreRealAlphaPngs()
+    {
+        foreach (var (file, width, height) in new[]
+                 {
+                     ("bowl-empty.png", 24, 16),
+                     ("bowl-full.png", 24, 16),
+                     ("ball.png", 16, 16),
+                 })
+        {
+            var path = Path.Combine(SpriteDirectory, file);
+            Assert.True(File.Exists(path), $"Missing prop sprite: {path}");
+
+            var header = ReadPngHeader(path);
+
+            Assert.Equal(width, header.Width);
+            Assert.Equal(height, header.Height);
+            Assert.Equal(6, header.ColorType); // RGBA, not a checkerboard
+        }
+    }
+
     private static SpriteSheetMetadata LoadMetadata() =>
         System.Text.Json.JsonSerializer.Deserialize<SpriteSheetMetadata>(
             File.ReadAllText(MetadataPath),
