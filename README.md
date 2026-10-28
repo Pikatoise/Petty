@@ -18,8 +18,9 @@ dotnet run --project src/Petty.App
 ```
 
 The built executable is `src/Petty.App/bin/Release/net10.0-windows10.0.19041.0/Petty.exe`.
-The tray icon has **Pet settings** and **Exit application**; exit plays the leave animation
-before the process ends.
+On the first launch a short wizard asks for the cat's name and shows a live preview; it
+is skipped once a valid state exists. The tray icon has **Pet settings** and
+**Exit application**; exit plays the leave animation before the process ends.
 
 ## Data and diagnostics
 
@@ -30,10 +31,11 @@ State, log and diagnostics reports live in `%LOCALAPPDATA%\Petty`
 ## Command-line diagnostics
 
 ```powershell
-Petty.exe --data-dir <dir> --exit-after <seconds> [--desktop-layer above|workerw|none]
+Petty.exe --data-dir <dir> --create-name <name> --exit-after <seconds> [--desktop-layer above|workerw|none]
 ```
 
-`scripts/verify-*.ps1` use these switches for on-desktop checks.
+`--create-name` skips the first-run wizard on a fresh data directory. `scripts/verify-*.ps1`
+use these switches for on-desktop checks.
 
 ## Sprite assets
 

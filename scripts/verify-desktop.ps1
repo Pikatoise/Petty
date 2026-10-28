@@ -34,7 +34,7 @@ $exePath = (Resolve-Path $Exe).Path
 Remove-Item $OutDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $OutDir | Out-Null
 
-$process = Start-Process -FilePath $exePath -ArgumentList @("--data-dir", $OutDir, "--exit-after", "$ExitAfter") -PassThru
+$process = Start-Process -FilePath $exePath -ArgumentList @("--data-dir", $OutDir, "--create-name", "Kitty", "--exit-after", "$ExitAfter") -PassThru
 Start-Sleep -Seconds 5
 
 $pet = [IntPtr]::Zero

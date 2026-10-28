@@ -92,6 +92,41 @@ public class SpriteAssetFileTests
         Assert.InRange(metadata.GroundRow, 1, metadata.FrameHeight - 2);
     }
 
+    [Fact]
+    public void TrayIconIsACrisp32pxPng()
+    {
+        var path = Path.Combine(SpriteDirectory, "tray-cat.png");
+        Assert.True(File.Exists(path), $"Missing tray icon: {path}");
+
+        var header = ReadPngHeader(path);
+
+        Assert.Equal(32, header.Width);
+        Assert.Equal(32, header.Height);
+        Assert.Equal(8, header.BitDepth);
+        Assert.Equal(6, header.ColorType);
+    }
+
+    [Fact]
+    public void WindowIconIsAWellFormed32pxIco()
+    {
+        var path = Path.Combine(SpriteDirectory, "petty.ico");
+        Assert.True(File.Exists(path), $"Missing window icon: {path}");
+
+        var bytes = File.ReadAllBytes(path);
+
+        Assert.True(bytes.Length > 22);
+        Assert.Equal(1, BitConverter.ToUInt16(bytes, 2));      // type: icon
+        Assert.Equal(1, BitConverter.ToUInt16(bytes, 4));      // one image
+        Assert.Equal(32, bytes[6]);                            // width
+        Assert.Equal(32, bytes[7]);                            // height
+
+        var size = BitConverter.ToUInt32(bytes, 14);
+        var offset = BitConverter.ToUInt32(bytes, 18);
+        Assert.Equal(bytes.Length - 22u, size);
+        Assert.Equal(22u, offset);
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, bytes[22..26]); // PNG payload
+    }
+
     private static SpriteSheetMetadata LoadMetadata() =>
         System.Text.Json.JsonSerializer.Deserialize<SpriteSheetMetadata>(
             File.ReadAllText(MetadataPath),

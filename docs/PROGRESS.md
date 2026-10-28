@@ -18,7 +18,7 @@ Read this together with `AGENTS.md`; `AGENTS.md` is the specification.
 | 2 | Procedural pixel-art atlas, frames, metadata, validator, previews | **done** |
 | 3 | WPF pet window, desktop placement, click-through, animation playback | **done** (WorkerW layer limited, see below) |
 | 3.1 | Taskbar-aware walk line, full-width walking, arrival-driven walks | **done** |
-| 4 | Tray icon, lifecycle, animated exit, first-run wizard, settings | not started |
+| 4 | Tray icon, lifecycle, animated exit, first-run wizard, settings | **done** |
 | 5 | Bowl window (drag/feed), ball, Play action, runtime wiring, autosave | not started |
 | 6 | Release verification, README, architecture doc, limitations list | not started |
 
@@ -50,20 +50,24 @@ src/Petty.Assets/                net10.0-windows console, System.Drawing (WinFor
   CatSpriteRenderer.cs           cat drawing, CatPose, groundRow = 52
   Animations.cs                  the 8 clips and their poses
   AtlasBuilder/Writer/Validator  atlas 8x6, metadata, frames, previews, checks
+  TrayIconBuilder.cs            32x32 cat head for the notification area
 src/Petty.App/                   WPF WinExe, net10.0-windows10.0.19041.0, per-monitor DPI v2
-  App.xaml(.cs)                  composition root, diagnostics reports, shutdown
-  AppOptions.cs                  --data-dir, --exit-after, --desktop-layer, --no-desktop-layer
+  App.xaml(.cs)                  composition root, wizard/settings/tray wiring, shutdown
+  AppOptions.cs                  --data-dir, --create-name, --exit-after, --desktop-layer, --no-desktop-layer
   PetPaths.cs                    %LOCALAPPDATA%\Petty, PETTY_DATA_DIR override
   Sprites/SpriteSheetLoader.cs   atlas decode once -> frozen CroppedBitmap per frame + alpha plane
   Sprites/AnimationController.cs clip switching + FrameChanged only on visible changes
   Views/PetWindow.xaml(.cs)      192x192 (64x64 x3) layered window, alpha hit-testing
+  Views/CreationWizardWindow     first-run/new-pet name + live preview
+  Views/SettingsWindow           rename + create-new-pet confirmation
+  Tray/TrayService.cs            NotifyIcon, exactly two commands, HICON cleanup
   Desktop/NativeMethods.cs       the whole Win32 surface
   Desktop/DisplayService.cs      physical-pixel monitor layout
   Desktop/DesktopWindowService.cs desktop placement, shell host discovery, hit-test probes
   Desktop/ShellBarProbe.cs       taskbar rect per monitor + "is it really on screen" hit test
   Pet/PetSession.cs              timers (20 ms frames, 200 ms simulation), motion, exit flow
-tests/Petty.Tests/               xUnit, 120 tests, all green
-assets/sprites/                  atlas + metadata + 48 frames + previews + README
+tests/Petty.Tests/               xUnit, 122 tests, all green
+assets/sprites/                  atlas + metadata + 48 frames + previews + tray icon + petty.ico + README
 scripts/generate-assets.ps1      regenerate / --verify the atlas
 scripts/verify-desktop.ps1       run the app, minimise other windows, screenshot, click the cat
 scripts/verify-zorder.ps1        prove a normal window covers the pet
@@ -113,10 +117,13 @@ dotnet test  Petty.slnx -c Release
 dotnet run   --project src/Petty.Assets        # regenerate atlas + validate
 dotnet run   --project src/Petty.Assets -- --verify
 dotnet build src/Petty.App
-src\Petty.App\bin\Debug\net10.0-windows10.0.19041.0\Petty.exe --exit-after 20
+src\Petty.App\bin\Debug\net10.0-windows10.0.19041.0\Petty.exe --create-name Kitty --exit-after 20
 powershell -File scripts\verify-desktop.ps1    # screenshot + click verification
 powershell -File scripts\verify-taskbar.ps1    # reveal the auto-hide bar, watch the pet step up
 ```
+
+`--create-name` skips the wizard on a fresh data directory (the verify scripts use it);
+without a saved state and without that switch the app shows the creation wizard.
 
 Data directory defaults to `%LOCALAPPDATA%\Petty`; use `--data-dir` (or `PETTY_DATA_DIR`)
 to keep test runs isolated. Diagnostics land in that directory: `petty.log`,
@@ -227,27 +234,65 @@ Skipped on purpose: #12 (`OnLocationChanged` warning noise) and #13 (committed d
 PNGs).
 
 Build: `dotnet build Petty.slnx -c Release` → 0 warnings, 0 errors.
-Tests: `dotnet test Petty.slnx` → 120 passing.
+Tests: `dotnet test Petty.slnx` → 122 passing.
 
-## Stage 4 plan (next)
+## Stage 4 — tray, wizard, settings (done)
 
-1. `TrayService` — `NotifyIcon` + context menu: "Pet settings", "Exit application"; dispose on
-   shutdown; icon generated from the idle sprite frame.
-2. Lifecycle: keep `ShutdownMode.OnExplicitShutdown`; tray exit requests the animated exit;
-   closing wizard/settings must not exit.
-3. First-run wizard (`Views/CreationWizardWindow`) — preview of the cat, breed "Cat" (fixed),
-   "Generate coat" (single coat), name box, validation via `PetNameRules`, then persist.
-4. Settings window — rename, recreate pet with confirmation; never edit breed/coat.
-5. Wire `App` to show the wizard only when `PetStateStore.Load()` has no usable snapshot and
-   remove the provisional "Kitty" pet.
+- `Tray/TrayService.cs` — `NotifyIcon` with exactly "Pet settings" and "Exit application"; the
+  icon is the generated `assets/sprites/tray-cat.png` (32x32, same palette, real alpha),
+  converted to an HICON and destroyed on dispose. No double-click action. `UseWindowsForms`
+  is enabled only for the tray; WinForms implicit usings are removed from WPF code.
+- `Views/CreationWizardWindow` — live idle preview from the decoded atlas, breed "Cat" and
+  coat "Orange & white" fixed, "Generate coat" replays the preview (no fake choices), name
+  validation with an inline error, warning when a saved state was corrupt. First run shows
+  "Quit"; when it returns to recreate a pet it shows "Cancel".
+- `Views/SettingsWindow` — rename with an explicit Save (validated, saved immediately),
+  "Create a new pet…" behind a confirmation, breed/coat only shown. Closing it leaves the
+  pet and the app running.
+- `App` — no more provisional "Kitty": a fresh data directory goes through the wizard (or
+  `--create-name` for scripts) and the pet plus state file exist before the session starts.
+  Tray is created with the first session; recreate disposes the old session and runs a new
+  one on the same window, so the pet walks in from the edge again. Cancelling the first-run
+  wizard shuts down explicitly (no state was written).
+- `AppOptions` — added `--create-name <name>`; the three `scripts/verify-*.ps1` pass it so
+  they no longer block on the wizard.
+- `assets/sprites/petty.ico` — generated by the same pipeline from the tray art and used as
+  `<ApplicationIcon>`, so the wizard, the settings window and the exe have an icon. `Petty.App`
+  builds with `InvariantGlobalization=false`; the repo default (`true`) made WPF throw on
+  every text-box focus.
+
+Verified programmatically on this machine:
+
+- fresh dir → window title "Welcome to Petty", no state file; closing it exits with code 0;
+- `--create-name Biscuit` writes `pet-state.json`, logs "Tray icon shown (tray-cat.png)",
+  exits cleanly and saves;
+- second launch restores "Biscuit" (no wizard) and saves again;
+- asset pipeline writes and validates `tray-cat.png` (32x32, 473 opaque pixels, palette only)
+  and `petty.ico`; the built exe and the wizard window report a 32x32 window icon;
+- clicking the wizard's name box no longer raises an exception in the log.
+
+Verified by hand on the real desktop (2026-10-28): wizard creation and live preview, name
+persisted across restarts with no second wizard, tray icon renders correctly with exactly two
+commands and no double-click action, rename + Save, "create a new pet" with confirmation (the
+new cat walks in), closing settings leaves the pet and tray alive, and the exit animation runs
+before a clean shutdown.
+
+Not verified yet: the tray icon and window icons on other DPI settings/Windows versions.
+
+## Stage 5 plan (next)
+
+1. Bowl window: drawn by the app, own food inventory, click to refill, horizontal drag with
+   persisted monitor-relative position, transparent area click-through.
+2. Seeking uses the real bowl position instead of the 55 % placeholder; eating already works.
+3. Ball and Play action with a hover/click affordance; happiness gain.
+4. Save after feed, eat, play and bowl move; keep autosave.
 
 ## Known limits / notes
 
 - Atlas art is procedurally generated (no AI image tool in this environment); see
   `assets/sprites/README.md`. It is a real, validated sprite sheet, not a placeholder.
-- No tray icon, wizard or settings window yet (stage 4); the app is currently started and
-  stopped from the command line only.
-- Autosave only runs for an already persisted pet; the provisional "Kitty" is intentionally
-  not written until the creation wizard exists (stage 4).
+- Closing the settings window leaves the app running; the tray icon is the only entry point.
+- First-run cancellation exits explicitly, because there is no pet to run.
+- Autosave only runs for a saved pet; the wizard persists the pet before the session starts.
 - Repositioning after a live display/taskbar change is implemented but only observed on a
   single-monitor setup, so hot-plug remains unverified.

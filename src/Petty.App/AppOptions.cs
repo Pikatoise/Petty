@@ -15,6 +15,9 @@ internal sealed class AppOptions
 
     public TimeSpan? ExitAfter { get; private init; }
 
+    /// <summary>Diagnostic switch: create this pet instead of showing the first-run wizard.</summary>
+    public string? CreateName { get; private init; }
+
     /// <summary>How the pet window is placed relative to the desktop.</summary>
     public DesktopLayerMode DesktopLayer { get; private init; } = DesktopLayerMode.AboveDesktop;
 
@@ -22,6 +25,7 @@ internal sealed class AppOptions
     {
         string? dataDirectory = null;
         TimeSpan? exitAfter = null;
+        string? createName = null;
         var desktopLayer = DesktopLayerMode.AboveDesktop;
 
         for (var i = 0; i < args.Count; i++)
@@ -41,6 +45,10 @@ internal sealed class AppOptions
                     exitAfter = ParseDuration(inlineValue ?? TakeValue(args, ref i, name));
                     break;
 
+                case "--create-name":
+                    createName = inlineValue ?? TakeValue(args, ref i, name);
+                    break;
+
                 case "--desktop-layer":
                     desktopLayer = ParseLayer(inlineValue ?? TakeValue(args, ref i, name));
                     break;
@@ -54,7 +62,7 @@ internal sealed class AppOptions
                 default:
                     throw new ArgumentException(
                         $"Unknown argument '{argument}'." + Environment.NewLine +
-                        "Supported: --data-dir <path>, --exit-after <seconds>, " +
+                        "Supported: --data-dir <path>, --exit-after <seconds>, --create-name <name>, " +
                         "--desktop-layer <above|workerw|none>, --no-desktop-layer.");
             }
         }
@@ -63,6 +71,7 @@ internal sealed class AppOptions
         {
             DataDirectory = string.IsNullOrWhiteSpace(dataDirectory) ? null : dataDirectory,
             ExitAfter = exitAfter,
+            CreateName = string.IsNullOrWhiteSpace(createName) ? null : createName,
             DesktopLayer = desktopLayer,
         };
     }

@@ -36,10 +36,15 @@ public static class AtlasWriter
         build.Atlas.Upscale(2).SavePng(Path.Combine(previewDirectory, "atlas@2x.png"));
         WriteContactSheet(build, Path.Combine(previewDirectory, "contact-sheet@2x.png"));
 
+        TrayIconBuilder.Write(outputDirectory);
+        TrayIconBuilder.WriteIcon(outputDirectory);
+
         Console.WriteLine($"Wrote {AtlasBuilder.ImageName} ({build.Atlas.Width}x{build.Atlas.Height})");
         Console.WriteLine($"Wrote {AtlasBuilder.MetadataName} ({build.Metadata.Animations.Count} clips, {build.Frames.Count} frames)");
         Console.WriteLine($"Wrote {build.Frames.Count} frames to {framesDirectory}");
         Console.WriteLine($"Wrote previews to {previewDirectory}");
+        Console.WriteLine($"Wrote {TrayIconBuilder.ImageName} ({TrayIconBuilder.Size}x{TrayIconBuilder.Size})");
+        Console.WriteLine($"Wrote {TrayIconBuilder.IconFileName} (32x32 icon)");
     }
 
     private static void WriteContactSheet(AtlasBuildResult build, string path)

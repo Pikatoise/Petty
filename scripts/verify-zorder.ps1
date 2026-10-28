@@ -27,7 +27,7 @@ $exePath = (Resolve-Path $Exe).Path
 Remove-Item $OutDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $OutDir | Out-Null
 
-$process = Start-Process -FilePath $exePath -ArgumentList @("--data-dir", $OutDir, "--exit-after", "22") -PassThru
+$process = Start-Process -FilePath $exePath -ArgumentList @("--data-dir", $OutDir, "--create-name", "Kitty", "--exit-after", "22") -PassThru
 Start-Sleep -Seconds 5
 
 $report = Get-Content (Join-Path $OutDir "startup-report.json") -Raw | ConvertFrom-Json

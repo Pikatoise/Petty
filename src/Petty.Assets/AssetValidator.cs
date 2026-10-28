@@ -149,11 +149,51 @@ public static class AssetValidator
             errors.Add($"{emptyCells} atlas cells are not covered by any animation.");
 
         CheckWalkLoop(atlas, metadata, errors, notes);
+        CheckTrayIcon(directory, errors, notes);
 
         notes.Add($"atlas {atlas.Width}x{atlas.Height}, {metadata.Animations.Count} clips, {occupiedCells.Count} frames");
         notes.Add($"palette colours used: {CountPaletteColors(atlas)}");
 
         return new ValidationReport(errors.Count == 0, errors, notes);
+    }
+
+    private static void CheckTrayIcon(string directory, List<string> errors, List<string> notes)
+    {
+        var path = Path.Combine(directory, TrayIconBuilder.ImageName);
+
+        if (!File.Exists(path))
+        {
+            errors.Add($"Missing tray icon: {path}");
+            return;
+        }
+
+        var icon = PixelCanvas.LoadPng(path);
+
+        if (icon.Width != TrayIconBuilder.Size || icon.Height != TrayIconBuilder.Size)
+        {
+            errors.Add($"Tray icon is {icon.Width}x{icon.Height}, expected {TrayIconBuilder.Size}x{TrayIconBuilder.Size}.");
+            return;
+        }
+
+        var bounds = Measure(icon);
+        if (bounds.OpaqueCount == 0) errors.Add("Tray icon is empty.");
+        if (bounds.MinX < 1 || bounds.MinY < 1 || bounds.MaxX >= icon.Width - 1 || bounds.MaxY >= icon.Height - 1)
+            errors.Add($"Tray icon touches its edge ({bounds}).");
+
+        for (var y = 0; y < icon.Height; y++)
+        {
+            for (var x = 0; x < icon.Width; x++)
+            {
+                var color = icon[x, y];
+                var alpha = (color >> 24) & 0xFF;
+
+                if (alpha != 0 && alpha != 255) errors.Add("Tray icon has semi-transparent pixels.");
+                if (alpha == 255 && !Palette.Set.Contains(color))
+                    errors.Add($"Tray icon uses a colour outside the palette: #{color & 0xFFFFFF:X6}.");
+            }
+        }
+
+        notes.Add($"tray icon {icon.Width}x{icon.Height}, {bounds.OpaqueCount} opaque pixels");
     }
 
     private static void CheckWalkLoop(

@@ -1,6 +1,7 @@
 using Petty.App.Desktop;
 using Petty.App.Pet;
 using Petty.App.Sprites;
+using Petty.App.Tray;
 using Petty.App.Views;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
@@ -30,10 +31,13 @@ public partial class App: Application
     private IReadOnlyList<DisplayInfo> _displayLayout = Array.Empty<DisplayInfo>();
     private FileAppLog? _log;
     private PetStateStore? _store;
+    private PetTuning? _tuning;
     private PetRuntime? _runtime;
     private SpriteSheet? _sheet;
     private PetWindow? _window;
     private PetSession? _session;
+    private TrayService? _tray;
+    private SettingsWindow? _settings;
     private DispatcherTimer? _exitTimer;
     private DispatcherTimer? _autoSaveTimer;
     private System.Threading.Mutex? _singleInstance;
@@ -98,10 +102,15 @@ public partial class App: Application
     {
         _exitTimer?.Stop();
         _autoSaveTimer?.Stop();
+        _settings?.Close();
+        _settings = null;
         _session?.Dispose();
         _session = null;
         _window = null;
         _sheet = null;
+        _runtime = null;
+        _tray?.Dispose();
+        _tray = null;
         _singleInstance?.Dispose();
         _singleInstance = null;
         _log?.Info("Petty stopped.");
@@ -112,10 +121,23 @@ public partial class App: Application
     {
         var now = DateTimeOffset.UtcNow;
         var tuning = PetTuning.Default.Sanitized();
+        _tuning = tuning;
 
         _store = new PetStateStore(_paths!.StateFile, tuning);
         var load = _store.Load();
         _log!.Info($"State: {load.Status}. {load.Message}".TrimEnd());
+
+        var assetDirectory = SpriteAssetLocator.FindDirectory()
+            ?? throw new FileNotFoundException(
+                "The cat sprite atlas was not found. Expected 'Assets/Sprites/cat-orange-white.json' " +
+                "next to the application, or the repository's 'assets/sprites' folder.");
+
+        _assetDirectory = assetDirectory;
+        _sheet = SpriteSheetLoader.Load(assetDirectory);
+        _log.Info($"Loaded '{_sheet.Metadata.Character}': {_sheet.Clips.Count} clips, " +
+                  $"{_sheet.FrameWidth}x{_sheet.FrameHeight} frames, ground row {_sheet.GroundRow}.");
+
+        _displayLayout = _displayService.GetDisplays();
 
         PetRuntime runtime;
 
@@ -125,46 +147,35 @@ public partial class App: Application
             runtime = PetRuntime.Restore(load.Snapshot, tuning, now);
             _log.Info($"Restored '{runtime.Snapshot.PetName}' (satiety {runtime.Needs.Satiety:F0}, happiness {runtime.Needs.Happiness:F0}).");
         }
+        else if (_options.CreateName is { } createName)
+        {
+            runtime = CreatePet(createName, tuning);
+            _log.Info($"Created '{runtime.Snapshot.PetName}' from --create-name.");
+        }
         else
         {
-            // Deliberately not saved: the first-run wizard (stage 4) must still see a
-            // missing state file. Until then this provisional pet keeps the API alive.
-            runtime = PetRuntime.CreateNew(PetNameRules.DefaultName, tuning, now);
-            _log.Warn("No usable pet state; running a provisional pet without saving it (the creation wizard arrives in stage 4).");
+            var warning = load.Status is LoadStatus.Corrupt or LoadStatus.UnsupportedVersion
+                ? $"{(load.Message ?? "The saved pet could not be read.").TrimEnd()} A new pet will be created."
+                : null;
+
+            var wizard = new CreationWizardWindow(_sheet, firstRun: true, PetNameRules.DefaultName, warning);
+            if (wizard.ShowDialog() != true)
+            {
+                _log.Info("Pet creation was cancelled; exiting.");
+                Shutdown();
+                return;
+            }
+
+            runtime = CreatePet(wizard.ConfirmedName, tuning);
         }
 
-        _runtime = runtime;
-
-        var assetDirectory = SpriteAssetLocator.FindDirectory()
-            ?? throw new FileNotFoundException(
-                "The cat sprite atlas was not found. Expected 'Assets/Sprites/cat-orange-white.json' " +
-                "next to the application, or the repository's 'assets/sprites' folder.");
-
-        _sheet = SpriteSheetLoader.Load(assetDirectory);
-        _log.Info($"Loaded '{_sheet.Metadata.Character}': {_sheet.Clips.Count} clips, " +
-                  $"{_sheet.FrameWidth}x{_sheet.FrameHeight} frames, ground row {_sheet.GroundRow}.");
-
-        _window = new PetWindow(_sheet, _log);
-        _window.Show();
-        _window.AttachToDesktop(_options.DesktopLayer, _log);
-
-        var displays = _displayService.GetDisplays();
-        _assetDirectory = assetDirectory;
-        _displayLayout = displays;
-
-        _session = new PetSession(runtime, _sheet, _window, _displayService, tuning, _log);
-        _session.ExitAnimationCompleted += OnExitAnimationCompleted;
-        _session.Start();
-
-        _autoSaveTimer = new DispatcherTimer { Interval = tuning.AutoSaveInterval };
-        _autoSaveTimer.Tick += OnAutoSaveTick;
-        _autoSaveTimer.Start();
+        StartSession(runtime, tuning);
 
         // WPF finishes applying the window styles after the first frame, so the style
         // audit waits until the dispatcher is idle instead of reporting a false alarm.
         Dispatcher.BeginInvoke(
             DispatcherPriority.ApplicationIdle,
-            () => DesktopWindowService.VerifyPetWindowStyles(_window.Handle, _log));
+            () => DesktopWindowService.VerifyPetWindowStyles(_window!.Handle, _log!));
 
         WriteReport(_paths.StartupReportFile, "startup");
 
@@ -175,6 +186,109 @@ public partial class App: Application
             _exitTimer.Tick += OnExitTimerTick;
             _exitTimer.Start();
         }
+    }
+
+    /// <summary>Creates and immediately persists a pet, so autosave has a file to update.</summary>
+    private PetRuntime CreatePet(string name, PetTuning tuning)
+    {
+        var runtime = PetRuntime.CreateNew(name, tuning, DateTimeOffset.UtcNow);
+        _stateWasPersisted = true;
+
+        try
+        {
+            _store!.Save(runtime.ToSnapshot());
+            _log?.Info($"New pet '{runtime.Snapshot.PetName}' saved.");
+        }
+        catch (Exception ex)
+        {
+            _log?.Error("Could not save the new pet; autosave will retry.", ex);
+        }
+
+        return runtime;
+    }
+
+    /// <summary>Shows the pet window (once) and runs a session for <paramref name="runtime"/>.</summary>
+    private void StartSession(PetRuntime runtime, PetTuning tuning)
+    {
+        _runtime = runtime;
+
+        if (_window is null)
+        {
+            _window = new PetWindow(_sheet!, _log!);
+            _window.Show();
+            _window.AttachToDesktop(_options.DesktopLayer, _log!);
+        }
+
+        _session?.Dispose();
+        _session = new PetSession(runtime, _sheet!, _window, _displayService, tuning, _log!);
+        _session.ExitAnimationCompleted += OnExitAnimationCompleted;
+        _session.Start();
+
+        if (_autoSaveTimer is null)
+        {
+            _autoSaveTimer = new DispatcherTimer { Interval = tuning.AutoSaveInterval };
+            _autoSaveTimer.Tick += OnAutoSaveTick;
+            _autoSaveTimer.Start();
+        }
+
+        if (_tray is null) CreateTray();
+    }
+
+    private void CreateTray()
+    {
+        var iconPath = Path.Combine(_assetDirectory!, TrayService.TrayIconFileName);
+        _tray = new TrayService(iconPath, _log!);
+        _tray.SettingsRequested += (_, _) => ShowSettings();
+        _tray.ExitRequested += (_, _) => RequestExitFromTray();
+    }
+
+    private void ShowSettings()
+    {
+        if (_runtime is null) return;
+
+        if (_settings is { IsVisible: true })
+        {
+            _settings.Activate();
+            return;
+        }
+
+        _settings = new SettingsWindow(_runtime.Snapshot.PetName);
+        _settings.RenameRequested += OnRenameRequested;
+        _settings.NewPetRequested += OnNewPetRequested;
+        _settings.Closed += (_, _) => _settings = null;
+        _settings.Show();
+        _settings.Activate();
+    }
+
+    private void OnRenameRequested(object? sender, string name)
+    {
+        if (_runtime is null) return;
+
+        _runtime.Snapshot.PetName = name;
+        _log?.Info($"Renamed the pet to '{name}'.");
+        SaveState("rename");
+    }
+
+    private void OnNewPetRequested(object? sender, EventArgs e)
+    {
+        _settings?.Close();
+
+        if (_sheet is null || _tuning is not { } tuning) return;
+
+        var wizard = new CreationWizardWindow(_sheet, firstRun: false, PetNameRules.DefaultName, warning: null);
+        if (wizard.ShowDialog() != true) return;
+
+        var runtime = CreatePet(wizard.ConfirmedName, tuning);
+        StartSession(runtime, tuning);
+        _log?.Info($"Recreated the pet as '{runtime.Snapshot.PetName}'.");
+    }
+
+    private void RequestExitFromTray()
+    {
+        _settings?.Close();
+
+        if (_session is null || !_session.RequestExit())
+            FinishAndShutdown();
     }
 
     private void OnExitTimerTick(object? sender, EventArgs e)
@@ -219,6 +333,9 @@ public partial class App: Application
         // Save first: a broken diagnostics report must never cost the pet's state.
         SaveState("shutdown");
 
+        _settings?.Close();
+        _settings = null;
+
         if (_paths is not null) WriteReport(_paths.FinalReportFile, "final");
 
         _session?.Dispose();
@@ -226,6 +343,9 @@ public partial class App: Application
 
         _window?.Close();
         _window = null;
+
+        _tray?.Dispose();
+        _tray = null;
 
         Shutdown();
     }

@@ -202,6 +202,11 @@ public sealed class PixelCanvas
         var directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
 
+        File.WriteAllBytes(path, ToPngBytes());
+    }
+
+    public byte[] ToPngBytes()
+    {
         using var bitmap = new Bitmap(Width, Height, PixelFormat.Format32bppArgb);
         var data = bitmap.LockBits(
             new Rectangle(0, 0, Width, Height),
@@ -213,7 +218,9 @@ public sealed class PixelCanvas
         Marshal.Copy(buffer, 0, data.Scan0, buffer.Length);
         bitmap.UnlockBits(data);
 
-        bitmap.Save(path, ImageFormat.Png);
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, ImageFormat.Png);
+        return stream.ToArray();
     }
 
     public static PixelCanvas LoadPng(string path)
