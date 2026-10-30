@@ -102,6 +102,11 @@ the desktop.
 
 ## Windows and input
 
+The settings window demonstrates Cozy Home resources based on WPF UI 4.3.0 and live RU/EN
+switching. `preferences.json` stores the language override and autostart preference
+separately from pet state; system UI language defaults to Russian for `ru` locales
+and English otherwise. Autostart registration and the remaining UI are later stages.
+
 The pet window is 192×192 px (64×64 sprite at 3 screen pixels per sprite pixel), the bowl
 72×48, the ball 48×48. The physical size is fixed; only the WPF (DIP) size follows the
 monitor's DPI. Input handling lives in each window's `WndProc`:

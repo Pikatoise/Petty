@@ -1,0 +1,9 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="CozyBackground" Color="#FFF8E9" />
+    <SolidColorBrush x:Key="CozySurface" Color="#F5E7C9" />
+    <SolidColorBrush x:Key="CozyText" Color="#3E302A" />
+    <SolidColorBrush x:Key="CozyMuted" Color="#78675A" />
+    <SolidColorBrush x:Key="CozyAccent" Color="#A84E31" />
+    <SolidColorBrush x:Key="CozyBorder" Color="#845C47" />
+    <SolidColorBrush x:Key="CozyEdge" Color="#DFCAA9" />
+</ResourceDictionary>

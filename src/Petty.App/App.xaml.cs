@@ -7,6 +7,7 @@ using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
 using Petty.Core.Persistence;
 using Petty.Core.Runtime;
+using Petty.Core.Preferences;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -48,6 +49,7 @@ public partial class App: Application
     private System.Threading.Mutex? _singleInstance;
     private bool _stateWasPersisted;
     private bool _shutdownStarted;
+    private Localization? _localization;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -62,6 +64,8 @@ public partial class App: Application
             _options = AppOptions.Parse(e.Args);
             _paths = PetPaths.Resolve(_options.DataDirectory);
             _log = new FileAppLog(_paths.LogFile);
+            var preferences = new PreferencesStore(Path.Combine(_paths.DataDirectory, "preferences.json"));
+            _localization = new Localization(preferences, preferences.Load(message => _log.Warn(message)));
         }
         catch (Exception ex)
         {
@@ -305,7 +309,7 @@ public partial class App: Application
 
         var appearance = _variants.FirstOrDefault(v => v.AssetId == _runtime.Snapshot.AssetId)?.DisplayName
             ?? _runtime.Snapshot.CoatId;
-        _settings = new SettingsWindow(_runtime.Snapshot.PetName, _runtime.Snapshot.BreedId, appearance);
+        _settings = new SettingsWindow(_runtime.Snapshot.PetName, _runtime.Snapshot.BreedId, appearance, _localization!, _log!);
         _settings.RenameRequested += OnRenameRequested;
         _settings.NewPetRequested += OnNewPetRequested;
         _settings.Closed += (_, _) => _settings = null;

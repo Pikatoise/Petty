@@ -27,9 +27,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Petty.Core\Petty.Core.csproj" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="$(PkgWPF-UI)\LICENSE.md;$(PkgWPF-UI)\ThirdPartyNotices.txt"
+             Link="licenses\WPF-UI\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\assets\sprites\*.png;..\..\assets\sprites\*.json"
              Exclude="..\..\assets\sprites\catalog.json"
              Link="Assets\Sprites\%(Filename)%(Extension)"

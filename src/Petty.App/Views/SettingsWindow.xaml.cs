@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Controls;
+using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
 
 namespace Petty.App.Views;
@@ -13,11 +15,23 @@ public partial class SettingsWindow : Window
     private static readonly Brush ErrorBrush = new SolidColorBrush(Color.FromRgb(0xB0, 0x00, 0x20));
     private static readonly Brush OkBrush = new SolidColorBrush(Color.FromRgb(0x2E, 0x6B, 0x2E));
 
-    public SettingsWindow(string petName, string breed, string appearance)
+    private readonly Localization _localization;
+    private readonly IAppLog _log;
+    private readonly string _breed;
+    private readonly string _appearance;
+    private bool _ready;
+
+    internal SettingsWindow(string petName, string breed, string appearance, Localization localization, IAppLog log)
     {
+        _localization = localization;
+        _log = log;
+        _breed = breed;
+        _appearance = appearance;
         InitializeComponent();
         NameBox.Text = petName;
-        AppearanceText.Text = $"Breed: {breed}     Appearance: {appearance}";
+        LanguageSelector.SelectedIndex = localization.Preferences.Language switch { "ru" => 1, "en" => 2, _ => 0 };
+        UpdateAppearance();
+        _ready = true;
         Loaded += (_, _) => NameBox.SelectAll();
     }
 
@@ -27,23 +41,22 @@ public partial class SettingsWindow : Window
 
     private void OnSave(object sender, RoutedEventArgs e)
     {
-        if (!PetNameRules.TryNormalize(NameBox.Text, out var name, out var error))
+        if (!PetNameRules.TryNormalize(NameBox.Text, out var name, out _))
         {
-            ShowStatus(error!, ErrorBrush);
+            ShowStatus(Text("NameInvalid"), ErrorBrush);
             NameBox.Focus();
             return;
         }
 
         RenameRequested?.Invoke(this, name);
-        ShowStatus("Name saved.", OkBrush);
+        ShowStatus(Text("NameSaved"), OkBrush);
     }
 
     private void OnNewPet(object sender, RoutedEventArgs e)
     {
         var answer = MessageBox.Show(
             this,
-            "Create a new pet?" + Environment.NewLine + Environment.NewLine +
-            "This resets the current pet's name and needs. Its saved state is replaced.",
+            Text("ConfirmNew"),
             "Petty",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning,
@@ -53,6 +66,30 @@ public partial class SettingsWindow : Window
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
+
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready || LanguageSelector.SelectedItem is not ComboBoxItem item) return;
+        var old = _localization.Preferences.Language;
+        try
+        {
+            _localization.SetLanguage(item.Tag as string == "system" ? null : item.Tag as string);
+            StatusText.Text = string.Empty;
+            UpdateAppearance();
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            _log.Error("Could not save preferences.", ex);
+            _ready = false;
+            LanguageSelector.SelectedIndex = old switch { "ru" => 1, "en" => 2, _ => 0 };
+            _ready = true;
+            ShowStatus(Text("PreferencesError"), ErrorBrush);
+        }
+    }
+
+    private string Text(string key) => (string)FindResource(key);
+
+    private void UpdateAppearance() => AppearanceText.Text = string.Format(Text("AppearanceFormat"), _breed, _appearance);
 
     private void ShowStatus(string text, Brush brush)
     {

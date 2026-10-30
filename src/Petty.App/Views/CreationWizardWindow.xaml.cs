@@ -32,10 +32,15 @@ public partial class CreationWizardWindow : Window
         }
         _previewTimer.Tick += OnPreviewTick;
         SelectedSheet = initialSheet;
-        CoatSelector.ItemsSource = variants;
-        CoatSelector.SelectedItem = variants.FirstOrDefault(v => v.AssetId == initialSheet?.Metadata.Character)
-            ?? variants.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId) ?? variants.FirstOrDefault();
-        if (CoatSelector.SelectedItem is null)
+        var representatives = variants.GroupBy(v => v.BreedId, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.FirstOrDefault(v => v.AssetId == initialSheet?.Metadata.Character)
+                ?? group.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId)
+                ?? group.OrderBy(v => v.AssetId, StringComparer.OrdinalIgnoreCase).First())
+            .ToArray();
+        BreedSelector.ItemsSource = representatives;
+        BreedSelector.SelectedItem = representatives.FirstOrDefault(v => v.AssetId == initialSheet?.Metadata.Character)
+            ?? representatives.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId) ?? representatives.FirstOrDefault();
+        if (BreedSelector.SelectedItem is null)
         {
             ErrorText.Text = "No valid sprite definitions were found. Restore the sprite assets and restart Petty.";
             CreateButton.IsEnabled = false;
@@ -45,10 +50,10 @@ public partial class CreationWizardWindow : Window
     }
 
     public string ConfirmedName { get; private set; } = string.Empty;
-    public SpriteVariant? SelectedVariant => CoatSelector.SelectedItem as SpriteVariant;
+    public SpriteVariant? SelectedVariant => BreedSelector.SelectedItem as SpriteVariant;
     public SpriteSheet? SelectedSheet { get; private set; }
 
-    private void OnCoatChanged(object sender, SelectionChangedEventArgs e)
+    private void OnBreedChanged(object sender, SelectionChangedEventArgs e)
     {
         if (SelectedVariant is not { } variant) return;
         try
@@ -56,7 +61,6 @@ public partial class CreationWizardWindow : Window
             if (SelectedSheet?.Metadata.Character != variant.AssetId)
                 SelectedSheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
             _idle = SelectedSheet.GetClip(PetAnimationMap.Idle);
-            BreedText.Text = variant.BreedId;
             _playback.Play(_idle.Metadata, restart: true);
             _previewTimer.Interval = TimeSpan.FromSeconds(1 / Math.Clamp(_idle.FramesPerSecond, 1, 60));
             _previewTimer.Start();

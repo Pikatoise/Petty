@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <sys:String x:Key="SettingsTitle">Petty settings</sys:String>
+    <sys:String x:Key="PetName">Pet name</sys:String>
+    <sys:String x:Key="Language">Language</sys:String>
+    <sys:String x:Key="LanguageSystem">System default</sys:String>
+    <sys:String x:Key="CreateNew">Create a new pet…</sys:String>
+    <sys:String x:Key="Save">Save</sys:String>
+    <sys:String x:Key="Close">Close</sys:String>
+    <sys:String x:Key="NameSaved">Name saved.</sys:String>
+    <sys:String x:Key="NameInvalid">Enter a name of 1–24 characters without control characters.</sys:String>
+    <sys:String x:Key="AppearanceFormat">Breed: {0}</sys:String>
+    <sys:String x:Key="ConfirmNew">Create a new pet? This replaces the current pet and its saved state.</sys:String>
+    <sys:String x:Key="PreferencesError">Could not save preferences. Check the log and try again.</sys:String>
+</ResourceDictionary>
