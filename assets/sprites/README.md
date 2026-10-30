@@ -74,12 +74,28 @@ precedence over bundled variants with the same ID. IDs contain ASCII letters, di
 hyphens; metadata `character` must match the filename ID. Optional metadata fields
 `breedId`, `coatId` and `displayName` label the variant in the creation wizard.
 
+Independent breed packs live in `assets/sprites/packs/<breed-id>/`, with three
+`<asset-id>.png` / `<asset-id>.json` pairs. Use unique IDs; each JSON identifies its
+same-named PNG and supplies `breedId`, `coatId`, `displayName`, `groundRow`, grid
+dimensions and clip metadata. The app also discovers packs under
+`<data-dir>/sprites/packs/`; custom IDs override bundled IDs. Duplicate IDs within one
+root are rejected. Assets are copied into the published folder without registration.
+
+All cells are 64×64, with 8-bit RGBA, binary alpha and transparent cell edges. The
+required clips are idle, walk, run, eat, sleep, play, tired and exit. Clip ranges may
+have different lengths; unused grid cells must be transparent. Authored packs may use
+their own colors and markings. Validate a complete pack without modifying it:
+
+```powershell
+dotnet run --project src/Petty.Assets -c Release -- --verify --pack assets/sprites/packs/<breed-id>
+```
+
 ## Validation
 
 The generator re-decodes the written PNG and fails the run if any of these break:
 
 - atlas size differs from `columns * frameWidth` / `rows * frameHeight`;
-- any pixel is semi-transparent or outside the palette;
+- any pixel is semi-transparent, or a generated catalog variant uses colors outside its palette;
 - a frame is empty or touches the cell edge;
 - a standing clip (`idle`, `walk`, `eat`, `tired`, `exit`) is not on `groundRow`;
 - the walk loop jumps more than 2.5x a normal frame step;

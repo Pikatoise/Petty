@@ -12,18 +12,20 @@ public sealed class AtlasBuildResult
 }
 
 /// <summary>
-/// Lays every animation out on one uniform grid: 8 columns x 6 rows of 64x64 cells.
+/// Lays every animation out on a uniform grid of 64x64 cells.
 /// Cell order is row-major and each clip owns a contiguous run of cells.
 /// </summary>
 public static class AtlasBuilder
 {
     public const int Columns = 8;
-    public const int Rows = 6;
-    public static AtlasBuildResult Build(Variant variant)
+    public static AtlasBuildResult Build(Variant variant, IReadOnlyList<AnimationDefinition>? definitions = null)
     {
-        var definitions = Animations.CreateAll();
+        definitions ??= Animations.CreateAll();
+        var frameCount = definitions.Sum(d => d.Poses.Count);
+        if (frameCount == 0) throw new ArgumentException("At least one frame is required.", nameof(definitions));
+        var rows = (frameCount + Columns - 1) / Columns;
         var frameSize = CatSpriteRenderer.FrameSize;
-        var atlas = new PixelCanvas(Columns * frameSize, Rows * frameSize);
+        var atlas = new PixelCanvas(Columns * frameSize, rows * frameSize);
         var colors = variant.Colors;
 
         var metadata = new SpriteSheetMetadata
@@ -33,11 +35,11 @@ public static class AtlasBuilder
             FrameWidth = frameSize,
             FrameHeight = frameSize,
             Columns = Columns,
-            Rows = Rows,
+            Rows = rows,
             GroundRow = CatSpriteRenderer.GroundRow,
         };
 
-        var frames = new List<SpriteFrame>(48);
+        var frames = new List<SpriteFrame>(frameCount);
         var cell = 0;
 
         foreach (var definition in definitions)
@@ -46,9 +48,6 @@ public static class AtlasBuilder
 
             for (var i = 0; i < definition.Poses.Count; i++)
             {
-                if (cell >= Columns * Rows)
-                    throw new InvalidOperationException($"Atlas grid is too small for animation '{definition.Name}'.");
-
                 var canvas = CatSpriteRenderer.Render(definition.Poses[i]);
                 for (var y = 0; y < canvas.Height; y++)
                     for (var x = 0; x < canvas.Width; x++)

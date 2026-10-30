@@ -65,20 +65,21 @@ public static class SpriteMetadataValidator
             return errors;
         }
 
-        if (string.IsNullOrWhiteSpace(metadata.Image)) errors.Add("Image file name is missing.");
-        if (string.IsNullOrWhiteSpace(metadata.Character)) errors.Add("Character id is missing.");
+        if (!IsValidId(metadata.Character)) errors.Add("Character id is invalid.");
+        if (!string.Equals(metadata.Image, metadata.Character + ".png", StringComparison.Ordinal))
+            errors.Add("Image must be the character ID followed by .png.");
+        if (metadata.BreedId is not null && !IsValidId(metadata.BreedId)) errors.Add("Breed id is invalid.");
+        if (metadata.CoatId is not null && !IsValidId(metadata.CoatId)) errors.Add("Coat id is invalid.");
         if (metadata.Animations is null || metadata.Animations.Any(clip => clip is null))
         {
             errors.Add("Animation clips are missing or invalid.");
             return errors;
         }
 
-        if (metadata.FrameWidth is < MinFrameSize or > MaxFrameSize)
-            errors.Add($"FrameWidth {metadata.FrameWidth} must be between {MinFrameSize} and {MaxFrameSize}.");
-        if (metadata.FrameHeight is < MinFrameSize or > MaxFrameSize)
-            errors.Add($"FrameHeight {metadata.FrameHeight} must be between {MinFrameSize} and {MaxFrameSize}.");
-        if (metadata.Columns <= 0) errors.Add("Columns must be positive.");
-        if (metadata.Rows <= 0) errors.Add("Rows must be positive.");
+        if (metadata.FrameWidth != 64) errors.Add("FrameWidth must be 64.");
+        if (metadata.FrameHeight != 64) errors.Add("FrameHeight must be 64.");
+        if (metadata.Columns is <= 0 or > 256) errors.Add("Columns must be between 1 and 256.");
+        if (metadata.Rows is <= 0 or > 256) errors.Add("Rows must be between 1 and 256.");
         if (metadata.GroundRow <= 0 || metadata.GroundRow >= metadata.FrameHeight)
             errors.Add($"GroundRow {metadata.GroundRow} must be inside the frame.");
 
@@ -98,9 +99,9 @@ public static class SpriteMetadataValidator
                 errors.Add($"Clip '{clip.Name}' has no frames.");
             if (clip.StartIndex < 0)
                 errors.Add($"Clip '{clip.Name}' has a negative start index.");
-            if (clip.FrameCount > 0 && clip.StartIndex + clip.FrameCount > metadata.CellCount)
+            if (clip.FrameCount > 0 && (long)clip.StartIndex + clip.FrameCount > (long)metadata.Columns * metadata.Rows)
                 errors.Add($"Clip '{clip.Name}' runs past the atlas grid ({metadata.CellCount} cells).");
-            if (clip.FramesPerSecond is <= 0 or > 60)
+            if (!double.IsFinite(clip.FramesPerSecond) || clip.FramesPerSecond is <= 0 or > 60)
                 errors.Add($"Clip '{clip.Name}' has an unusable frame rate ({clip.FramesPerSecond}).");
         }
 
@@ -119,12 +120,15 @@ public static class SpriteMetadataValidator
         {
             var previous = ordered[i - 1];
             var current = ordered[i];
-            if (current.StartIndex <= previous.StartIndex + previous.FrameCount - 1)
+            if ((long)current.StartIndex < (long)previous.StartIndex + previous.FrameCount)
                 errors.Add($"Animations '{previous.Name}' and '{current.Name}' overlap in the atlas.");
         }
 
         return errors;
     }
+
+    public static bool IsValidId(string? id) =>
+        !string.IsNullOrEmpty(id) && id.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
 
     /// <summary>Row/column of a clip frame inside the atlas.</summary>
     public static (int Column, int Row) CellPosition(SpriteSheetMetadata metadata, int cellIndex)

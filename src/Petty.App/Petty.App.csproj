@@ -34,6 +34,9 @@
              Exclude="..\..\assets\sprites\catalog.json"
              Link="Assets\Sprites\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\sprites\packs\**\*.png;..\..\assets\sprites\packs\**\*.json"
+             Link="Assets\Sprites\packs\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

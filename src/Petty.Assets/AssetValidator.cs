@@ -22,12 +22,16 @@ public static class AssetValidator
         "idle", "walk", "eat", "tired", "exit",
     };
 
-    public static ValidationReport ValidateDirectory(string directory, Variant variant)
+    public static ValidationReport ValidateDirectory(string directory, Variant variant) =>
+        ValidateAtlas(directory, variant.Id, variant.Source is null ? variant.Colors : null, checkShared: true);
+
+    public static ValidationReport ValidateAtlas(string directory, string id, uint[]? palette = null, bool checkShared = false)
     {
         var errors = new List<string>();
         var notes = new List<string>();
 
-        var metadataPath = Path.Combine(directory, variant.Id + ".json");
+        if (!SpriteMetadataValidator.IsValidId(id)) return new ValidationReport(false, ["Invalid asset ID."], notes);
+        var metadataPath = Path.Combine(directory, id + ".json");
         if (!File.Exists(metadataPath))
         {
             errors.Add($"Missing metadata file: {metadataPath}");
@@ -52,7 +56,7 @@ public static class AssetValidator
         }
 
         errors.AddRange(SpriteMetadataValidator.Validate(metadata));
-        if (metadata.Character != variant.Id || metadata.Image != variant.Id + ".png")
+        if (metadata.Character != id || metadata.Image != id + ".png")
             errors.Add("Metadata character or image does not match the variant ID.");
         if (errors.Count > 0) return new ValidationReport(false, errors, notes);
 
@@ -66,6 +70,9 @@ public static class AssetValidator
         PixelCanvas atlas;
         try
         {
+            using var stream = File.OpenRead(imagePath);
+            if (!SpritePixels.HasRgbaPngHeader(stream))
+                return new ValidationReport(false, ["Atlas must be an 8-bit RGBA PNG."], notes);
             atlas = PixelCanvas.LoadPng(imagePath);
         }
         catch (Exception ex) when (ex is IOException or ArgumentException or OutOfMemoryException)
@@ -85,7 +92,7 @@ public static class AssetValidator
 
         var semiTransparent = 0;
         var unknownColors = new HashSet<uint>();
-        var colors = variant.Colors.ToHashSet();
+        var colors = palette?.ToHashSet();
 
         for (var y = 0; y < atlas.Height; y++)
         {
@@ -96,7 +103,7 @@ public static class AssetValidator
 
                 if (alpha == 0) continue;
                 if (alpha != 255) semiTransparent++;
-                if (!colors.Contains(color)) unknownColors.Add(color);
+                if (colors is not null && !colors.Contains(color)) unknownColors.Add(color);
             }
         }
 
@@ -147,12 +154,13 @@ public static class AssetValidator
                 errors.Add($"Clip '{clip.Name}' baseline is row {maxRow}, expected {metadata.GroundRow}.");
         }
 
-        var totalCells = metadata.Columns * metadata.Rows;
-        var emptyCells = Enumerable.Range(0, totalCells).Except(occupiedCells).Count();
-        if (emptyCells > 0)
-            errors.Add($"{emptyCells} atlas cells are not covered by any animation.");
+        foreach (var cell in Enumerable.Range(0, metadata.CellCount).Except(occupiedCells))
+            if (Measure(CropFrame(atlas, metadata, cell)).OpaqueCount > 0)
+                errors.Add($"Unused atlas cell {cell} is not transparent.");
 
         CheckWalkLoop(atlas, metadata, errors, notes);
+        if (checkShared)
+        {
         CheckSmallSprite(directory, errors, notes,
             TrayIconBuilder.ImageName, TrayIconBuilder.Size, TrayIconBuilder.Size, "tray icon", keepMargin: true);
         CheckSmallSprite(directory, errors, notes,
@@ -163,6 +171,7 @@ public static class AssetValidator
             PropSpriteBuilder.BallName, PropSpriteBuilder.BallSize, PropSpriteBuilder.BallSize, "ball", keepMargin: true);
 
         CheckBowlMasks(directory, errors);
+        }
 
         notes.Add($"atlas {atlas.Width}x{atlas.Height}, {metadata.Animations.Count} clips, {occupiedCells.Count} frames");
         notes.Add($"palette colours used: {CountPaletteColors(atlas)}");

@@ -27,10 +27,20 @@ public static class SpriteAssetLocator
         foreach (var directory in directories.Distinct(StringComparer.OrdinalIgnoreCase))
         {
             if (!Directory.Exists(directory)) continue;
-            foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
+            var packRoot = Path.Combine(directory, "packs");
+            var packDirectories = Directory.Exists(packRoot)
+                ? Directory.EnumerateDirectories(packRoot).Where(p => SpriteMetadataValidator.IsValidId(Path.GetFileName(p)))
+                : Enumerable.Empty<string>();
+            var paths = new[] { directory }.Concat(packDirectories)
+                .SelectMany(d => Directory.EnumerateFiles(d, "*.json"))
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
+            var duplicates = paths.GroupBy(Path.GetFileNameWithoutExtension, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var id in duplicates) reportProblem?.Invoke($"Duplicate sprite ID '{id}' in {directory}.");
+            foreach (var path in paths)
             {
                 var id = Path.GetFileNameWithoutExtension(path);
-                if (id.Equals("catalog", StringComparison.OrdinalIgnoreCase) || !IsValidId(id) || variants.ContainsKey(id)) continue;
+                if (id.Equals("catalog", StringComparison.OrdinalIgnoreCase) || !IsValidId(id) || duplicates.Contains(id) || variants.ContainsKey(id)) continue;
                 try
                 {
                     var metadata = JsonSerializer.Deserialize<SpriteSheetMetadata>(File.ReadAllText(path),
@@ -38,14 +48,14 @@ public static class SpriteAssetLocator
                     if (metadata is null || metadata.Character != id ||
                         SpriteMetadataValidator.Validate(metadata).Count != 0 ||
                         Path.GetFileName(metadata.Image) != metadata.Image ||
-                        !File.Exists(Path.Combine(directory, metadata.Image)))
+                        !File.Exists(Path.Combine(Path.GetDirectoryName(path)!, metadata.Image)))
                     {
                         reportProblem?.Invoke($"Invalid sprite definition: {path}");
                         continue;
                     }
                     var breed = metadata.BreedId ?? PetCatalog.DefaultBreedId;
                     var coat = metadata.CoatId ?? (id == PetCatalog.DefaultAssetId ? PetCatalog.DefaultCoatId : id);
-                    variants.Add(id, new SpriteVariant(id, breed, coat, string.IsNullOrWhiteSpace(metadata.DisplayName) ? id.Replace('-', ' ') : metadata.DisplayName, directory));
+                    variants.Add(id, new SpriteVariant(id, breed, coat, string.IsNullOrWhiteSpace(metadata.DisplayName) ? id.Replace('-', ' ') : metadata.DisplayName, Path.GetDirectoryName(path)!));
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
                 {
@@ -119,6 +129,9 @@ public static class SpriteSheetLoader
         try
         {
             using var stream = File.OpenRead(imagePath);
+            if (!SpritePixels.HasRgbaPngHeader(stream))
+                throw new InvalidDataException("Sprite atlas must be an 8-bit RGBA PNG.");
+            stream.Position = 0;
             var decoder = BitmapDecoder.Create(
                 stream,
                 BitmapCreateOptions.PreservePixelFormat | BitmapCreateOptions.IgnoreColorProfile,
@@ -147,6 +160,11 @@ public static class SpriteSheetLoader
         }
 
         var alpha = ExtractAlpha(atlas);
+        var pixelBytes = new byte[atlas.PixelWidth * atlas.PixelHeight * 4];
+        atlas.CopyPixels(pixelBytes, atlas.PixelWidth * 4, 0);
+        var pixelErrors = SpritePixels.Validate(metadata, pixelBytes);
+        if (pixelErrors.Count > 0)
+            throw new InvalidDataException("Sprite atlas is invalid: " + string.Join("; ", pixelErrors));
 
         var clips = new Dictionary<string, SpriteClip>(StringComparer.OrdinalIgnoreCase);
         foreach (var clipMetadata in metadata.Animations)

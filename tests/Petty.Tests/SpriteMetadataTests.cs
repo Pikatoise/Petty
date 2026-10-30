@@ -88,4 +88,44 @@ public class SpriteMetadataTests
     {
         Assert.NotEmpty(SpriteMetadataValidator.Validate(null));
     }
+
+    [Theory]
+    [InlineData("../other.png")]
+    [InlineData("other.png")]
+    public void RejectsMismatchedOrEscapingImageNames(string image)
+    {
+        var metadata = Valid();
+        metadata.Image = image;
+        Assert.NotEmpty(SpriteMetadataValidator.Validate(metadata));
+    }
+
+    [Fact]
+    public void RejectsOverflowingFrameRanges()
+    {
+        var metadata = Valid();
+        metadata.Animations[0].StartIndex = int.MaxValue;
+        Assert.Contains(SpriteMetadataValidator.Validate(metadata), error => error.Contains("past the atlas"));
+    }
+
+    [Fact]
+    public void ValidatesFramePixelsAndUnusedCells()
+    {
+        var metadata = Valid();
+        var width = metadata.Columns * metadata.FrameWidth;
+        var pixels = new byte[width * metadata.Rows * metadata.FrameHeight * 4];
+        foreach (var clip in metadata.Animations)
+            for (var i = 0; i < clip.FrameCount; i++)
+            {
+                var cell = clip.StartIndex + i;
+                var x = cell % metadata.Columns * 64 + 10;
+                var y = cell / metadata.Columns * 64 + metadata.GroundRow;
+                pixels[(y * width + x) * 4 + 3] = 255;
+            }
+        Assert.Empty(SpritePixels.Validate(metadata, pixels));
+        pixels[(metadata.GroundRow * width + 10) * 4 + 3] = 128;
+        Assert.Contains(SpritePixels.Validate(metadata, pixels), e => e.Contains("semi-transparent"));
+        pixels[(metadata.GroundRow * width + 10) * 4 + 3] = 255;
+        pixels[(6 * 64 * width + 10) * 4 + 3] = 255;
+        Assert.Contains(SpritePixels.Validate(metadata, pixels), e => e.Contains("Unused"));
+    }
 }
