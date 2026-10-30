@@ -38,7 +38,7 @@
                 Background="#FFF3DC"
                 BorderBrush="#2B1A12"
                 BorderThickness="2">
-            <TextBlock Text="Play"
+            <TextBlock Text="{DynamicResource Play}"
                        FontFamily="Consolas"
                        FontSize="14"
                        FontWeight="Bold"

@@ -18,18 +18,22 @@ public sealed class TrayService : IDisposable
     private readonly ContextMenuStrip _menu;
     private readonly Icon? _iconImage;
     private readonly IntPtr _iconHandle;
+    private readonly ToolStripMenuItem _settingsItem;
+    private readonly ToolStripMenuItem _exitItem;
 
-    public TrayService(string iconPath, IAppLog log)
+    public TrayService(string iconPath, IAppLog log, string settingsText, string exitText)
     {
         using var bitmap = new Bitmap(iconPath);
         _iconHandle = bitmap.GetHicon();
         _iconImage = Icon.FromHandle(_iconHandle);
 
         _menu = new ContextMenuStrip();
-        _menu.Items.Add(new ToolStripMenuItem("Pet settings", null,
-            (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty)));
-        _menu.Items.Add(new ToolStripMenuItem("Exit application", null,
-            (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty)));
+        _settingsItem = new ToolStripMenuItem(settingsText, null,
+            (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
+        _exitItem = new ToolStripMenuItem(exitText, null,
+            (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
+        _menu.Items.Add(_settingsItem);
+        _menu.Items.Add(_exitItem);
 
         _icon = new NotifyIcon
         {
@@ -45,6 +49,12 @@ public sealed class TrayService : IDisposable
     public event EventHandler? SettingsRequested;
 
     public event EventHandler? ExitRequested;
+
+    public void SetLanguage(string settingsText, string exitText)
+    {
+        _settingsItem.Text = settingsText;
+        _exitItem.Text = exitText;
+    }
 
     public void Dispose()
     {

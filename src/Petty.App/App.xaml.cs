@@ -22,6 +22,7 @@ namespace Petty.App;
 /// </summary>
 public partial class App: Application
 {
+    private sealed class StartupMessageException(string message) : Exception(message) { }
     private static readonly JsonSerializerOptions ReportJsonOptions = new() { WriteIndented = true };
 
     private readonly DisplayService _displayService = new();
@@ -66,11 +67,16 @@ public partial class App: Application
             _log = new FileAppLog(_paths.LogFile);
             var preferences = new PreferencesStore(Path.Combine(_paths.DataDirectory, "preferences.json"));
             _localization = new Localization(preferences, preferences.Load(message => _log.Warn(message)));
+            _localization.LanguageChanged += OnLanguageChanged;
         }
         catch (Exception ex)
         {
+            _log?.Error("Startup initialization failed.", ex);
+            var initialMessage = System.Globalization.CultureInfo.InstalledUICulture.TwoLetterISOLanguageName == "ru"
+                ? "Не удалось запустить Petty. Проверьте параметры запуска и доступ к папке данных."
+                : "Petty could not start. Check its launch arguments and access to the data folder.";
             MessageBox.Show(
-                "Petty could not start:" + Environment.NewLine + Environment.NewLine + ex.Message,
+                initialMessage + Environment.NewLine + Environment.NewLine + ex.Message,
                 "Petty",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
@@ -97,9 +103,8 @@ public partial class App: Application
         {
             _log.Error("Startup failed.", ex);
             MessageBox.Show(
-                "Petty could not start." + Environment.NewLine + Environment.NewLine +
-                ex.Message + Environment.NewLine + Environment.NewLine +
-                "Technical details were written to:" + Environment.NewLine + _log.FilePath,
+                (ex is StartupMessageException ? ex.Message : Localization.Text("StartError")) + Environment.NewLine + Environment.NewLine +
+                Localization.Text("LogPath") + Environment.NewLine + _log.FilePath,
                 "Petty",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
@@ -124,6 +129,7 @@ public partial class App: Application
         _bowlFullImage = null;
         _tray?.Dispose();
         _tray = null;
+        if (_localization is not null) _localization.LanguageChanged -= OnLanguageChanged;
         _singleInstance?.Dispose();
         _singleInstance = null;
         _log?.Info("Petty stopped.");
@@ -141,12 +147,10 @@ public partial class App: Application
         _log!.Info($"State: {load.Status}. {load.Message}".TrimEnd());
 
         if (load.Status is LoadStatus.UnsupportedVersion)
-            throw new InvalidOperationException(
-                $"{load.Message} Update Petty to a compatible version. The saved state was left unchanged.");
+            throw new StartupMessageException(Localization.Text("StateUnsupported"));
 
         var assetDirectory = SpriteAssetLocator.FindDirectory(PetCatalog.DefaultAssetId)
-            ?? throw new FileNotFoundException(
-                "The bundled sprite assets were not found. Restore the assets or regenerate the sprites.");
+            ?? throw new StartupMessageException(Localization.Text("AssetsMissing"));
 
         _assetDirectory = assetDirectory;
         _variants = SpriteAssetLocator.Discover(Path.Combine(_paths.DataDirectory, "sprites"), message => _log.Warn(message));
@@ -158,7 +162,7 @@ public partial class App: Application
         if (load.Snapshot is not null)
         {
             var variant = _variants.FirstOrDefault(v => v.AssetId == load.Snapshot.AssetId)
-                ?? throw new FileNotFoundException($"The saved appearance '{load.Snapshot.AssetId}' was not found. Restore its sprite files and restart Petty.");
+                ?? throw new StartupMessageException(string.Format(Localization.Text("SavedAppearanceMissing"), load.Snapshot.AssetId));
             _sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
             _stateWasPersisted = true;
             runtime = PetRuntime.Restore(load.Snapshot, tuning, now);
@@ -167,7 +171,7 @@ public partial class App: Application
         else if (_options.CreateName is { } createName)
         {
             var variant = _variants.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId)
-                ?? _variants.FirstOrDefault() ?? throw new FileNotFoundException("No valid sprite definitions were found.");
+                ?? _variants.FirstOrDefault() ?? throw new StartupMessageException(Localization.Text("NoSprites"));
             _sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
             runtime = CreatePet(createName, tuning, variant);
             _log.Info($"Created '{runtime.Snapshot.PetName}' from --create-name.");
@@ -175,7 +179,7 @@ public partial class App: Application
         else
         {
             var warning = load.Status is LoadStatus.Corrupt or LoadStatus.UnsupportedVersion
-                ? $"{(load.Message ?? "The saved pet could not be read.").TrimEnd()} A new pet will be created."
+                ? Localization.Text("CorruptState")
                 : null;
 
             var wizard = new CreationWizardWindow(_variants, firstRun: true, PetNameRules.DefaultName, warning);
@@ -292,10 +296,15 @@ public partial class App: Application
     private void CreateTray()
     {
         var iconPath = Path.Combine(_assetDirectory!, TrayService.TrayIconFileName);
-        _tray = new TrayService(iconPath, _log!);
+        _tray = new TrayService(iconPath, _log!, Localization.Text("TraySettings"), Localization.Text("TrayExit"));
         _tray.SettingsRequested += (_, _) => ShowSettings();
         _tray.ExitRequested += (_, _) => RequestExitFromTray();
     }
+
+    private void OnLanguageChanged(object? sender, EventArgs e) =>
+        _tray?.SetLanguage(Localization.Text("TraySettings"), Localization.Text("TrayExit"));
+
+    internal void LogError(string message, Exception exception) => _log?.Error(message, exception);
 
     private void ShowSettings()
     {
@@ -307,9 +316,7 @@ public partial class App: Application
             return;
         }
 
-        var appearance = _variants.FirstOrDefault(v => v.AssetId == _runtime.Snapshot.AssetId)?.DisplayName
-            ?? _runtime.Snapshot.CoatId;
-        _settings = new SettingsWindow(_runtime.Snapshot.PetName, _runtime.Snapshot.BreedId, appearance, _localization!, _log!);
+        _settings = new SettingsWindow(_runtime.Snapshot.PetName, _runtime.Snapshot.BreedId, _localization!, _log!);
         _settings.RenameRequested += OnRenameRequested;
         _settings.NewPetRequested += OnNewPetRequested;
         _settings.Closed += (_, _) => _settings = null;
@@ -555,9 +562,8 @@ public partial class App: Application
         e.Handled = true;
 
         MessageBox.Show(
-            "Petty hit an unexpected error and will close." + Environment.NewLine + Environment.NewLine +
-            e.Exception.Message + Environment.NewLine + Environment.NewLine +
-            "Log: " + _log?.FilePath,
+            Localization.Text("FatalError") + Environment.NewLine + Environment.NewLine +
+            Localization.Text("LogPath") + Environment.NewLine + _log?.FilePath,
             "Petty",
             MessageBoxButton.OK,
             MessageBoxImage.Error);

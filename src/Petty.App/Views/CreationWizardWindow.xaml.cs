@@ -10,6 +10,7 @@ namespace Petty.App.Views;
 /// <summary>Collects the name and appearance; application composition creates the pet.</summary>
 public partial class CreationWizardWindow : Window
 {
+    private sealed record BreedOption(SpriteVariant Variant, string Label);
     private SpriteClip? _idle;
     private readonly AnimationPlayback _playback = new();
     private readonly DispatcherTimer _previewTimer = new();
@@ -20,9 +21,9 @@ public partial class CreationWizardWindow : Window
         InitializeComponent();
         if (!firstRun)
         {
-            Title = "New pet";
-            HeaderText.Text = "Create a new pet";
-            CancelButton.Content = "Cancel";
+            SetResourceReference(TitleProperty, "NewPetTitle");
+            HeaderText.SetResourceReference(TextBlock.TextProperty, "NewPetHeading");
+            CancelButton.SetResourceReference(ContentControl.ContentProperty, "Cancel");
         }
         NameBox.Text = initialName;
         if (warning is { } text)
@@ -36,13 +37,13 @@ public partial class CreationWizardWindow : Window
             .Select(group => group.FirstOrDefault(v => v.AssetId == initialSheet?.Metadata.Character)
                 ?? group.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId)
                 ?? group.OrderBy(v => v.AssetId, StringComparer.OrdinalIgnoreCase).First())
-            .ToArray();
+            .Select(v => new BreedOption(v, Localization.BreedName(v.BreedId))).ToArray();
         BreedSelector.ItemsSource = representatives;
-        BreedSelector.SelectedItem = representatives.FirstOrDefault(v => v.AssetId == initialSheet?.Metadata.Character)
-            ?? representatives.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId) ?? representatives.FirstOrDefault();
+        BreedSelector.SelectedItem = representatives.FirstOrDefault(v => v.Variant.AssetId == initialSheet?.Metadata.Character)
+            ?? representatives.FirstOrDefault(v => v.Variant.AssetId == PetCatalog.DefaultAssetId) ?? representatives.FirstOrDefault();
         if (BreedSelector.SelectedItem is null)
         {
-            ErrorText.Text = "No valid sprite definitions were found. Restore the sprite assets and restart Petty.";
+            ErrorText.Text = Localization.Text("NoSprites");
             CreateButton.IsEnabled = false;
         }
         Loaded += (_, _) => NameBox.SelectAll();
@@ -50,7 +51,7 @@ public partial class CreationWizardWindow : Window
     }
 
     public string ConfirmedName { get; private set; } = string.Empty;
-    public SpriteVariant? SelectedVariant => BreedSelector.SelectedItem as SpriteVariant;
+    public SpriteVariant? SelectedVariant => (BreedSelector.SelectedItem as BreedOption)?.Variant;
     public SpriteSheet? SelectedSheet { get; private set; }
 
     private void OnBreedChanged(object sender, SelectionChangedEventArgs e)
@@ -74,7 +75,8 @@ public partial class CreationWizardWindow : Window
             _idle = null;
             _previewTimer.Stop();
             PreviewImage.Source = null;
-            ErrorText.Text = $"Could not load this appearance: {ex.Message}";
+            if (Application.Current is App app) app.LogError("Could not load sprite appearance.", ex);
+            ErrorText.Text = Localization.Text("AppearanceLoadError");
             CreateButton.IsEnabled = false;
         }
     }
@@ -100,9 +102,9 @@ public partial class CreationWizardWindow : Window
 
     private void OnCreate(object sender, RoutedEventArgs e)
     {
-        if (!PetNameRules.TryNormalize(NameBox.Text, out var name, out var error))
+        if (!PetNameRules.TryNormalize(NameBox.Text, out var name, out _))
         {
-            ErrorText.Text = error;
+            ErrorText.Text = Localization.Text("NameInvalid");
             NameBox.Focus();
             return;
         }

@@ -17,6 +17,12 @@ internal sealed class Localization
     }
 
     public UserPreferences Preferences { get; private set; }
+    public event EventHandler? LanguageChanged;
+
+    public static string Text(string key) => (string)Application.Current.FindResource(key);
+
+    public static string BreedName(string breedId) =>
+        breedId.Equals("cat", StringComparison.OrdinalIgnoreCase) ? Text("BreedCat") : breedId.Replace('-', ' ');
 
     public void SetLanguage(string? language)
     {
@@ -24,6 +30,7 @@ internal sealed class Localization
         _store.Save(updated);
         Preferences = updated;
         Apply();
+        LanguageChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void Apply()

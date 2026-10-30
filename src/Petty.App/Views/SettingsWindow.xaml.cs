@@ -18,15 +18,13 @@ public partial class SettingsWindow : Window
     private readonly Localization _localization;
     private readonly IAppLog _log;
     private readonly string _breed;
-    private readonly string _appearance;
     private bool _ready;
 
-    internal SettingsWindow(string petName, string breed, string appearance, Localization localization, IAppLog log)
+    internal SettingsWindow(string petName, string breed, Localization localization, IAppLog log)
     {
         _localization = localization;
         _log = log;
         _breed = breed;
-        _appearance = appearance;
         InitializeComponent();
         NameBox.Text = petName;
         LanguageSelector.SelectedIndex = localization.Preferences.Language switch { "ru" => 1, "en" => 2, _ => 0 };
@@ -54,15 +52,8 @@ public partial class SettingsWindow : Window
 
     private void OnNewPet(object sender, RoutedEventArgs e)
     {
-        var answer = MessageBox.Show(
-            this,
-            Text("ConfirmNew"),
-            "Petty",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-
-        if (answer == MessageBoxResult.Yes) NewPetRequested?.Invoke(this, EventArgs.Empty);
+        var confirmation = new ConfirmNewPetWindow { Owner = this };
+        if (confirmation.ShowDialog() == true) NewPetRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
@@ -89,7 +80,7 @@ public partial class SettingsWindow : Window
 
     private string Text(string key) => (string)FindResource(key);
 
-    private void UpdateAppearance() => AppearanceText.Text = string.Format(Text("AppearanceFormat"), _breed, _appearance);
+    private void UpdateAppearance() => AppearanceText.Text = string.Format(Text("AppearanceFormat"), Localization.BreedName(_breed));
 
     private void ShowStatus(string text, Brush brush)
     {
