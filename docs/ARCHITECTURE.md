@@ -55,12 +55,12 @@ settings window changes nothing.
   the clip by elapsed time and emits frames. Behaviour decides, animation only renders.
 - `PetMotion` moves the window position at the current walk/run speed towards a target that
   came from the behaviour machine; walks end on arrival, durations are safety caps.
-- `WalkSurface` computes the band (monitor bounds, work area, taskbar edge, window width) and
-  `FloorFollow` eases the floor line at ~900 px/s. The session polls the taskbar every
-  250 ms, re-reads the display layout every ~4 s, and applies the floor to the pet and bowl.
-- The bowl shows the saved horizontal position on the current floor line
-  (`PropWindow.PlaceOnFloor`), switches to its full picture while food remains, and is the
-  target of `SeekingFood`. While `Playing`, the ball swings beside the cat.
+- `DesktopSurfaceController` tracks the primary display and taskbar, using `WalkSurface` for
+  the walk band and `FloorFollow` to ease the floor at ~900 px/s. The session polls it every
+  250 ms; the display layout is re-read every ~4 s.
+- `PetPropsController` places the bowl at its saved horizontal position on the current floor
+  (`PropWindow.PlaceOnFloor`), updates its picture, and computes the food-seeking target.
+  While `Playing`, it moves the ball beside the cat.
 
 Timers: frame ~20 ms (the clip's own rate while nothing moves), simulation 200 ms
 (`PetTuning.TickInterval`), taskbar 250 ms, autosave 2 min. All are stopped on dispose.

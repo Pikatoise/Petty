@@ -28,13 +28,11 @@ public sealed class PetSession : IDisposable
     private readonly PetRuntime _runtime;
     private readonly PetWindow _window;
     private readonly PropWindow _bowl;
-    private readonly PropWindow _ball;
-    private readonly DisplayService _displays;
+    private readonly DesktopSurfaceController _surface;
+    private readonly PetPropsController _props;
     private readonly IAppLog _log;
     private readonly AnimationController _animation;
     private readonly PetMotion _motion;
-    private readonly FloorFollow _floor = new();
-    private readonly ShellBarProbe _shellBars = new();
     private readonly DispatcherTimer _frameTimer;
     private readonly DispatcherTimer _simulationTimer;
 
@@ -45,16 +43,8 @@ public sealed class PetSession : IDisposable
     /// </summary>
     private static readonly TimeSpan ShellBarPollInterval = TimeSpan.FromMilliseconds(250);
 
-    /// <summary>Display layout is re-read every 16 polls (~4 s).</summary>
-    private const int DisplayReloadTickCount = 16;
-
     private readonly DispatcherTimer _shellBarTimer;
-    private int _displayReloadTicks = DisplayReloadTickCount;
 
-    private IReadOnlyList<DisplayInfo> _displayLayout = Array.Empty<DisplayInfo>();
-    private DisplayInfo? _display;
-    private ShellBarSnapshot? _shellBar;
-    private MotionArea _area;
     private DateTimeOffset _lastFrameTick;
     private DateTimeOffset _lastSimulationTick;
     private DateTimeOffset _exitStartedUtc;
@@ -76,9 +66,11 @@ public sealed class PetSession : IDisposable
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _window = window ?? throw new ArgumentNullException(nameof(window));
         _bowl = bowl ?? throw new ArgumentNullException(nameof(bowl));
-        _ball = ball ?? throw new ArgumentNullException(nameof(ball));
-        _displays = displays ?? throw new ArgumentNullException(nameof(displays));
+        ArgumentNullException.ThrowIfNull(ball);
+        ArgumentNullException.ThrowIfNull(displays);
         _log = log ?? throw new ArgumentNullException(nameof(log));
+        _surface = new DesktopSurfaceController(displays, window.PhysicalWidth, log);
+        _props = new PetPropsController(bowl, ball, _surface, window.PhysicalWidth);
 
         _animation = new AnimationController(sheet);
         _animation.FrameChanged += OnFrameChanged;
@@ -116,10 +108,10 @@ public sealed class PetSession : IDisposable
     public event EventHandler<string>? StateChanged;
 
     /// <summary>Current walkable band, for diagnostics.</summary>
-    public MotionArea WalkArea => _area;
+    public MotionArea WalkArea => _surface.WalkArea;
 
     /// <summary>Last taskbar reading, for diagnostics (null when the shell has no bar).</summary>
-    public ShellBarSnapshot? ShellBar => _shellBar;
+    public ShellBarSnapshot? ShellBar => _surface.ShellBar;
 
     public void Start()
     {
@@ -130,15 +122,16 @@ public sealed class PetSession : IDisposable
 
         _runtime.Behavior.Transitioned += OnBehaviorTransition;
 
-        RefreshDisplays();
+        _surface.Load();
+        ApplySurfaceChange(SurfaceChange.Display);
 
         _lastFrameTick = DateTimeOffset.UtcNow;
         _lastSimulationTick = _lastFrameTick;
 
         _animation.Play(PetAnimationMap.ClipFor(_runtime.Behavior.State));
 
-        _bowl.ShowFilled(_runtime.Bowl.HasFood);
-        _ball.Hide();
+        _props.ShowBowlFilled(_runtime.Bowl.HasFood);
+        _props.HideBall();
 
         _frameTimer.Start();
         _simulationTimer.Start();
@@ -184,7 +177,7 @@ public sealed class PetSession : IDisposable
         _bowl.DragCompleted -= OnBowlDragged;
         _animation.FrameChanged -= OnFrameChanged;
 
-        _ball.Hide();
+        _props.HideBall();
     }
 
     private void OnFrameTick(object? sender, EventArgs e)
@@ -202,7 +195,7 @@ public sealed class PetSession : IDisposable
 
         var wasMoving = _motion.IsMoving;
         var moved = _motion.Update(delta);
-        var climbed = AdvanceFloor(delta);
+        var climbed = _surface.AdvanceFloor(delta);
 
         if (wasMoving && !_motion.IsMoving && !_exitRequested)
             _runtime.NotifyArrived();
@@ -213,9 +206,9 @@ public sealed class PetSession : IDisposable
             ApplyPosition();
         }
 
-        if (climbed) ApplyBowlPosition();
+        if (climbed) _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
 
-        UpdateBall();
+        UpdateBallIfPlaying();
 
         SyncFrameInterval();
     }
@@ -226,7 +219,7 @@ public sealed class PetSession : IDisposable
     /// </summary>
     private void SyncFrameInterval()
     {
-        var busy = _motion.IsMoving || (_area.FloorY > 0 && !_floor.IsAt(_area.FloorY));
+        var busy = _motion.IsMoving || _surface.IsFloorMoving;
         var fps = _animation.CurrentClip?.FramesPerSecond ?? 0;
 
         var interval = busy || fps <= 0
@@ -237,67 +230,9 @@ public sealed class PetSession : IDisposable
         if (_frameTimer.Interval != interval) _frameTimer.Interval = interval;
     }
 
-    /// <summary>Eases the paws onto the current target floor; true when the row changed.</summary>
-    private bool AdvanceFloor(TimeSpan delta)
-    {
-        if (_area.FloorY <= 0) return false;
-
-        var before = _floor.Current;
-        _floor.Advance(_area.FloorY, delta);
-        return Math.Abs(_floor.Current - before) > 0.01;
-    }
-
     private void OnShellBarTick(object? sender, EventArgs e)
     {
-        if (_disposed) return;
-
-        // A monitor can be hot-plugged or resized at any time; re-reading the layout
-        // every few seconds keeps the walk band from going stale. EnumDisplayMonitors
-        // is cheap but not free, so it does not run on every tick.
-        if (--_displayReloadTicks <= 0)
-        {
-            _displayReloadTicks = DisplayReloadTickCount;
-            ReloadDisplaysIfChanged();
-        }
-
-        RefreshWalkArea();
-    }
-
-    private void ReloadDisplaysIfChanged()
-    {
-        IReadOnlyList<DisplayInfo> displays;
-
-        try
-        {
-            displays = _displays.GetDisplays();
-        }
-        catch (InvalidOperationException ex)
-        {
-            _log.Warn($"Could not re-read the display layout: {ex.Message}");
-            return;
-        }
-
-        if (LayoutEquals(_displayLayout, displays)) return;
-
-        _displayLayout = displays;
-        _display = _displays.Primary(displays);
-
-        _log.Info("Display layout changed: " +
-                  string.Join(", ", displays.Select(d => $"{d.DeviceName} {FormatRect(d.Bounds)}")) + ".");
-
-        RefreshWalkArea(force: true);
-    }
-
-    private static bool LayoutEquals(IReadOnlyList<DisplayInfo> a, IReadOnlyList<DisplayInfo> b)
-    {
-        if (a.Count != b.Count) return false;
-
-        for (var i = 0; i < a.Count; i++)
-        {
-            if (a[i] != b[i]) return false;
-        }
-
-        return true;
+        if (!_disposed) ApplySurfaceChange(_surface.Poll());
     }
 
     private void OnSimulationTick(object? sender, EventArgs e)
@@ -310,7 +245,7 @@ public sealed class PetSession : IDisposable
 
         if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
         _runtime.Update(delta, now);
-        _bowl.ShowFilled(_runtime.Bowl.HasFood);
+        _props.ShowBowlFilled(_runtime.Bowl.HasFood);
 
         if (!_exitRequested || _exitCompleted) return;
 
@@ -336,31 +271,31 @@ public sealed class PetSession : IDisposable
         switch (transition.To)
         {
             case PetActivity.Entering:
-                _motion.Enter(_area, _window.PhysicalWidth);
+                _motion.Enter(WalkArea, _window.PhysicalWidth);
                 break;
 
             case PetActivity.Walking:
-                _motion.Wander(_area, run: false);
+                _motion.Wander(WalkArea, run: false);
                 break;
 
             case PetActivity.Running:
-                _motion.Wander(_area, run: true);
+                _motion.Wander(WalkArea, run: true);
                 break;
 
             case PetActivity.SeekingFood:
-                _motion.Seek(SeekTargetX());
+                _motion.Seek(_props.SeekTargetX(_motion.X));
                 break;
 
             case PetActivity.Playing:
                 _window.AllowPlayAffordance(false);
-                _ball.Show();
-                UpdateBall();
+                _props.ShowBall();
+                UpdateBallIfPlaying();
                 break;
 
             case PetActivity.Exiting:
                 _window.HidePlayAffordance();
-                _ball.Hide();
-                _motion.Exit(_area, _window.PhysicalWidth);
+                _props.HideBall();
+                _motion.Exit(WalkArea, _window.PhysicalWidth);
                 break;
 
             default:
@@ -370,7 +305,7 @@ public sealed class PetSession : IDisposable
 
         if (transition.From is PetActivity.Playing)
         {
-            _ball.Hide();
+            _props.HideBall();
             _window.AllowPlayAffordance(true);
         }
 
@@ -403,7 +338,7 @@ public sealed class PetSession : IDisposable
     private void OnBowlClicked(object? sender, EventArgs e)
     {
         var added = _runtime.RefillBowl();
-        _bowl.ShowFilled(_runtime.Bowl.HasFood);
+        _props.ShowBowlFilled(_runtime.Bowl.HasFood);
         _log.Info($"Bowl filled with {added:F0}; food {_runtime.Bowl.Food:F0}/{_runtime.Bowl.Capacity:F0}.");
 
         if (added > 0) StateChanged?.Invoke(this, "feed");
@@ -413,172 +348,48 @@ public sealed class PetSession : IDisposable
     {
         var rect = _bowl.ScreenRect;
 
-        // Only the horizontal place is kept; the bowl returns to the floor on release.
-        var placement = BowlPlacement.Capture(
-            rect.Left,
-            BowlFloor() - rect.Height,
-            rect.Width,
-            rect.Height,
-            CurrentDisplays());
+        var placement = _props.CaptureBowlPosition();
 
         _runtime.UpdateBowlPlacement(placement);
-        ApplyBowlPosition();
+        _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
 
         _log.Info($"Bowl dropped at x {rect.Left} ({(placement.RelativeX * 100):F0} % of {placement.DisplayDeviceName}).");
         StateChanged?.Invoke(this, "bowl-move");
 
         // The cat may be walking towards the old spot right now.
-        if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(SeekTargetX());
+        if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(_props.SeekTargetX(_motion.X));
     }
 
-    /// <summary>
-    /// Where the cat should stand to eat: its head (about 68 % into the frame, mirrored
-    /// when facing left) lands on the bowl's centre instead of a fixed screen position.
-    /// </summary>
-    private double SeekTargetX()
+    private void UpdateBallIfPlaying()
     {
-        var rect = _bowl.ScreenRect;
-        if (rect.Width <= 0) return _area.Left + (_area.Width * 0.55);
-
-        var center = rect.Left + (rect.Width / 2.0);
-        var fromLeft = _motion.X + (_window.PhysicalWidth / 2.0) < center;
-        var head = _window.PhysicalWidth * (fromLeft ? 0.68 : 0.32);
-
-        return Math.Clamp(center - head, _area.Left, _area.Right);
+        if (_runtime.Behavior.State is PetActivity.Playing)
+            _props.UpdateBall(_motion.X, _runtime.Behavior.StateElapsed);
     }
-
-    /// <summary>Rolls and bounces the ball beside the cat while it plays; no ball otherwise.</summary>
-    private void UpdateBall()
-    {
-        if (_runtime.Behavior.State is not PetActivity.Playing) return;
-        if (_area.FloorY <= 0) return;
-
-        var time = _runtime.Behavior.StateElapsed.TotalSeconds;
-        var center = _motion.X + (_window.PhysicalWidth / 2.0);
-        var amplitude = Math.Clamp(_area.Width * 0.06, 48, 90);
-        var swing = Math.Sin(time * 2.2);
-        var floor = _floor.Current > 0 ? _floor.Current : _area.FloorY;
-        var left = Math.Clamp(
-            center + (swing * amplitude) - (_ball.PhysicalWidth / 2.0),
-            _area.Left,
-            _area.Right);
-
-        _ball.PlaceAt(left, floor - _ball.PhysicalHeight - (Math.Abs(swing) * 26));
-    }
-
-    private IReadOnlyList<DisplayInfo> CurrentDisplays() =>
-        _displayLayout.Count > 0 ? _displayLayout : _displays.GetDisplays();
-
-    /// <summary>
-    /// Puts the bowl on the floor line — the same row the cat's paws rest on, so it follows
-    /// the eased taskbar — at the saved monitor-relative horizontal position. A bowl the
-    /// user is holding is left where the cursor put it.
-    /// </summary>
-    private void ApplyBowlPosition()
-    {
-        if (_bowl.Handle == IntPtr.Zero || _bowl.IsDragging) return;
-
-        var resolved = BowlPlacement.Resolve(
-            _runtime.Snapshot.Placement,
-            CurrentDisplays(),
-            _bowl.PhysicalWidth,
-            _bowl.PhysicalHeight);
-
-        var floor = BowlFloor();
-        if (floor <= 0)
-        {
-            _bowl.PlaceAt(resolved.Left, resolved.Top);
-            return;
-        }
-
-        _bowl.PlaceOnFloor(resolved.Left, floor);
-    }
-
-    /// <summary>The floor row the bowl stands on: the eased one while it is still moving.</summary>
-    private double BowlFloor() => _floor.Current > 0 ? _floor.Current : _area.FloorY;
 
     private void OnWindowGeometryChanged(object? sender, EventArgs e)
     {
         if (!_started || _disposed) return;
+        _surface.Load();
+        ApplySurfaceChange(SurfaceChange.Display);
+    }
 
-        RefreshDisplays();
-        _motion.KeepInside(_area);
-        _floor.Snap(_area.FloorY);
+    private void ApplySurfaceChange(SurfaceChange change)
+    {
+        if (change is SurfaceChange.None) return;
+        _motion.KeepInside(WalkArea);
         ApplyPosition();
+        if (change is not SurfaceChange.Display) return;
+        _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
+        if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(_props.SeekTargetX(_motion.X));
+        UpdateBallIfPlaying();
     }
-
-    private void RefreshDisplays()
-    {
-        _displayLayout = _displays.GetDisplays();
-        _display = _displays.Primary(_displayLayout);
-        RefreshWalkArea(force: true);
-    }
-
-    /// <summary>
-    /// Recomputes the walkable band from the monitor geometry and the taskbar that is
-    /// currently drawn on screen. A hidden auto-hide bar is passed as null, which lets
-    /// the pet walk along the very bottom edge; when the bar slides up the pet steps
-    /// on top of it instead of being covered by it.
-    /// </summary>
-    private void RefreshWalkArea(bool force = false)
-    {
-        if (_disposed) return;
-
-        var display = _display ?? _displays.Primary(_displayLayout);
-        if (display is null) return;
-
-        _bowl.DragBounds = display.UsableArea;
-        _shellBar = _shellBars.Read(display);
-        var visibleBar = _shellBar is { Revealed: true } bar ? bar.Rect : (ScreenRect?)null;
-
-        var area = WalkSurface.Compute(display, visibleBar, _window.PhysicalWidth);
-
-        if (!force && area == _area) return;
-
-        var previous = _area;
-        _area = area;
-
-        if (force)
-        {
-            _floor.Snap(area.FloorY);
-            _motion.KeepInside(area);
-            ApplyPosition();
-            ApplyBowlPosition();
-            if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(SeekTargetX());
-            if (_runtime.Behavior.State is PetActivity.Playing) UpdateBall();
-            _log.Info(
-                $"Walk area: x {area.Left:F0}..{area.Right:F0}, floor {area.FloorY:F0} " +
-                $"(display {FormatRect(display.Bounds)}, work {FormatRect(display.UsableArea)}, " +
-                $"bar {(visibleBar is { } b ? FormatRect(b) : "hidden/none")}).");
-            return;
-        }
-
-        if (Math.Abs(area.FloorY - previous.FloorY) > 0.5)
-        {
-            // The direction of the change is the reliable signal: a shell can report
-            // the bar as hit-testable for a frame while it is already sliding away.
-            _log.Info(area.FloorY < previous.FloorY
-                ? $"Taskbar shown: the pet steps up to floor {area.FloorY:F0}."
-                : $"Taskbar hidden: the pet returns to floor {area.FloorY:F0}.");
-        }
-
-        if (area.Left != previous.Left || area.Right != previous.Right)
-        {
-            _log.Info($"Walk range changed to x {area.Left:F0}..{area.Right:F0}.");
-            _motion.KeepInside(area);
-            ApplyPosition();
-        }
-    }
-
-    private static string FormatRect(ScreenRect rect) =>
-        $"{rect.X:F0},{rect.Y:F0} {rect.Width:F0}x{rect.Height:F0}";
 
     private void FaceMovement() => _window.SetFacing(_motion.Facing < 0);
 
     private void ApplyPosition()
     {
-        if (_area.FloorY <= 0) return;
+        if (WalkArea.FloorY <= 0) return;
 
-        _window.MoveTo(_motion.X, _floor.Current);
+        _window.MoveTo(_motion.X, _surface.FloorY);
     }
 }
