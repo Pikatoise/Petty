@@ -32,7 +32,7 @@ executable) and falls back to the repository's `assets/sprites` folder when run 
 2. Parse `AppOptions`, resolve `PetPaths` (`--data-dir`, else `PETTY_DATA_DIR`, else
    `%LOCALAPPDATA%\Petty`), open the log file.
 3. Take the `Local\Petty.SingleInstance` mutex; a second copy exits with code 3.
-4. `PetStateStore.Load()`: a valid snapshot is restored with offline decay applied;
+4. `PetStateStore.Load()`: a valid snapshot is restored without offline decay;
    `--create-name` creates a pet instead; otherwise the first-run wizard is shown and
    cancelling it shuts the app down explicitly.
 5. Load and validate the sprite sheet, then create the pet window and the two prop windows,
@@ -63,7 +63,9 @@ settings window changes nothing.
   While `Playing`, it moves the ball beside the cat.
 
 Timers: frame ~20 ms (the clip's own rate while nothing moves), simulation 200 ms
-(`PetTuning.TickInterval`), taskbar 250 ms, autosave 2 min. All are stopped on dispose.
+(`PetTuning.TickInterval`), taskbar 250 ms, autosave 2 min. Animation and simulation
+share a monotonic active-time clock; power notifications exclude sleep and hibernation,
+and an unexplained gap over five seconds is discarded. All timers are stopped on dispose.
 
 ## Behaviour
 
@@ -118,8 +120,8 @@ asset id, satiety, happiness, `lastUpdatedUtc`, bowl food and the bowl's monitor
 with the display device name. `PetStateStore` writes atomically (temp file + replace) and
 keeps a `.bak`; loading recovers missing or malformed files from a valid backup. Newer
 unsupported versions stop startup and are preserved, including when found in the backup.
-Offline time is applied from `lastUpdatedUtc`, clamped to `MaxOfflineSpan` (7 days), with
-negative or invalid timestamps treated as no elapsed time. Saves happen on create, rename,
+Needs do not decay while the app is closed; `lastUpdatedUtc` remains a diagnostic timestamp.
+Saves happen on create, rename,
 feed, eat, play, bowl drop, every 2 minutes and on shutdown.
 
 ## Sprite pipeline
@@ -144,8 +146,8 @@ a failed save can never corrupt the existing state.
 
 ## Tests
 
-`dotnet test Petty.slnx` runs the WPF-free suite (123 tests): need bounds and decay, offline
-progression, feeding and bowl inventory, hunger-driven seeking, play happiness, every FSM
+`dotnet test Petty.slnx` runs the WPF-free suite: need bounds and active-time decay,
+feeding and bowl inventory, hunger-driven seeking, play happiness, every FSM
 transition, JSON round-trip and recovery, bowl clamping, motion and floor easing, walk
 surface, animation playback, metadata validation and the shipped asset files. Desktop
 behaviour (z-order, click-through, taskbar, drag) is checked with the PowerShell scripts in

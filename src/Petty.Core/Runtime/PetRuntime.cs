@@ -3,30 +3,6 @@ using Petty.Core.Domain;
 
 namespace Petty.Core.Runtime;
 
-/// <summary>Bridge between persisted state, needs, bowl and the behaviour machine.</summary>
-public static class OfflineProgression
-{
-    public readonly record struct Result(Needs Needs, TimeSpan AppliedElapsed, bool ClockWentBackwards);
-
-    public static Result Apply(Needs needs, DateTimeOffset lastUpdatedUtc, DateTimeOffset nowUtc, PetTuning tuning)
-    {
-        if (lastUpdatedUtc == default)
-            return new Result(needs, TimeSpan.Zero, false);
-
-        var elapsed = nowUtc - lastUpdatedUtc;
-        if (elapsed < TimeSpan.Zero)
-            return new Result(needs, TimeSpan.Zero, true);
-
-        if (elapsed > tuning.MaxOfflineSpan)
-            elapsed = tuning.MaxOfflineSpan;
-
-        if (elapsed <= TimeSpan.Zero)
-            return new Result(needs, TimeSpan.Zero, false);
-
-        return new Result(needs.Advance(elapsed, tuning), elapsed, false);
-    }
-}
-
 /// <summary>
 /// Owns the live pet state for one session. The UI layer feeds elapsed time in and
 /// reads needs/state back; all domain rules stay here and are unit-testable.
@@ -66,8 +42,6 @@ public sealed class PetRuntime
         Random? random = null)
     {
         var runtime = new PetRuntime(snapshot.Normalized(tuning), tuning, random);
-        var offline = OfflineProgression.Apply(runtime.Needs, snapshot.LastUpdatedUtc, nowUtc, tuning);
-        runtime.Needs = offline.Needs;
         runtime.LastUpdatedUtc = nowUtc;
         return runtime;
     }

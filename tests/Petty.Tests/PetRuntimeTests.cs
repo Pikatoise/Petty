@@ -155,7 +155,7 @@ public class PetRuntimeTests
     }
 
     [Fact]
-    public void LongUpdateGapDecaysNeedsUpToMaxOfflineSpan()
+    public void OneHourActiveUpdateDecaysNeeds()
     {
         var tuning = new PetTuning { SatietyDecayPerHour = 60, HappinessDecayPerHour = 0 };
         var runtime = CreateRuntime(satiety: 100, happiness: 100, tuning: tuning);

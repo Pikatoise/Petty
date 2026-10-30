@@ -1,4 +1,6 @@
 using System.Windows.Threading;
+using System.Diagnostics;
+using Microsoft.Win32;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
 using Petty.App.Views;
@@ -45,9 +47,10 @@ public sealed class PetSession : IDisposable
 
     private readonly DispatcherTimer _shellBarTimer;
 
-    private DateTimeOffset _lastFrameTick;
-    private DateTimeOffset _lastSimulationTick;
-    private DateTimeOffset _exitStartedUtc;
+    private readonly ActiveClock _clock = new(Timestamp());
+    private TimeSpan _lastFrameTick;
+    private TimeSpan _lastSimulationTick;
+    private TimeSpan _exitStarted;
     private bool _started;
     private bool _exitRequested;
     private bool _exitCompleted;
@@ -125,7 +128,8 @@ public sealed class PetSession : IDisposable
         _surface.Load();
         ApplySurfaceChange(SurfaceChange.Display);
 
-        _lastFrameTick = DateTimeOffset.UtcNow;
+        SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        _lastFrameTick = _clock.Read(Timestamp());
         _lastSimulationTick = _lastFrameTick;
 
         _animation.Play(PetAnimationMap.ClipFor(_runtime.Behavior.State));
@@ -146,7 +150,7 @@ public sealed class PetSession : IDisposable
         if (_disposed || _exitRequested) return false;
 
         _exitRequested = true;
-        _exitStartedUtc = DateTimeOffset.UtcNow;
+        _exitStarted = _clock.Read(Timestamp());
 
         if (!_runtime.RequestExit())
         {
@@ -160,6 +164,7 @@ public sealed class PetSession : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
 
         _frameTimer.Stop();
         _simulationTimer.Stop();
@@ -184,9 +189,9 @@ public sealed class PetSession : IDisposable
     {
         if (_disposed) return;
 
-        var now = DateTimeOffset.UtcNow;
-        var delta = now - _lastFrameTick;
-        _lastFrameTick = now;
+        var elapsed = _clock.Read(Timestamp());
+        var delta = elapsed - _lastFrameTick;
+        _lastFrameTick = elapsed;
 
         if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
         if (delta > MaxFrameDelta) delta = MaxFrameDelta;
@@ -239,17 +244,17 @@ public sealed class PetSession : IDisposable
     {
         if (_disposed) return;
 
-        var now = DateTimeOffset.UtcNow;
-        var delta = now - _lastSimulationTick;
-        _lastSimulationTick = now;
+        var elapsed = _clock.Read(Timestamp());
+        var delta = elapsed - _lastSimulationTick;
+        _lastSimulationTick = elapsed;
 
         if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
-        _runtime.Update(delta, now);
+        _runtime.Update(delta, DateTimeOffset.UtcNow);
         _props.ShowBowlFilled(_runtime.Bowl.HasFood);
 
         if (!_exitRequested || _exitCompleted) return;
 
-        var timedOut = now - _exitStartedUtc > ExitSafetyTimeout;
+        var timedOut = elapsed - _exitStarted > ExitSafetyTimeout;
         var offScreen = _runtime.IsExitAnimationComplete && !_motion.IsMoving;
 
         if (!offScreen && !timedOut) return;
@@ -260,6 +265,14 @@ public sealed class PetSession : IDisposable
             : "Exit animation completed; the pet reached the screen edge.");
 
         ExitAnimationCompleted?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static TimeSpan Timestamp() => Stopwatch.GetElapsedTime(0, Stopwatch.GetTimestamp());
+
+    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+    {
+        if (e.Mode is PowerModes.Suspend) _clock.Suspend(Timestamp());
+        else if (e.Mode is PowerModes.Resume) _clock.Resume(Timestamp());
     }
 
     private void OnBehaviorTransition(object? sender, BehaviorTransition transition)
