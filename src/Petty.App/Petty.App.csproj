@@ -30,23 +30,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\..\assets\sprites\cat-orange-white.png"
-             Link="Assets\Sprites\cat-orange-white.png"
-             CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\assets\sprites\cat-orange-white.json"
-             Link="Assets\Sprites\cat-orange-white.json"
-             CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\assets\sprites\tray-cat.png"
-             Link="Assets\Sprites\tray-cat.png"
-             CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\assets\sprites\bowl-empty.png"
-             Link="Assets\Sprites\bowl-empty.png"
-             CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\assets\sprites\bowl-full.png"
-             Link="Assets\Sprites\bowl-full.png"
-             CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\assets\sprites\ball.png"
-             Link="Assets\Sprites\ball.png"
+    <Content Include="..\..\assets\sprites\*.png;..\..\assets\sprites\*.json"
+             Exclude="..\..\assets\sprites\catalog.json"
+             Link="Assets\Sprites\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

@@ -13,10 +13,11 @@ public partial class SettingsWindow : Window
     private static readonly Brush ErrorBrush = new SolidColorBrush(Color.FromRgb(0xB0, 0x00, 0x20));
     private static readonly Brush OkBrush = new SolidColorBrush(Color.FromRgb(0x2E, 0x6B, 0x2E));
 
-    public SettingsWindow(string petName)
+    public SettingsWindow(string petName, string breed, string appearance)
     {
         InitializeComponent();
         NameBox.Text = petName;
+        AppearanceText.Text = $"Breed: {breed}     Appearance: {appearance}";
         Loaded += (_, _) => NameBox.SelectAll();
     }
 

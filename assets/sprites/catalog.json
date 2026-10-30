@@ -1,0 +1,8 @@
+[
+  {
+    "id": "cat-orange-white",
+    "breed": "cat",
+    "coat": "orange-white-01",
+    "palette": ["2B1A12", "E8892B", "C56A1D", "FFF3DC", "E9D8B9", "E77C7C", "8FA6C4"]
+  }
+]

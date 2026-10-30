@@ -19,13 +19,13 @@ public class BowlPlacementTests
     private static readonly DisplayInfo[] Displays = [Primary, Secondary];
 
     [Fact]
-    public void RelativePositionIsResolvedOnTheSavedDisplay()
+    public void SecondarySavedDisplayIsRelocatedToPrimary()
     {
         var resolved = BowlPlacement.Resolve(new BowlPlacementState(0.5, 100, "DISPLAY2"), Displays, 64, 64);
 
-        Assert.Equal("DISPLAY2", resolved.DisplayDeviceName);
-        Assert.Equal(-1280 + (0.5 * (1280 - 64)), resolved.Left, 3);
-        Assert.Equal(984 - 64 - 100, resolved.Top, 3);
+        Assert.Equal("DISPLAY1", resolved.DisplayDeviceName);
+        Assert.Equal(0.5 * (1920 - 64), resolved.Left, 3);
+        Assert.Equal(1040 - 64 - 100, resolved.Top, 3);
     }
 
     [Fact]
@@ -70,13 +70,13 @@ public class BowlPlacementTests
     }
 
     [Fact]
-    public void CaptureOnSecondaryMonitorUsesThatMonitor()
+    public void CaptureOnSecondaryMonitorClampsToPrimary()
     {
         var captured = BowlPlacement.Capture(-1000, 500, 64, 64, Displays);
         var resolved = BowlPlacement.Resolve(captured, Displays, 64, 64);
 
-        Assert.Equal("DISPLAY2", captured.DisplayDeviceName);
-        Assert.Equal(-1000, resolved.Left, 3);
+        Assert.Equal("DISPLAY1", captured.DisplayDeviceName);
+        Assert.InRange(resolved.Left, Primary.WorkArea.X, Primary.WorkArea.Right - 64);
     }
 
     [Fact]

@@ -67,20 +67,20 @@ public class SpriteAssetFileTests
     }
 
     [Fact]
-    public void ExtractedFramesExistAndAreTransparentCells()
+    public void CatalogVariantsHaveValidAtlases()
     {
-        var metadata = LoadMetadata();
-        var framesDirectory = Path.Combine(SpriteDirectory, "frames");
-        Assert.True(Directory.Exists(framesDirectory), $"Missing frames directory: {framesDirectory}");
-
-        var files = Directory.GetFiles(framesDirectory, "*.png");
-        Assert.Equal(48, files.Length);
-
-        foreach (var file in files)
+        using var catalog = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(SpriteDirectory, "catalog.json")));
+        foreach (var variant in catalog.RootElement.EnumerateArray())
         {
-            var header = ReadPngHeader(file);
-            Assert.Equal(metadata.FrameWidth, header.Width);
-            Assert.Equal(metadata.FrameHeight, header.Height);
+            var id = variant.GetProperty("id").GetString()!;
+            var metadata = System.Text.Json.JsonSerializer.Deserialize<SpriteSheetMetadata>(
+                File.ReadAllText(Path.Combine(SpriteDirectory, id + ".json")),
+                new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+            Assert.Equal(id, metadata.Character);
+            Assert.Empty(SpriteMetadataValidator.Validate(metadata));
+            var header = ReadPngHeader(Path.Combine(SpriteDirectory, metadata.Image));
+            Assert.Equal(metadata.Columns * metadata.FrameWidth, header.Width);
+            Assert.Equal(metadata.Rows * metadata.FrameHeight, header.Height);
             Assert.Equal(6, header.ColorType);
         }
     }

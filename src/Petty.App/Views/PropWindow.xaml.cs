@@ -4,6 +4,7 @@ using System.Windows.Media;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
 using Petty.Core.Diagnostics;
+using Petty.Core.Domain;
 
 namespace Petty.App.Views;
 
@@ -73,6 +74,8 @@ public partial class PropWindow : Window
 
     /// <summary>True while the user holds the prop; the session must not move it then.</summary>
     public bool IsDragging => _dragging;
+
+    public ScreenRect? DragBounds { get; set; }
 
     public (int Left, int Top, int Width, int Height) ScreenRect
     {
@@ -176,9 +179,17 @@ public partial class PropWindow : Window
                 var deltaY = move.Y - _pressCursorY;
                 if (!_dragging && Math.Max(Math.Abs(deltaX), Math.Abs(deltaY)) >= DragThreshold) _dragging = true;
 
-                // Free drag anywhere on the desktop; the session drops it back onto the
-                // floor line (and persists the horizontal position) on release.
-                if (_dragging) PlaceAt(_pressLeft + deltaX, _pressTop + deltaY);
+                if (_dragging)
+                {
+                    var x = (double)(_pressLeft + deltaX);
+                    var y = (double)(_pressTop + deltaY);
+                    if (DragBounds is { } bounds)
+                    {
+                        x = Math.Clamp(x, bounds.X, Math.Max(bounds.X, bounds.Right - _physicalWidth));
+                        y = Math.Clamp(y, bounds.Y, Math.Max(bounds.Y, bounds.Bottom - _physicalHeight));
+                    }
+                    PlaceAt(x, y);
+                }
                 handled = true;
                 break;
 

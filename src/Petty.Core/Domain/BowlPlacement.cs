@@ -23,8 +23,7 @@ public sealed record ResolvedBowlPosition(double Left, double Top, string Displa
 
 /// <summary>
 /// Resolves the bowl position from monitor-relative data so it survives resolution,
-/// DPI and monitor-arrangement changes. If the saved monitor no longer exists the
-/// bowl falls back to the primary monitor and is clamped into its work area.
+/// DPI and monitor-arrangement changes. The bowl always uses the primary monitor.
 /// </summary>
 public static class BowlPlacement
 {
@@ -40,7 +39,7 @@ public static class BowlPlacement
         if (displays is null || displays.Count == 0)
             throw new ArgumentException("At least one display is required.", nameof(displays));
 
-        var display = FindDisplay(placement.DisplayDeviceName, displays);
+        var display = Primary(displays);
         var area = display.UsableArea;
 
         var width = Math.Max(0, Math.Min(bowlWidth, area.Width));
@@ -74,9 +73,7 @@ public static class BowlPlacement
         if (displays is null || displays.Count == 0)
             throw new ArgumentException("At least one display is required.", nameof(displays));
 
-        var display = displays.FirstOrDefault(d => Contains(d.UsableArea, left, top))
-                      ?? displays.FirstOrDefault(d => d.IsPrimary)
-                      ?? displays[0];
+        var display = Primary(displays);
         var area = display.UsableArea;
 
         var width = Math.Max(0, Math.Min(bowlWidth, area.Width));
@@ -93,18 +90,6 @@ public static class BowlPlacement
             display.DeviceName);
     }
 
-    public static DisplayInfo FindDisplay(string? deviceName, IReadOnlyList<DisplayInfo> displays)
-    {
-        if (!string.IsNullOrWhiteSpace(deviceName))
-        {
-            var match = displays.FirstOrDefault(d =>
-                string.Equals(d.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase));
-            if (match is not null) return match;
-        }
-
-        return displays.FirstOrDefault(d => d.IsPrimary) ?? displays[0];
-    }
-
-    private static bool Contains(ScreenRect area, double x, double y) =>
-        x >= area.X && x < area.Right && y >= area.Y && y < area.Bottom;
+    private static DisplayInfo Primary(IReadOnlyList<DisplayInfo> displays) =>
+        displays.FirstOrDefault(d => d.IsPrimary) ?? displays[0];
 }

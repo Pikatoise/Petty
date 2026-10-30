@@ -28,6 +28,7 @@ public partial class App: Application
     private AppOptions _options = new();
     private PetPaths? _paths;
     private string? _assetDirectory;
+    private IReadOnlyList<SpriteVariant> _variants = Array.Empty<SpriteVariant>();
     private IReadOnlyList<DisplayInfo> _displayLayout = Array.Empty<DisplayInfo>();
     private FileAppLog? _log;
     private PetStateStore? _store;
@@ -135,15 +136,16 @@ public partial class App: Application
         var load = _store.Load();
         _log!.Info($"State: {load.Status}. {load.Message}".TrimEnd());
 
-        var assetDirectory = SpriteAssetLocator.FindDirectory()
+        if (load.Status is LoadStatus.UnsupportedVersion)
+            throw new InvalidOperationException(
+                $"{load.Message} Update Petty to a compatible version. The saved state was left unchanged.");
+
+        var assetDirectory = SpriteAssetLocator.FindDirectory(PetCatalog.DefaultAssetId)
             ?? throw new FileNotFoundException(
-                "The cat sprite atlas was not found. Expected 'Assets/Sprites/cat-orange-white.json' " +
-                "next to the application, or the repository's 'assets/sprites' folder.");
+                "The bundled sprite assets were not found. Restore the assets or regenerate the sprites.");
 
         _assetDirectory = assetDirectory;
-        _sheet = SpriteSheetLoader.Load(assetDirectory);
-        _log.Info($"Loaded '{_sheet.Metadata.Character}': {_sheet.Clips.Count} clips, " +
-                  $"{_sheet.FrameWidth}x{_sheet.FrameHeight} frames, ground row {_sheet.GroundRow}.");
+        _variants = SpriteAssetLocator.Discover(Path.Combine(_paths.DataDirectory, "sprites"), message => _log.Warn(message));
 
         _displayLayout = _displayService.GetDisplays();
 
@@ -151,13 +153,19 @@ public partial class App: Application
 
         if (load.Snapshot is not null)
         {
+            var variant = _variants.FirstOrDefault(v => v.AssetId == load.Snapshot.AssetId)
+                ?? throw new FileNotFoundException($"The saved appearance '{load.Snapshot.AssetId}' was not found. Restore its sprite files and restart Petty.");
+            _sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
             _stateWasPersisted = true;
             runtime = PetRuntime.Restore(load.Snapshot, tuning, now);
             _log.Info($"Restored '{runtime.Snapshot.PetName}' (satiety {runtime.Needs.Satiety:F0}, happiness {runtime.Needs.Happiness:F0}).");
         }
         else if (_options.CreateName is { } createName)
         {
-            runtime = CreatePet(createName, tuning);
+            var variant = _variants.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId)
+                ?? _variants.FirstOrDefault() ?? throw new FileNotFoundException("No valid sprite definitions were found.");
+            _sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
+            runtime = CreatePet(createName, tuning, variant);
             _log.Info($"Created '{runtime.Snapshot.PetName}' from --create-name.");
         }
         else
@@ -166,7 +174,7 @@ public partial class App: Application
                 ? $"{(load.Message ?? "The saved pet could not be read.").TrimEnd()} A new pet will be created."
                 : null;
 
-            var wizard = new CreationWizardWindow(_sheet, firstRun: true, PetNameRules.DefaultName, warning);
+            var wizard = new CreationWizardWindow(_variants, firstRun: true, PetNameRules.DefaultName, warning);
             if (wizard.ShowDialog() != true)
             {
                 _log.Info("Pet creation was cancelled; exiting.");
@@ -174,8 +182,12 @@ public partial class App: Application
                 return;
             }
 
-            runtime = CreatePet(wizard.ConfirmedName, tuning);
+            _sheet = wizard.SelectedSheet!;
+            runtime = CreatePet(wizard.ConfirmedName, tuning, wizard.SelectedVariant!);
         }
+
+        _log.Info($"Loaded '{_sheet.Metadata.Character}': {_sheet.Clips.Count} clips, " +
+                  $"{_sheet.FrameWidth}x{_sheet.FrameHeight} frames, ground row {_sheet.GroundRow}.");
 
         StartSession(runtime, tuning);
 
@@ -197,9 +209,12 @@ public partial class App: Application
     }
 
     /// <summary>Creates and immediately persists a pet, so autosave has a file to update.</summary>
-    private PetRuntime CreatePet(string name, PetTuning tuning)
+    private PetRuntime CreatePet(string name, PetTuning tuning, SpriteVariant variant)
     {
         var runtime = PetRuntime.CreateNew(name, tuning, DateTimeOffset.UtcNow);
+        runtime.Snapshot.AssetId = variant.AssetId;
+        runtime.Snapshot.BreedId = variant.BreedId;
+        runtime.Snapshot.CoatId = variant.CoatId;
         _stateWasPersisted = true;
 
         try
@@ -288,7 +303,9 @@ public partial class App: Application
             return;
         }
 
-        _settings = new SettingsWindow(_runtime.Snapshot.PetName);
+        var appearance = _variants.FirstOrDefault(v => v.AssetId == _runtime.Snapshot.AssetId)?.DisplayName
+            ?? _runtime.Snapshot.CoatId;
+        _settings = new SettingsWindow(_runtime.Snapshot.PetName, _runtime.Snapshot.BreedId, appearance);
         _settings.RenameRequested += OnRenameRequested;
         _settings.NewPetRequested += OnNewPetRequested;
         _settings.Closed += (_, _) => _settings = null;
@@ -311,10 +328,19 @@ public partial class App: Application
 
         if (_sheet is null || _tuning is not { } tuning) return;
 
-        var wizard = new CreationWizardWindow(_sheet, firstRun: false, PetNameRules.DefaultName, warning: null);
+        _variants = SpriteAssetLocator.Discover(Path.Combine(_paths!.DataDirectory, "sprites"), message => _log!.Warn(message));
+        var wizard = new CreationWizardWindow(_variants, firstRun: false, PetNameRules.DefaultName, warning: null, _sheet);
         if (wizard.ShowDialog() != true) return;
 
-        var runtime = CreatePet(wizard.ConfirmedName, tuning);
+        if (!ReferenceEquals(_sheet, wizard.SelectedSheet))
+        {
+            _session?.Dispose();
+            _session = null;
+            _window?.Close();
+            _window = null;
+            _sheet = wizard.SelectedSheet;
+        }
+        var runtime = CreatePet(wizard.ConfirmedName, tuning, wizard.SelectedVariant!);
         StartSession(runtime, tuning);
         _log?.Info($"Recreated the pet as '{runtime.Snapshot.PetName}'.");
     }

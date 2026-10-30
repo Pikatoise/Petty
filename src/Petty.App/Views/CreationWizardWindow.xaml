@@ -25,19 +25,19 @@
 
         <StackPanel Grid.Column="1" Margin="16,0,0,0">
             <TextBlock x:Name="HeaderText" Text="Welcome to Petty" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="A small pixel cat for your desktop."
+            <TextBlock Text="A small pixel pet for your desktop."
                        Foreground="#6B6258"
                        Margin="0,2,0,12"
                        TextWrapping="Wrap" />
 
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Breed:" Width="56" />
-                <TextBlock Text="Cat" FontWeight="SemiBold" />
+                <TextBlock x:Name="BreedText" FontWeight="SemiBold" />
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                <TextBlock Text="Coat:" Width="56" />
-                <TextBlock Text="Orange &amp; white (only coat)" VerticalAlignment="Center" />
+                <TextBlock Text="Coat:" Width="56" VerticalAlignment="Center" />
+                <ComboBox x:Name="CoatSelector" Width="190" SelectionChanged="OnCoatChanged" />
             </StackPanel>
             <Button Content="Generate coat"
                     Click="OnGenerateCoat"

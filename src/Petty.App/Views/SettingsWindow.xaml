@@ -13,7 +13,7 @@
         <TextBox x:Name="NameBox" MaxLength="24" Padding="4,2" Margin="0,4,0,0" />
         <TextBlock x:Name="StatusText" MinHeight="18" Margin="0,3,0,0" TextWrapping="Wrap" />
 
-        <TextBlock Text="Breed: Cat     Coat: Orange &amp; white"
+        <TextBlock x:Name="AppearanceText"
                    Foreground="#6B6258"
                    Margin="0,8,0,0" />
 

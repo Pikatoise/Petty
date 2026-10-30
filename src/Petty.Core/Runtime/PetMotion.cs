@@ -56,14 +56,14 @@ public sealed class PetMotion
         Stop();
     }
 
-    /// <summary>Walks in from outside the left edge and stops about a third into the area.</summary>
+    /// <summary>Walks in from the left edge and stops about a third into the area.</summary>
     public void Enter(MotionArea area, double windowWidth)
     {
-        X = area.Left - windowWidth;
+        X = area.Left;
         Facing = 1;
 
         var travel = Math.Clamp(area.Width * 0.3, 120, 360);
-        MoveTo(area.Left + travel, EnterSpeed);
+        MoveTo(Math.Min(area.Right, area.Left + travel), EnterSpeed);
     }
 
     /// <summary>
@@ -121,12 +121,12 @@ public sealed class PetMotion
 
     public void Seek(double targetX, double speed = WalkSpeed) => MoveTo(targetX, speed);
 
-    /// <summary>Heads for the nearest (or the requested) screen edge and keeps going off-screen.</summary>
+    /// <summary>Heads for the nearest (or the requested) screen edge.</summary>
     public void Exit(MotionArea area, double windowWidth, int? direction = null)
     {
         var midpoint = area.Left + (area.Width / 2);
         var sign = direction ?? (X + (windowWidth / 2) >= midpoint ? 1 : -1);
-        var target = sign > 0 ? area.Right + windowWidth : area.Left - windowWidth;
+        var target = sign > 0 ? area.Right : area.Left;
         MoveTo(target, ExitSpeed);
     }
 
@@ -152,14 +152,14 @@ public sealed class PetMotion
         HasTarget = false;
     }
 
-    /// <summary>Keeps the pet inside a changed display area without teleporting an active walk.</summary>
+    /// <summary>Keeps the pet and its target inside a changed display area.</summary>
     public void KeepInside(MotionArea area)
     {
         var left = Math.Min(area.Left, area.Right);
         var right = Math.Max(area.Left, area.Right);
 
         _targetX = Math.Clamp(_targetX, left, right);
-        if (!HasTarget) X = Math.Clamp(X, left, right);
+        X = Math.Clamp(X, left, right);
     }
 
     /// <summary>Advances the position. Returns true when the pet actually moved.</summary>

@@ -107,7 +107,7 @@ monitor's DPI. Input handling lives in each window's `WndProc`:
 - cat: opaque pixel click = user interaction, hover shows the Play chip (chip input is
   enabled only while it is visible and is suppressed during `Playing`);
 - bowl: opaque pixel press counts as a click (+25 food) unless the pointer moves 4 px, which
-  turns it into a free two-axis drag; on release the session drops it back onto the floor and
+  turns it into a two-axis drag within the primary work area; on release the session drops it back onto the floor and
   persists the horizontal position only;
 - ball: always click-through.
 
@@ -116,7 +116,8 @@ monitor's DPI. Input handling lives in each window's `WndProc`:
 `PetSnapshot` is the versioned state (`schemaVersion` 1, camelCase JSON): name, breed, coat,
 asset id, satiety, happiness, `lastUpdatedUtc`, bowl food and the bowl's monitor-relative x
 with the display device name. `PetStateStore` writes atomically (temp file + replace) and
-keeps a `.bak`; loading tolerates missing, malformed or newer files and reports what it did.
+keeps a `.bak`; loading recovers missing or malformed files from a valid backup. Newer
+unsupported versions stop startup and are preserved, including when found in the backup.
 Offline time is applied from `lastUpdatedUtc`, clamped to `MaxOfflineSpan` (7 days), with
 negative or invalid timestamps treated as no elapsed time. Saves happen on create, rename,
 feed, eat, play, bowl drop, every 2 minutes and on shutdown.
@@ -124,8 +125,8 @@ feed, eat, play, bowl drop, every 2 minutes and on shutdown.
 ## Sprite pipeline
 
 `Petty.Assets` is a deterministic pixel renderer, not an image model: `CatSpriteRenderer` +
-`Animations` + `Palette` produce the 512×384 atlas (8×6 cells of 64×64), `AtlasWriter`
-writes the PNG, the JSON metadata, the individual frames and 2× previews, and
+`Animations` + catalog palettes produce each 512×384 atlas (8×6 cells of 64×64), `AtlasWriter`
+writes the PNG and JSON metadata, and
 `PropSpriteBuilder` draws `bowl-empty`, `bowl-full`, `ball` and the tray icon. `AssetValidator`
 re-decodes the result and fails on wrong size, semi-transparent or off-palette pixels, empty
 frames, a broken ground line, a bad walk loop or invalid metadata. The app's

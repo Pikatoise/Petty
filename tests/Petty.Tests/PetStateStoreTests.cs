@@ -117,6 +117,33 @@ public sealed class PetStateStoreTests : IDisposable
     }
 
     [Fact]
+    public void NewerSchemaIsPreservedEvenWithValidBackupAndChangedFieldTypes()
+    {
+        var store = new PetStateStore(_path);
+        store.Save(Sample("Backup"));
+        File.Copy(_path, store.BackupPath);
+        const string future = "{ \"schemaVersion\": 99, \"petName\": { } }";
+        File.WriteAllText(_path, future);
+
+        Assert.Equal(LoadStatus.UnsupportedVersion, store.Load().Status);
+        Assert.Throws<InvalidOperationException>(() => store.Save(Sample()));
+        Assert.Equal(future, File.ReadAllText(_path));
+        Assert.Equal("Backup", new PetStateStore(store.BackupPath).Load().Snapshot!.PetName);
+    }
+
+    [Fact]
+    public void UnsupportedBackupIsPreservedWhenPrimaryIsMissing()
+    {
+        var store = new PetStateStore(_path);
+        const string future = "{ \"schemaVersion\": 99 }";
+        File.WriteAllText(store.BackupPath, future);
+
+        Assert.Equal(LoadStatus.UnsupportedVersion, store.Load().Status);
+        Assert.Throws<InvalidOperationException>(() => store.Save(Sample()));
+        Assert.Equal(future, File.ReadAllText(store.BackupPath));
+    }
+
+    [Fact]
     public void InvalidValuesAreRepairedOnLoad()
     {
         File.WriteAllText(_path, """

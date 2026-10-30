@@ -70,11 +70,17 @@ public sealed class PetStateStore
             if (outcome is ReadOutcome.Ok)
                 return new LoadResult(LoadStatus.Loaded, snapshot, null);
 
+            if (outcome is ReadOutcome.Unsupported)
+                return new LoadResult(LoadStatus.UnsupportedVersion, null, error);
+
             if (outcome is ReadOutcome.NotFound && !File.Exists(BackupPath))
                 return LoadResult.Missing();
 
-            if (TryRead(BackupPath, out var backup, out _) is ReadOutcome.Ok)
+            var backupOutcome = TryRead(BackupPath, out var backup, out var backupError);
+            if (backupOutcome is ReadOutcome.Ok)
                 return new LoadResult(LoadStatus.RecoveredFromBackup, backup, error + " Restored the backup instead.");
+            if (backupOutcome is ReadOutcome.Unsupported)
+                return new LoadResult(LoadStatus.UnsupportedVersion, null, backupError);
 
             return outcome switch
             {
@@ -91,6 +97,11 @@ public sealed class PetStateStore
 
         lock (_gate)
         {
+            // File.Replace also overwrites the backup, so protect both copies.
+            foreach (var path in new[] { FilePath, BackupPath })
+                if (TryRead(path, out _, out var error) is ReadOutcome.Unsupported)
+                    throw new InvalidOperationException(error);
+
             var directory = Path.GetDirectoryName(FilePath);
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
 
@@ -142,6 +153,20 @@ public sealed class PetStateStore
         try
         {
             var json = File.ReadAllText(path);
+            // Inspect the version before deserializing: future schemas may change field types.
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in document.RootElement.EnumerateObject())
+                {
+                    if (property.Name.Equals("schemaVersion", StringComparison.OrdinalIgnoreCase) &&
+                        property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetDouble(out var version) && version > PetSnapshot.CurrentSchemaVersion)
+                    {
+                        error = $"State file schema v{version} is newer than supported v{PetSnapshot.CurrentSchemaVersion}.";
+                        return ReadOutcome.Unsupported;
+                    }
+                }
+            }
             var parsed = JsonSerializer.Deserialize<PetSnapshot>(json, JsonOptions);
 
             if (parsed is null)

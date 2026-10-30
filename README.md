@@ -1,9 +1,5 @@
 <p align="center">
-  <img src="assets/sprites/frames/idle_00.png" width="96" alt="Petty стоит">
-  <img src="assets/sprites/frames/walk_02.png" width="96" alt="Petty идёт">
-  <img src="assets/sprites/frames/eat_02.png" width="96" alt="Petty ест">
-  <img src="assets/sprites/frames/play_03.png" width="96" alt="Petty играет">
-  <img src="assets/sprites/frames/sleep_01.png" width="96" alt="Petty спит">
+  <img src="assets/sprites/cat-orange-white.png" width="512" alt="Кадры анимации Petty">
 </p>
 
 <h1 align="center">Petty</h1>

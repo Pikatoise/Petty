@@ -19,20 +19,17 @@ public static class AtlasBuilder
 {
     public const int Columns = 8;
     public const int Rows = 6;
-    public const string CharacterId = "cat-orange-white";
-    public const string ImageName = "cat-orange-white.png";
-    public const string MetadataName = "cat-orange-white.json";
-
-    public static AtlasBuildResult Build()
+    public static AtlasBuildResult Build(Variant variant)
     {
         var definitions = Animations.CreateAll();
         var frameSize = CatSpriteRenderer.FrameSize;
         var atlas = new PixelCanvas(Columns * frameSize, Rows * frameSize);
+        var colors = variant.Colors;
 
         var metadata = new SpriteSheetMetadata
         {
-            Character = CharacterId,
-            Image = ImageName,
+            Character = variant.Id,
+            Image = variant.Id + ".png",
             FrameWidth = frameSize,
             FrameHeight = frameSize,
             Columns = Columns,
@@ -53,6 +50,12 @@ public static class AtlasBuilder
                     throw new InvalidOperationException($"Atlas grid is too small for animation '{definition.Name}'.");
 
                 var canvas = CatSpriteRenderer.Render(definition.Poses[i]);
+                for (var y = 0; y < canvas.Height; y++)
+                    for (var x = 0; x < canvas.Width; x++)
+                    {
+                        var index = Array.IndexOf(Palette.All, canvas[x, y]);
+                        if (index >= 0) canvas[x, y] = colors[index];
+                    }
                 var column = cell % Columns;
                 var row = cell / Columns;
                 canvas.DrawOnto(atlas, column * frameSize, row * frameSize);

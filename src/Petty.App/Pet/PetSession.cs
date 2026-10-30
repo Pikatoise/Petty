@@ -147,7 +147,7 @@ public sealed class PetSession : IDisposable
         _runtime.Behavior.StartEntering();
     }
 
-    /// <summary>Starts the animated exit; <see cref="ExitAnimationCompleted"/> fires once it is off-screen.</summary>
+    /// <summary>Starts the animated exit; <see cref="ExitAnimationCompleted"/> fires at the screen edge.</summary>
     public bool RequestExit()
     {
         if (_disposed || _exitRequested) return false;
@@ -322,7 +322,7 @@ public sealed class PetSession : IDisposable
         _exitCompleted = true;
         _log.Info(timedOut
             ? "Exit animation timed out; finishing shutdown."
-            : "Exit animation completed; the pet has left the screen.");
+            : "Exit animation completed; the pet reached the screen edge.");
 
         ExitAnimationCompleted?.Invoke(this, EventArgs.Empty);
     }
@@ -413,8 +413,7 @@ public sealed class PetSession : IDisposable
     {
         var rect = _bowl.ScreenRect;
 
-        // The user can drop the bowl anywhere on the screen; only the horizontal place is
-        // kept, and it goes back onto the floor line where the cat eats from it.
+        // Only the horizontal place is kept; the bowl returns to the floor on release.
         var placement = BowlPlacement.Capture(
             rect.Left,
             BowlFloor() - rect.Height,
@@ -528,6 +527,7 @@ public sealed class PetSession : IDisposable
         var display = _display ?? _displays.Primary(_displayLayout);
         if (display is null) return;
 
+        _bowl.DragBounds = display.UsableArea;
         _shellBar = _shellBars.Read(display);
         var visibleBar = _shellBar is { Revealed: true } bar ? bar.Rect : (ScreenRect?)null;
 
@@ -541,9 +541,11 @@ public sealed class PetSession : IDisposable
         if (force)
         {
             _floor.Snap(area.FloorY);
-            if (!_exitRequested) _motion.KeepInside(area);
+            _motion.KeepInside(area);
             ApplyPosition();
             ApplyBowlPosition();
+            if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(SeekTargetX());
+            if (_runtime.Behavior.State is PetActivity.Playing) UpdateBall();
             _log.Info(
                 $"Walk area: x {area.Left:F0}..{area.Right:F0}, floor {area.FloorY:F0} " +
                 $"(display {FormatRect(display.Bounds)}, work {FormatRect(display.UsableArea)}, " +
@@ -563,7 +565,7 @@ public sealed class PetSession : IDisposable
         if (area.Left != previous.Left || area.Right != previous.Right)
         {
             _log.Info($"Walk range changed to x {area.Left:F0}..{area.Right:F0}.");
-            if (!_exitRequested) _motion.KeepInside(area);
+            _motion.KeepInside(area);
             ApplyPosition();
         }
     }

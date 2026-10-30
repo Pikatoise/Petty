@@ -7,12 +7,12 @@ public class PetMotionTests
     private static MotionArea Area => new(Left: 0, Right: 1000, FloorY: 800);
 
     [Fact]
-    public void EnterStartsOffScreenLeftAndFacesRight()
+    public void EnterStartsAtLeftEdgeAndFacesRight()
     {
         var motion = new PetMotion();
         motion.Enter(Area, windowWidth: 192);
 
-        Assert.Equal(-192, motion.X);
+        Assert.Equal(Area.Left, motion.X);
         Assert.Equal(1, motion.Facing);
         Assert.True(motion.IsMoving);
     }
@@ -109,7 +109,7 @@ public class PetMotionTests
     }
 
     [Fact]
-    public void ExitRightLeavesTheAreaCompletely()
+    public void ExitRightReachesTheEdge()
     {
         var motion = new PetMotion(x: 700);
         motion.Exit(Area, windowWidth: 192, direction: 1);
@@ -117,7 +117,7 @@ public class PetMotionTests
         Assert.Equal(1, motion.Facing);
         for (var i = 0; i < 100; i++) motion.Update(TimeSpan.FromMilliseconds(100));
 
-        Assert.True(motion.X >= Area.Right + 192, $"expected the window to clear the edge, got {motion.X}");
+        Assert.Equal(Area.Right, motion.X);
     }
 
     [Fact]
@@ -133,14 +133,14 @@ public class PetMotionTests
     }
 
     [Fact]
-    public void ExitLeftLeavesTheAreaCompletely()
+    public void ExitLeftReachesTheEdge()
     {
         var motion = new PetMotion(x: 100);
         motion.Exit(Area, windowWidth: 192, direction: -1);
 
         for (var i = 0; i < 100; i++) motion.Update(TimeSpan.FromMilliseconds(100));
 
-        Assert.True(motion.X <= Area.Left - 192);
+        Assert.Equal(Area.Left, motion.X);
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class PetMotionTests
 
         motion.MoveTo(1200, 50);
         motion.KeepInside(new MotionArea(0, 300, 800));
-        Assert.Equal(800, motion.X); // an active walk is not teleported
+        Assert.Equal(300, motion.X); // a changed primary display must contain the pet
         Assert.Equal(300, motion.TargetX); // but it is retargeted inside
     }
 

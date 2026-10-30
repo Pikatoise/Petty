@@ -22,12 +22,12 @@ public static class AssetValidator
         "idle", "walk", "eat", "tired", "exit",
     };
 
-    public static ValidationReport ValidateDirectory(string directory)
+    public static ValidationReport ValidateDirectory(string directory, Variant variant)
     {
         var errors = new List<string>();
         var notes = new List<string>();
 
-        var metadataPath = Path.Combine(directory, AtlasBuilder.MetadataName);
+        var metadataPath = Path.Combine(directory, variant.Id + ".json");
         if (!File.Exists(metadataPath))
         {
             errors.Add($"Missing metadata file: {metadataPath}");
@@ -52,6 +52,9 @@ public static class AssetValidator
         }
 
         errors.AddRange(SpriteMetadataValidator.Validate(metadata));
+        if (metadata.Character != variant.Id || metadata.Image != variant.Id + ".png")
+            errors.Add("Metadata character or image does not match the variant ID.");
+        if (errors.Count > 0) return new ValidationReport(false, errors, notes);
 
         var imagePath = Path.Combine(directory, metadata.Image);
         if (!File.Exists(imagePath))
@@ -82,6 +85,7 @@ public static class AssetValidator
 
         var semiTransparent = 0;
         var unknownColors = new HashSet<uint>();
+        var colors = variant.Colors.ToHashSet();
 
         for (var y = 0; y < atlas.Height; y++)
         {
@@ -92,7 +96,7 @@ public static class AssetValidator
 
                 if (alpha == 0) continue;
                 if (alpha != 255) semiTransparent++;
-                if (!Palette.Set.Contains(color)) unknownColors.Add(color);
+                if (!colors.Contains(color)) unknownColors.Add(color);
             }
         }
 

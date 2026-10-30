@@ -20,6 +20,12 @@ public sealed class SpriteSheetMetadata
 {
     public string Character { get; set; } = string.Empty;
 
+    public string? BreedId { get; set; }
+
+    public string? CoatId { get; set; }
+
+    public string? DisplayName { get; set; }
+
     /// <summary>File name of the atlas PNG relative to the metadata file.</summary>
     public string Image { get; set; } = string.Empty;
 
@@ -61,6 +67,11 @@ public static class SpriteMetadataValidator
 
         if (string.IsNullOrWhiteSpace(metadata.Image)) errors.Add("Image file name is missing.");
         if (string.IsNullOrWhiteSpace(metadata.Character)) errors.Add("Character id is missing.");
+        if (metadata.Animations is null || metadata.Animations.Any(clip => clip is null))
+        {
+            errors.Add("Animation clips are missing or invalid.");
+            return errors;
+        }
 
         if (metadata.FrameWidth is < MinFrameSize or > MaxFrameSize)
             errors.Add($"FrameWidth {metadata.FrameWidth} must be between {MinFrameSize} and {MaxFrameSize}.");

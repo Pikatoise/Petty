@@ -50,12 +50,29 @@ or, with the helper script:
 ./scripts/generate-assets.ps1
 ```
 
-This rewrites the atlas, the metadata, all 48 individual frames in `frames/`, and the
-2x previews in `preview/`. To check the existing files without regenerating:
+The catalog in `catalog.json` lists each variant's stable ID, breed, coat and seven RGB
+palette colours in the order outline, coat, coat shadow, cream, cream shadow, pink, extra.
+Add an entry and run the generator to create its atlas and metadata. The same animations
+are shared by all entries. The saved state's `assetId` selects the atlas at runtime.
+For hand-made art, set `source` to a directory under `assets/sprites` containing
+`<id>.png` and `<id>.json`; its metadata must identify that ID and PNG. These source
+files are preserved, copied unchanged and validated instead of being rendered.
+The app never generates assets. The generator validates outputs and reuses valid files;
+missing or invalid output is regenerated. Pass `--regenerate` to explicitly rebuild all assets
+after changing the renderer or catalog.
+Only atlases, metadata and shared props/icons are generated. To validate without writing:
 
 ```powershell
 dotnet run --project src/Petty.Assets -c Release -- --verify
 ```
+
+## Runtime variants
+
+Bundled variants use `assets/sprites/<asset-id>.json` and the image named in that
+metadata. Custom variants use the same convention in `<data-dir>/sprites/` and take
+precedence over bundled variants with the same ID. IDs contain ASCII letters, digits and
+hyphens; metadata `character` must match the filename ID. Optional metadata fields
+`breedId`, `coatId` and `displayName` label the variant in the creation wizard.
 
 ## Validation
 
@@ -69,4 +86,4 @@ The generator re-decodes the written PNG and fails the run if any of these break
 - metadata is invalid (missing clip, overlapping clips, frames outside the grid).
 
 Automated tests additionally verify the shipped metadata, the PNG header (real RGBA),
-frame counts and the extracted frames (`tests/Petty.Tests/SpriteAssetFileTests.cs`).
+and frame counts (`tests/Petty.Tests/SpriteAssetFileTests.cs`).

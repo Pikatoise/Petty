@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Petty.Core.Assets;
+using Petty.Core.Domain;
 
 namespace Petty.App.Sprites;
 
@@ -10,16 +11,61 @@ namespace Petty.App.Sprites;
 /// Locates the shipped atlas both in a build output (<c>Assets/Sprites</c>) and in
 /// a developer checkout (<c>assets/sprites</c> relative to the repository root).
 /// </summary>
+public sealed record SpriteVariant(string AssetId, string BreedId, string CoatId, string DisplayName, string Directory)
+{
+    public override string ToString() => DisplayName;
+}
+
 public static class SpriteAssetLocator
 {
-    public const string MetadataFileName = "cat-orange-white.json";
-    public const string ImageFileName = "cat-orange-white.png";
-
-    public static string? FindDirectory()
+    /// <summary>Discover metadata in the optional user directory and bundled sprite directory.
+    /// User assets take precedence when IDs match; atlas images are decoded only on selection.</summary>
+    public static IReadOnlyList<SpriteVariant> Discover(string? customDirectory = null, Action<string>? reportProblem = null)
     {
+        var variants = new Dictionary<string, SpriteVariant>(StringComparer.OrdinalIgnoreCase);
+        var directories = customDirectory is null ? Candidates() : new[] { customDirectory }.Concat(Candidates());
+        foreach (var directory in directories.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!Directory.Exists(directory)) continue;
+            foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
+            {
+                var id = Path.GetFileNameWithoutExtension(path);
+                if (id.Equals("catalog", StringComparison.OrdinalIgnoreCase) || !IsValidId(id) || variants.ContainsKey(id)) continue;
+                try
+                {
+                    var metadata = JsonSerializer.Deserialize<SpriteSheetMetadata>(File.ReadAllText(path),
+                        new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    if (metadata is null || metadata.Character != id ||
+                        SpriteMetadataValidator.Validate(metadata).Count != 0 ||
+                        Path.GetFileName(metadata.Image) != metadata.Image ||
+                        !File.Exists(Path.Combine(directory, metadata.Image)))
+                    {
+                        reportProblem?.Invoke($"Invalid sprite definition: {path}");
+                        continue;
+                    }
+                    var breed = metadata.BreedId ?? PetCatalog.DefaultBreedId;
+                    var coat = metadata.CoatId ?? (id == PetCatalog.DefaultAssetId ? PetCatalog.DefaultCoatId : id);
+                    variants.Add(id, new SpriteVariant(id, breed, coat, string.IsNullOrWhiteSpace(metadata.DisplayName) ? id.Replace('-', ' ') : metadata.DisplayName, directory));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+                {
+                    reportProblem?.Invoke($"Could not read sprite definition {path}: {ex.Message}");
+                }
+            }
+        }
+        return variants.Values.OrderBy(v => v.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToArray();
+    }
+
+    private static bool IsValidId(string id) =>
+        !string.IsNullOrEmpty(id) && id.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
+
+    public static string? FindDirectory(string assetId)
+    {
+        if (string.IsNullOrEmpty(assetId) || assetId.Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '-')))
+            throw new InvalidDataException("Invalid sprite asset ID.");
         foreach (var candidate in Candidates())
         {
-            if (IsValid(candidate)) return candidate;
+            if (File.Exists(Path.Combine(candidate, assetId + ".json"))) return candidate;
         }
 
         return null;
@@ -38,9 +84,6 @@ public static class SpriteAssetLocator
         }
     }
 
-    private static bool IsValid(string directory) =>
-        File.Exists(Path.Combine(directory, MetadataFileName)) &&
-        File.Exists(Path.Combine(directory, ImageFileName));
 }
 
 public static class SpriteSheetLoader
@@ -50,13 +93,17 @@ public static class SpriteSheetLoader
         PropertyNameCaseInsensitive = true,
     };
 
-    public static SpriteSheet Load(string directory)
+    public static SpriteSheet Load(string directory, string assetId)
     {
-        var metadataPath = Path.Combine(directory, SpriteAssetLocator.MetadataFileName);
+        if (string.IsNullOrEmpty(assetId) || assetId.Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '-')))
+            throw new InvalidDataException("Invalid sprite asset ID.");
+        var metadataPath = Path.Combine(directory, assetId + ".json");
         var metadata = JsonSerializer.Deserialize<SpriteSheetMetadata>(File.ReadAllText(metadataPath), JsonOptions)
                        ?? throw new InvalidDataException($"Sprite metadata '{metadataPath}' is empty.");
 
         var errors = SpriteMetadataValidator.Validate(metadata);
+        if (metadata.Character != assetId || Path.GetFileName(metadata.Image) != metadata.Image)
+            throw new InvalidDataException("Sprite metadata has an invalid character or image path.");
         if (errors.Count > 0)
         {
             throw new InvalidDataException(
