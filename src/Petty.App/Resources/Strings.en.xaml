@@ -7,6 +7,7 @@
     <sys:String x:Key="Save">Save</sys:String>
     <sys:String x:Key="Close">Close</sys:String>
     <sys:String x:Key="NameSaved">Name saved.</sys:String>
+    <sys:String x:Key="PetSaveError">Could not save the pet. Check access to the data folder and try again. Details are in petty.log.</sys:String>
     <sys:String x:Key="NameInvalid">Enter a name of 1–24 characters without control characters.</sys:String>
     <sys:String x:Key="AppearanceFormat">Species: {0} · Breed: {1}</sys:String>
     <sys:String x:Key="ConfirmNew">Create a new pet? This replaces the current pet and its saved state.</sys:String>

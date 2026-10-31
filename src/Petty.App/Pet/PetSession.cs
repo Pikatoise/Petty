@@ -213,7 +213,7 @@ public sealed class PetSession: IDisposable
     public void RestoreShell()
     {
         if (_disposed) return;
-        _menu?.Hide();
+        HideInteractionMenu();
         _menu?.Attach(_window.Attachment.Mode, _window.Handle);
         ApplySurfaceChange(_surface.Poll());
     }

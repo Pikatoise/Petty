@@ -86,7 +86,7 @@ public partial class App: Application
                 initialMessage + Environment.NewLine + Environment.NewLine + ex.Message,
                 "Petty",
                 MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                MessageBoxImage.None);
             Shutdown(2);
             return;
         }
@@ -114,7 +114,7 @@ public partial class App: Application
                 Localization.Text("LogPath") + Environment.NewLine + _log.FilePath,
                 "Petty",
                 MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                MessageBoxImage.None);
             Shutdown(1);
         }
     }
@@ -211,7 +211,7 @@ public partial class App: Application
             {
                 _log.Error("The saved appearance is missing or invalid.", ex);
                 var choice = MessageBox.Show(string.Format(Localization.Text("SavedAppearanceRecovery"), load.Snapshot.AssetId),
-                    "Petty", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                    "Petty", MessageBoxButton.YesNo, MessageBoxImage.None, MessageBoxResult.No);
                 if (choice != MessageBoxResult.Yes)
                 {
                     Shutdown();
@@ -283,17 +283,9 @@ public partial class App: Application
         runtime.Snapshot.AssetId = variant.AssetId;
         runtime.Snapshot.BreedId = variant.BreedId;
         runtime.Snapshot.CoatId = variant.CoatId;
+        _store!.Save(runtime.ToSnapshot());
         _stateWasPersisted = true;
-
-        try
-        {
-            _store!.Save(runtime.ToSnapshot());
-            _log?.Info($"New pet '{runtime.Snapshot.PetName}' saved.");
-        }
-        catch (Exception ex)
-        {
-            _log?.Error("Could not save the new pet; autosave will retry.", ex);
-        }
+        _log?.Info($"New pet '{runtime.Snapshot.PetName}' saved.");
 
         return runtime;
     }
@@ -438,13 +430,19 @@ public partial class App: Application
         _settings.Activate();
     }
 
-    private void OnRenameRequested(object? sender, string name)
+    private bool OnRenameRequested(string name)
     {
-        if (_runtime is null) return;
+        if (_runtime is null) return false;
 
+        var previous = _runtime.Snapshot.PetName;
         _runtime.Snapshot.PetName = name;
+        if (!SaveState("rename"))
+        {
+            _runtime.Snapshot.PetName = previous;
+            return false;
+        }
         _log?.Info($"Renamed the pet to '{name}'.");
-        SaveState("rename");
+        return true;
     }
 
     private void OnNewPetRequested(object? sender, EventArgs e)
@@ -456,6 +454,16 @@ public partial class App: Application
         _variants = SpriteAssetLocator.Discover(Path.Combine(_paths!.DataDirectory, "sprites"), message => _log!.Warn(message));
         var wizard = new CreationWizardWindow(_variants, firstRun: false, PetNameRules.DefaultName, warning: null, _sheet);
         if (wizard.ShowDialog() != true) return;
+
+        PetRuntime runtime;
+        try { runtime = CreatePet(wizard.ConfirmedName, tuning, wizard.SelectedVariant!); }
+        catch (Exception ex)
+        {
+            _log?.Error("Could not save the replacement pet; keeping the current session.", ex);
+            ShowSettings();
+            _settings?.ShowSaveError();
+            return;
+        }
 
 #if DEBUG
         _debugWindow?.Close();
@@ -469,7 +477,6 @@ public partial class App: Application
             _window = null;
             _sheet = wizard.SelectedSheet;
         }
-        var runtime = CreatePet(wizard.ConfirmedName, tuning, wizard.SelectedVariant!);
         StartSession(runtime, tuning);
         _log?.Info($"Recreated the pet as '{runtime.Snapshot.PetName}'.");
     }
@@ -691,7 +698,7 @@ public partial class App: Application
             Localization.Text("LogPath") + Environment.NewLine + _log?.FilePath,
             "Petty",
             MessageBoxButton.OK,
-            MessageBoxImage.Error);
+            MessageBoxImage.None);
 
         FinishAndShutdown();
     }

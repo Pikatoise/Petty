@@ -74,7 +74,37 @@ internal static class Program
                     Invoke(settings, "ShowAutostartError");
                     Require(((System.Windows.Controls.TextBlock)settings.FindName("StatusText")).Text.Length > 0,
                         "Silent autostart error feedback is missing.");
-                    settings.Close();
+                    var oldStore = Get(app, "_store");
+                    var blockedPath = Path.Combine(data, "blocked-state-path");
+                    Directory.CreateDirectory(blockedPath);
+                    typeof(App).GetField("_store", PrivateInstance)!.SetValue(app, new PetStateStore(blockedPath));
+                    ((System.Windows.Controls.TextBox)settings.FindName("NameBox")).Text = "UnsavedName";
+                    Invoke(settings, "OnSave", null, new RoutedEventArgs());
+                    Require(((System.Windows.Controls.TextBlock)settings.FindName("StatusText")).Text == app.FindResource("PetSaveError") as string,
+                        "Failed rename was presented as saved.");
+                    Require(((PetRuntime)Get(app, "_runtime")!).Snapshot.PetName == "WindowsCheck", "Failed rename changed the running identity.");
+                    var oldSession = Get(app, "_session");
+                    var oldWindow = Get(app, "_window");
+                    app.Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+                    {
+                        var creator = app.Windows.OfType<CreationWizardWindow>().Single();
+                        ((System.Windows.Controls.TextBox)creator.FindName("NameBox")).Text = "Replacement";
+                        ((System.Windows.Controls.Button)creator.FindName("NextCoatButton")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+                        Invoke(creator, "OnCreate", null, new RoutedEventArgs());
+                    });
+                    Invoke(app, "OnNewPetRequested", null, EventArgs.Empty);
+                    Require(ReferenceEquals(oldSession, Get(app, "_session")) && ReferenceEquals(oldWindow, Get(app, "_window")),
+                        "Failed replacement disposed the current pet.");
+                    Require(((PetRuntime)Get(app, "_runtime")!).Snapshot.PetName == "WindowsCheck", "Failed replacement changed identity.");
+                    typeof(App).GetField("_store", PrivateInstance)!.SetValue(app, oldStore);
+                    ((SettingsWindow)Get(app, "_settings")!).Close();
+                    var session = Get(app, "_session")!;
+                    var hover = (DispatcherTimer)Get(session, "_hoverTimer")!;
+                    var menu = (InteractionMenuWindow)Get(session, "_menu")!;
+                    menu.Show();
+                    hover.Stop();
+                    session.GetType().GetMethod("RestoreShell")!.Invoke(session, null);
+                    Require(!menu.IsVisible && hover.IsEnabled, "Shell recovery did not resume hidden-menu hover detection.");
                     var tray = Get(app, "_tray")!;
                     Invoke(tray, "OnMouseUp", null, new Forms.MouseEventArgs(Forms.MouseButtons.Right, 1, 0, 0, 0));
                     Require(Get(tray, "_popup") is not null, "Tray popup did not open.");

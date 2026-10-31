@@ -95,6 +95,23 @@ public sealed class PetStateStoreTests: IDisposable
     }
 
     [Fact]
+    public void SavingRecoveredStateKeepsTheValidBackup()
+    {
+        var store = new PetStateStore(_path);
+        store.Save(Sample("Backup"));
+        store.Save(Sample("Damaged"));
+        var backup = File.ReadAllBytes(store.BackupPath);
+        File.WriteAllText(_path, "{ broken");
+        var recovered = store.Load().Snapshot!;
+
+        store.Save(recovered);
+
+        Assert.Equal(backup, File.ReadAllBytes(store.BackupPath));
+        File.WriteAllText(_path, "broken again");
+        Assert.Equal("Backup", store.Load().Snapshot!.PetName);
+    }
+
+    [Fact]
     public void MissingFilesReportMissing()
     {
         var store = new PetStateStore(_path);

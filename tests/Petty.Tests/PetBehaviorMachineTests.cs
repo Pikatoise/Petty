@@ -23,6 +23,30 @@ public class PetBehaviorMachineTests
     private static Needs HungryNotStarving => Needs.FromValues(25, 60);
 
     [Fact]
+    public void ZeroHappinessStopsWanderingUntilAnInteractionReplenishesIt()
+    {
+        var machine = new PetBehaviorMachine(new PetTuning
+        {
+            WanderMinInterval = TimeSpan.FromSeconds(1),
+            WanderMaxInterval = TimeSpan.FromSeconds(1),
+            SleepAfterIdle = TimeSpan.FromHours(1),
+            RunChance = 0
+        }, new Random(1));
+        var bowl = new Bowl(0, 100);
+        machine.Update(TimeSpan.FromSeconds(1), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Walking, machine.State);
+        machine.Update(TimeSpan.FromSeconds(1), Needs.FromValues(100, 0), bowl);
+        Assert.Equal(PetActivity.Tired, machine.State);
+        machine.Update(TimeSpan.FromSeconds(1), Needs.FromValues(100, 0), bowl);
+        Assert.Equal(PetActivity.Tired, machine.State);
+        Assert.True(machine.RequestPet());
+        machine.Update(TimeSpan.FromSeconds(4), Needs.FromValues(100, 12), bowl);
+        Assert.Equal(PetActivity.Idle, machine.State);
+        machine.Update(TimeSpan.FromSeconds(1), Needs.FromValues(100, 12), bowl);
+        Assert.Equal(PetActivity.Walking, machine.State);
+    }
+
+    [Fact]
     public void EnteringBecomesIdleAfterEnterDuration()
     {
         var machine = new PetBehaviorMachine(Tuning(), new Random(1));

@@ -151,28 +151,22 @@ public sealed class PetBehaviorMachine
 
             case PetActivity.Tired:
                 if (needs.IsHungry(_tuning) && bowl.HasFood) MoveTo(PetActivity.SeekingFood, "hungry");
-                else if (needs.Satiety > _tuning.TiredThreshold + 10) MoveTo(PetActivity.Idle, "recovered");
+                else if (needs.Satiety > _tuning.TiredThreshold + 10 && needs.Happiness > Needs.Minimum) MoveTo(PetActivity.Idle, "recovered");
                 else TrySleep(delta);
                 break;
 
             case PetActivity.Walking:
-                if (HungerOverride(needs, bowl)) break;
+                if (NeedsOverride(needs, bowl)) break;
                 if (_stateElapsed >= _tuning.WalkDuration) MoveTo(PetActivity.Idle, "walk-done");
                 break;
 
             case PetActivity.Running:
-                if (HungerOverride(needs, bowl)) break;
+                if (NeedsOverride(needs, bowl)) break;
                 if (_stateElapsed >= _tuning.RunDuration) MoveTo(PetActivity.Idle, "run-done");
                 break;
 
             case PetActivity.Idle:
-                if (HungerOverride(needs, bowl)) break;
-                if (needs.IsStarving(_tuning))
-                {
-                    MoveTo(PetActivity.Tired, "tired");
-                    break;
-                }
-
+                if (NeedsOverride(needs, bowl)) break;
                 if (TrySleep(delta)) break;
 
                 _wanderCountdown -= delta;
@@ -197,18 +191,17 @@ public sealed class PetBehaviorMachine
         return true;
     }
 
-    private bool HungerOverride(Needs needs, Bowl bowl)
+    private bool NeedsOverride(Needs needs, Bowl bowl)
     {
-        if (!needs.IsHungry(_tuning)) return false;
-        if (bowl.HasFood)
+        if (needs.IsHungry(_tuning) && bowl.HasFood)
         {
             MoveTo(PetActivity.SeekingFood, "hungry");
             return true;
         }
 
-        if (needs.IsStarving(_tuning))
+        if (needs.IsStarving(_tuning) || needs.Happiness <= Needs.Minimum)
         {
-            MoveTo(PetActivity.Tired, "starving");
+            MoveTo(PetActivity.Tired, needs.IsStarving(_tuning) ? "starving" : "unhappy");
             return true;
         }
 

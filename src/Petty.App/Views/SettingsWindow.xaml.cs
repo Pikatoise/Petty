@@ -36,7 +36,7 @@ public partial class SettingsWindow: Window
         Loaded += (_, _) => NameBox.SelectAll();
     }
 
-    public event EventHandler<string>? RenameRequested;
+    public event Func<string, bool>? RenameRequested;
 
     public event EventHandler? NewPetRequested;
 
@@ -49,8 +49,8 @@ public partial class SettingsWindow: Window
             return;
         }
 
-        RenameRequested?.Invoke(this, name);
-        ShowStatus(Text("NameSaved"), OkBrush);
+        if (RenameRequested?.Invoke(name) == true) ShowStatus(Text("NameSaved"), OkBrush);
+        else ShowSaveError();
     }
 
     private void OnNewPet(object sender, RoutedEventArgs e)
@@ -99,6 +99,7 @@ public partial class SettingsWindow: Window
     private string Text(string key) => (string)FindResource(key);
 
     internal void ShowAutostartError() => ShowStatus(Text("AutostartError"), ErrorBrush);
+    internal void ShowSaveError() => ShowStatus(Text("PetSaveError"), ErrorBrush);
 
     private void UpdateAppearance() => AppearanceText.Text = string.Format(Text("AppearanceFormat"), Localization.SpeciesName(_species), Localization.BreedName(_breed));
 

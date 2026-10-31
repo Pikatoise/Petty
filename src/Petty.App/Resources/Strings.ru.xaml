@@ -7,6 +7,7 @@
     <sys:String x:Key="Save">Сохранить</sys:String>
     <sys:String x:Key="Close">Закрыть</sys:String>
     <sys:String x:Key="NameSaved">Имя сохранено.</sys:String>
+    <sys:String x:Key="PetSaveError">Не удалось сохранить питомца. Проверьте доступ к папке данных и повторите попытку. Подробности — в petty.log.</sys:String>
     <sys:String x:Key="NameInvalid">Введите имя от 1 до 24 символов без управляющих знаков.</sys:String>
     <sys:String x:Key="AppearanceFormat">Вид: {0} · Порода: {1}</sys:String>
     <sys:String x:Key="ConfirmNew">Создать нового питомца? Текущий питомец и его сохранение будут заменены.</sys:String>

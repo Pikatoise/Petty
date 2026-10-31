@@ -2,8 +2,12 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
+[xml]$project = Get-Content -LiteralPath (Join-Path $repo 'src/Petty.App/Petty.App.csproj') -Raw
+$version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Expected an explicit semantic release version.' }
+$releaseName = "Petty-$version-win-x64"
 $releaseRoot = Join-Path $repo ('artifacts/portable/' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
-$folder = Join-Path $releaseRoot 'Petty-win-x64'
+$folder = Join-Path $releaseRoot $releaseName
 New-Item -ItemType Directory -Path $folder -Force | Out-Null
 
 dotnet publish (Join-Path $repo 'src/Petty.App/Petty.App.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -m:1 -o $folder
@@ -22,7 +26,10 @@ $unwanted = Get-ChildItem -LiteralPath $folder -Recurse -File | Where-Object {
     $_.Extension -in @('.bak', '.log')
 }
 if ($unwanted) { throw 'Portable output contains user data or retired content.' }
-Copy-Item -LiteralPath (Join-Path $repo 'docs/WINDOWS_RELEASE.md') -Destination (Join-Path $folder 'README.md')
-$archive = Join-Path $releaseRoot 'Petty-win-x64.zip'
+Copy-Item -LiteralPath (Join-Path $repo 'docs/PORTABLE_README.md') -Destination (Join-Path $folder 'README.md')
+foreach ($document in @('WINDOWS_RELEASE.md', 'RELEASE_CHECKLIST.md')) {
+    Copy-Item -LiteralPath (Join-Path $repo "docs/$document") -Destination (Join-Path $folder $document)
+}
+$archive = Join-Path $releaseRoot "$releaseName.zip"
 Compress-Archive -Path (Join-Path $folder '*') -DestinationPath $archive -CompressionLevel Optimal
 Get-Item -LiteralPath $archive | Select-Object FullName, Length

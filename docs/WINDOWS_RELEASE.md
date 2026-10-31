@@ -1,5 +1,9 @@
 # Petty portable release
 
+Version 1.0.0 ships eight breeds / forty coats. The packaged RU/EN README and
+[owner acceptance checklist](RELEASE_CHECKLIST.md) describe usage and the remaining
+real-desktop acceptance work.
+
 Windows 11 x64 is the primary target; Windows 10 x64 is best effort. Extract the
 entire ZIP into a writable folder and start `Petty.exe`. Keep `Assets` and all DLLs
 beside the executable. The .NET runtime is included; no SDK, installer or administrator
@@ -49,7 +53,8 @@ dotnet run --project scripts/WindowsReleaseVerification -c Release
 
 The packaging script creates a fresh directory and ZIP under `artifacts/portable/`,
 publishes Release `win-x64 --self-contained true` without trimming, checks runtime files
-and forty external sprite pairs, then adds this guide. Release excludes developer UI.
+and forty external sprite pairs, then adds a bilingual README, this guide and the
+manual checklist. ZIP names include the project version. Release excludes developer UI.
 The Windows harness uses isolated data and a disposable HKCU test key, never the Run
 key or the owner's pet. Set `PETTY_VERIFY_SESSION_ENDING=1` to exercise the simulated
 WPF session-ending path instead of normal animated exit.

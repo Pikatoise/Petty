@@ -98,9 +98,10 @@ public sealed class PetStateStore
         lock (_gate)
         {
             // File.Replace also overwrites the backup, so protect both copies.
-            foreach (var path in new[] { FilePath, BackupPath })
-                if (TryRead(path, out _, out var error) is ReadOutcome.Unsupported)
-                    throw new InvalidOperationException(error);
+            var primary = TryRead(FilePath, out _, out var primaryError);
+            var backup = TryRead(BackupPath, out _, out var backupError);
+            if (primary is ReadOutcome.Unsupported) throw new InvalidOperationException(primaryError);
+            if (backup is ReadOutcome.Unsupported) throw new InvalidOperationException(backupError);
 
             var directory = Path.GetDirectoryName(FilePath);
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
@@ -119,7 +120,10 @@ public sealed class PetStateStore
                 }
 
                 if (File.Exists(FilePath))
-                    File.Replace(tempPath, FilePath, BackupPath, ignoreMetadataErrors: true);
+                    // A damaged primary must not replace the only valid recovery copy.
+                    File.Replace(tempPath, FilePath,
+                        primary is ReadOutcome.Corrupt && backup is ReadOutcome.Ok ? null : BackupPath,
+                        ignoreMetadataErrors: true);
                 else
                     File.Move(tempPath, FilePath);
             }
