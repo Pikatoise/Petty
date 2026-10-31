@@ -29,6 +29,7 @@
     <sys:String x:Key="TraySettings">Настройки питомца</sys:String>
     <sys:String x:Key="TrayExit">Выйти из приложения</sys:String>
     <sys:String x:Key="Play">Играть</sys:String>
+    <sys:String x:Key="PetAction">Погладить</sys:String>
     <sys:String x:Key="StartError">Не удалось запустить Petty. Проверьте файлы и настройки приложения.</sys:String>
     <sys:String x:Key="FatalError">Petty обнаружил ошибку и будет закрыт.</sys:String>
     <sys:String x:Key="LogPath">Технические сведения записаны в журнал:</sys:String>

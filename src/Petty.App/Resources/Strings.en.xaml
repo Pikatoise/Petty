@@ -29,6 +29,7 @@
     <sys:String x:Key="TraySettings">Pet settings</sys:String>
     <sys:String x:Key="TrayExit">Exit application</sys:String>
     <sys:String x:Key="Play">Play</sys:String>
+    <sys:String x:Key="PetAction">Pet</sys:String>
     <sys:String x:Key="StartError">Petty could not start. Check its files and settings.</sys:String>
     <sys:String x:Key="FatalError">Petty encountered an error and will close.</sys:String>
     <sys:String x:Key="LogPath">Technical details are in the log:</sys:String>

@@ -27,8 +27,6 @@ public partial class PetWindow : Window
     private bool _faceLeft;
     private bool _placementLogged;
     private bool _applyingPlacement;
-    private bool _playChipVisible;
-    private bool _playChipAllowed = true;
     private double _dpiScale = 1;
 
     public PetWindow(SpriteSheet sheet, IAppLog log)
@@ -56,8 +54,9 @@ public partial class PetWindow : Window
 
         // The window only receives mouse input over opaque cat pixels, so this is the
         // cat's own hover, not the transparent square around it.
-        Root.MouseEnter += (_, _) => ShowPlayAffordance();
-        Root.MouseLeave += (_, _) => HidePlayAffordance();
+        Root.MouseEnter += (_, _) => PointerChanged?.Invoke(this, EventArgs.Empty);
+        Root.MouseMove += (_, _) => PointerChanged?.Invoke(this, EventArgs.Empty);
+        Root.MouseLeave += (_, _) => PointerChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private bool _closing;
@@ -65,8 +64,7 @@ public partial class PetWindow : Window
     /// <summary>Raised when an opaque sprite pixel is clicked; the window never activates.</summary>
     public event EventHandler? PetClicked;
 
-    /// <summary>Raised when the small Play chip is clicked; the chip is the only play affordance.</summary>
-    public event EventHandler? PlayRequested;
+    public event EventHandler? PointerChanged;
 
     /// <summary>Raised when DPI or window size changed and the session must re-place the pet.</summary>
     public event EventHandler? GeometryChanged;
@@ -221,7 +219,7 @@ public partial class PetWindow : Window
         {
             case (int)NativeMethods.WmNcHitTest:
                 handled = true;
-                return IsOverOpaqueScreenPixel(lParam) || IsOverChipScreenPixel(lParam)
+                return IsOverOpaqueScreenPixel(lParam)
                     ? new IntPtr(NativeMethods.HtClient)
                     : new IntPtr(NativeMethods.HtTransparent);
 
@@ -230,12 +228,7 @@ public partial class PetWindow : Window
                 return new IntPtr(NativeMethods.MaNoActivate);
 
             case (int)NativeMethods.WmLButtonUp:
-                if (IsOverChip(LoWord(lParam), HiWord(lParam)))
-                {
-                    HidePlayAffordance();
-                    PlayRequested?.Invoke(this, EventArgs.Empty);
-                }
-                else if (IsOpaqueAtClient(LoWord(lParam), HiWord(lParam)))
+                if (IsOpaqueAtClient(LoWord(lParam), HiWord(lParam)))
                 {
                     PetClicked?.Invoke(this, EventArgs.Empty);
                 }
@@ -246,50 +239,27 @@ public partial class PetWindow : Window
         return IntPtr.Zero;
     }
 
-    /// <summary>Shows or hides the tiny "Play" label; the chip is part of the hit-test only while visible.</summary>
-    public void ShowPlayAffordance()
+    /// <summary>Topmost opaque pixel in the hovered column, falling back to a nearby column.</summary>
+    public bool TryGetMenuAnchor(int relativeX, out int x, out int y)
     {
-        if (_playChipVisible || !_playChipAllowed) return;
-
-        _playChipVisible = true;
-        PlayChip.Visibility = Visibility.Visible;
-    }
-
-    public void HidePlayAffordance()
-    {
-        if (!_playChipVisible) return;
-
-        _playChipVisible = false;
-        PlayChip.Visibility = Visibility.Collapsed;
-    }
-
-    /// <summary>
-    /// Off while the cat is already playing, so hovering it cannot offer Play again.
-    /// Turned off also hides a chip that is currently shown.
-    /// </summary>
-    public void AllowPlayAffordance(bool allowed)
-    {
-        _playChipAllowed = allowed;
-        if (!allowed) HidePlayAffordance();
-    }
-
-    private bool IsOverChipScreenPixel(IntPtr lParam)
-    {
-        if (!_playChipVisible) return false;
-
-        var point = new NativeMethods.Point { X = LoWord(lParam), Y = HiWord(lParam) };
-        if (!NativeMethods.ScreenToClient(_handle, ref point)) return false;
-        return IsOverChip(point.X, point.Y);
-    }
-
-    /// <summary>Chip rectangle in physical client pixels (the window is laid out in DIPs).</summary>
-    private bool IsOverChip(int clientX, int clientY)
-    {
-        if (!_playChipVisible) return false;
-
-        var bounds = PlayChip.TransformToAncestor(Root).TransformBounds(new Rect(PlayChip.RenderSize));
-        return clientX >= bounds.Left * _dpiScale && clientX <= bounds.Right * _dpiScale &&
-               clientY >= bounds.Top * _dpiScale && clientY <= bounds.Bottom * _dpiScale;
+        x = y = 0;
+        if (_frame is null) return false;
+        var rect = DesktopWindowService.GetScreenRect(_handle);
+        var column = Math.Clamp((int)(relativeX / PixelScale), 0, _sheet.FrameWidth - 1);
+        for (var distance = 0; distance < _sheet.FrameWidth; distance++)
+            for (var side = 0; side < 2; side++)
+            {
+                var candidate = side == 0 ? column - distance : column + distance;
+                if (candidate < 0 || candidate >= _sheet.FrameWidth) continue;
+                for (var row = 0; row < _sheet.FrameHeight; row++)
+                    if (IsOpaqueAtClient((int)((candidate + 0.5) * PixelScale), (int)((row + 0.5) * PixelScale)))
+                    {
+                        x = rect.Left + (int)((candidate + 0.5) * PixelScale);
+                        y = rect.Top + (int)(row * PixelScale);
+                        return true;
+                    }
+            }
+        return false;
     }
 
     private bool IsOverOpaqueScreenPixel(IntPtr lParam)

@@ -37,6 +37,9 @@ public sealed class PetSession : IDisposable
     private readonly PetMotion _motion;
     private readonly DispatcherTimer _frameTimer;
     private readonly DispatcherTimer _simulationTimer;
+    private readonly DispatcherTimer _hoverTimer;
+    private InteractionMenuWindow? _menu;
+    private int _menuAnchorX;
 
     /// <summary>
     /// How often the shell taskbar is re-read. Auto-hide reveals the bar within a
@@ -92,6 +95,9 @@ public sealed class PetSession : IDisposable
         };
         _simulationTimer.Tick += OnSimulationTick;
 
+        _hoverTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(75) };
+        _hoverTimer.Tick += OnPointerChanged;
+
         _shellBarTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = ShellBarPollInterval,
@@ -99,7 +105,7 @@ public sealed class PetSession : IDisposable
         _shellBarTimer.Tick += OnShellBarTick;
 
         _window.PetClicked += OnPetClicked;
-        _window.PlayRequested += OnPlayRequested;
+        _window.PointerChanged += OnPointerChanged;
         _window.GeometryChanged += OnWindowGeometryChanged;
         _bowl.Clicked += OnBowlClicked;
         _bowl.DragCompleted += OnBowlDragged;
@@ -128,6 +134,13 @@ public sealed class PetSession : IDisposable
         _surface.Load();
         ApplySurfaceChange(SurfaceChange.Display);
 
+        _menu = new InteractionMenuWindow(_log);
+        _menu.ActionRequested += OnActionRequested;
+        _menu.PointerChanged += OnPointerChanged;
+        _menu.Show();
+        _menu.Attach(_window.Attachment.Mode, _window.Handle);
+        _menu.Hide();
+
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         _lastFrameTick = _clock.Read(Timestamp());
         _lastSimulationTick = _lastFrameTick;
@@ -140,6 +153,7 @@ public sealed class PetSession : IDisposable
         _frameTimer.Start();
         _simulationTimer.Start();
         _shellBarTimer.Start();
+        _hoverTimer.Start();
 
         _runtime.Behavior.StartEntering();
     }
@@ -169,18 +183,28 @@ public sealed class PetSession : IDisposable
         _frameTimer.Stop();
         _simulationTimer.Stop();
         _shellBarTimer.Stop();
+        _hoverTimer.Stop();
 
         _frameTimer.Tick -= OnFrameTick;
         _simulationTimer.Tick -= OnSimulationTick;
         _shellBarTimer.Tick -= OnShellBarTick;
+        _hoverTimer.Tick -= OnPointerChanged;
 
         _runtime.Behavior.Transitioned -= OnBehaviorTransition;
         _window.PetClicked -= OnPetClicked;
-        _window.PlayRequested -= OnPlayRequested;
+        _window.PointerChanged -= OnPointerChanged;
         _window.GeometryChanged -= OnWindowGeometryChanged;
         _bowl.Clicked -= OnBowlClicked;
         _bowl.DragCompleted -= OnBowlDragged;
         _animation.FrameChanged -= OnFrameChanged;
+
+        if (_menu is not null)
+        {
+            _menu.ActionRequested -= OnActionRequested;
+            _menu.PointerChanged -= OnPointerChanged;
+            _menu.Close();
+            _menu = null;
+        }
 
         _props.HideBall();
     }
@@ -215,6 +239,12 @@ public sealed class PetSession : IDisposable
 
         UpdateBallIfPlaying();
 
+        if (_menu?.IsVisible == true)
+        {
+            PlaceInteractionMenu();
+            UpdatePointer();
+        }
+
         SyncFrameInterval();
     }
 
@@ -224,7 +254,7 @@ public sealed class PetSession : IDisposable
     /// </summary>
     private void SyncFrameInterval()
     {
-        var busy = _motion.IsMoving || _surface.IsFloorMoving;
+        var busy = _motion.IsMoving || _surface.IsFloorMoving || _menu?.IsVisible == true;
         var fps = _animation.CurrentClip?.FramesPerSecond ?? 0;
 
         var interval = busy || fps <= 0
@@ -280,6 +310,12 @@ public sealed class PetSession : IDisposable
         _log.Info($"Behaviour {transition.From} -> {transition.To} ({transition.Reason}).");
 
         _animation.Play(PetAnimationMap.ClipFor(transition.To));
+        if (transition.To is PetActivity.Playing or PetActivity.Eating or PetActivity.Exiting)
+        {
+            HideInteractionMenu();
+            _hoverTimer.Stop();
+        }
+        else if (_menu?.IsVisible != true) _hoverTimer.Start();
 
         switch (transition.To)
         {
@@ -300,13 +336,11 @@ public sealed class PetSession : IDisposable
                 break;
 
             case PetActivity.Playing:
-                _window.AllowPlayAffordance(false);
                 _props.ShowBall();
                 UpdateBallIfPlaying();
                 break;
 
             case PetActivity.Exiting:
-                _window.HidePlayAffordance();
                 _props.HideBall();
                 _motion.Exit(WalkArea, _window.PhysicalWidth);
                 break;
@@ -319,7 +353,6 @@ public sealed class PetSession : IDisposable
         if (transition.From is PetActivity.Playing)
         {
             _props.HideBall();
-            _window.AllowPlayAffordance(true);
         }
 
         if (transition.From is PetActivity.Playing or PetActivity.Eating)
@@ -342,10 +375,73 @@ public sealed class PetSession : IDisposable
         _runtime.OnUserInteraction();
     }
 
-    private void OnPlayRequested(object? sender, EventArgs e)
+    private void OnActionRequested(object? sender, PetInteraction action)
     {
-        _log.Info("Play requested from the pet.");
-        _runtime.RequestPlay();
+        HideInteractionMenu();
+        if (action is PetInteraction.Play)
+        {
+            _log.Info("Play requested from the pet.");
+            _runtime.RequestPlay();
+        }
+    }
+
+    private void OnPointerChanged(object? sender, EventArgs e) => UpdatePointer();
+
+    private void UpdatePointer()
+    {
+        if (_disposed || _menu is null || !NativeMethods.GetCursorPos(out var point)) return;
+        if (_runtime.Behavior.State is PetActivity.Eating or PetActivity.Playing or PetActivity.Exiting)
+        {
+            HideInteractionMenu();
+            return;
+        }
+        var petRect = _window.PlacementRect;
+        var insidePetBox = point.X >= petRect.Left && point.X < petRect.Left + petRect.Width &&
+                           point.Y >= petRect.Top && point.Y < petRect.Top + petRect.Height;
+        if (!insidePetBox && _menu.IsVisible != true) return;
+        var underPointer = NativeMethods.WindowFromPoint(point);
+        var overPet = InteractionMenuPlacement.IsPetHovered(
+            new ScreenRect(petRect.Left, petRect.Top, petRect.Width, petRect.Height), point.X, point.Y,
+            underPointer == _window.Handle || DesktopWindowService.IsDesktopSurface(underPointer));
+        var overMenu = underPointer == _menu.Handle && _menu.ContainsScreenPoint(point.X, point.Y);
+        if (!_menu.IsVisible && overPet)
+        {
+            _menuAnchorX = point.X - _window.PlacementRect.Left;
+            PlaceInteractionMenu();
+            _menu.Show();
+            PlaceInteractionMenu();
+            if (_window.Attachment.Mode != DesktopLayerMode.WorkerW) _menu.PlaceAbovePet(_window.Handle);
+            _hoverTimer.Stop();
+            SyncFrameInterval();
+        }
+        else if (_menu.IsVisible && !overPet && !overMenu) HideInteractionMenu();
+    }
+
+    private void HideInteractionMenu()
+    {
+        if (_menu?.IsVisible != true) return;
+        _menu.Hide();
+        if (_runtime.Behavior.State is not (PetActivity.Eating or PetActivity.Playing or PetActivity.Exiting))
+            _hoverTimer.Start();
+        SyncFrameInterval();
+    }
+
+    private void PlaceInteractionMenu()
+    {
+        if (_menu is null || _surface.PrimaryDisplay is not { } display ||
+            !_window.TryGetMenuAnchor(_menuAnchorX, out var x, out var y)) return;
+        var work = display.UsableArea;
+        var top = work.Y;
+        if (_surface.ShellBar is { Revealed: true } bar &&
+            WalkSurface.EdgeOf(display.Bounds, WalkSurface.Intersect(display.Bounds, bar.Rect)) is ShellBarEdge.Top)
+            top = Math.Max(top, bar.Rect.Bottom);
+        var left = Math.Max(work.X, WalkArea.Left);
+        var right = Math.Min(work.Right, WalkArea.Right + _window.PhysicalWidth);
+        var bottom = Math.Min(work.Bottom, WalkArea.FloorY);
+        var usable = new ScreenRect(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
+        var dpi = _window.DpiScale;
+        _menu.Place(InteractionMenuPlacement.Place(usable, x, y,
+            InteractionMenuWindow.MenuWidth * dpi, InteractionMenuWindow.MenuHeight * dpi));
     }
 
     private void OnBowlClicked(object? sender, EventArgs e)

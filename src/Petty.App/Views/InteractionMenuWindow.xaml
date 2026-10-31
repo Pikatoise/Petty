@@ -1,0 +1,25 @@
+<Window x:Class="Petty.App.Views.InteractionMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:Petty.App.Views"
+        Title="Petty" Width="{x:Static local:InteractionMenuWindow.MenuWidth}" Height="{x:Static local:InteractionMenuWindow.MenuHeight}" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False"
+        ShowActivated="False" Topmost="False" WindowStartupLocation="Manual" Focusable="False">
+    <Window.Resources><ResourceDictionary Source="../Resources/CozyControls.xaml" /></Window.Resources>
+    <Border x:Name="MenuBorder" Background="{StaticResource CozyBackground}" BorderBrush="{StaticResource CozyBorder}"
+            BorderThickness="1" CornerRadius="8" Padding="2">
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+            <Button x:Name="PlayButton" ToolTip="{DynamicResource Play}" AutomationProperties.Name="{DynamicResource Play}"
+                    Style="{StaticResource CozyButton}" Click="OnPlay" Padding="2" HorizontalAlignment="Stretch">
+                <ui:SymbolIcon Symbol="SportSoccer24" FontSize="18" IsHitTestVisible="False" />
+            </Button>
+            <Button x:Name="PetButton" ToolTip="{DynamicResource PetAction}" AutomationProperties.Name="{DynamicResource PetAction}"
+                    ToolTipService.ShowOnDisabled="True" Style="{StaticResource CozyButton}" Grid.Column="1"
+                    IsEnabled="False" Padding="2" Margin="3,0,0,0" HorizontalAlignment="Stretch">
+                <ui:SymbolIcon Symbol="HandRight24" FontSize="18" IsHitTestVisible="False" />
+            </Button>
+        </Grid>
+    </Border>
+</Window>

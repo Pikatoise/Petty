@@ -6,8 +6,8 @@ and which decisions are deliberate. The sprite sheet is described in
 
 ## Shape
 
-Petty is a tray application with no main window. Three small layered WPF windows belong to
-the desktop (the cat, the food bowl, the ball) and are inserted just above the shell's
+Petty is a tray application with no main window. Small layered WPF windows belong to
+the desktop (the cat, the food bowl, the ball and a temporary interaction menu) and are inserted just above the shell's
 desktop window, so ordinary windows cover them and they are never a topmost overlay.
 All pet logic lives in a plain .NET library without WPF or Win32, so it can be tested
 headlessly.
@@ -63,7 +63,8 @@ settings window changes nothing.
   While `Playing`, it moves the ball beside the cat.
 
 Timers: frame ~20 ms (the clip's own rate while nothing moves), simulation 200 ms
-(`PetTuning.TickInterval`), taskbar 250 ms, autosave 2 min. Animation and simulation
+(`PetTuning.TickInterval`), taskbar 250 ms, autosave 2 min. The frame timer also tracks
+pointer position at 20 ms while the interaction menu is visible. Animation and simulation
 share a monotonic active-time clock; power notifications exclude sleep and hibernation,
 and an unexplained gap over five seconds is discarded. All timers are stopped on dispose.
 
@@ -87,7 +88,7 @@ the desktop.
   layered window renders nothing on this shell, so it is not the default.
 - **No activation:** `ShowActivated="False"`, `WM_MOUSEACTIVATE` → `MA_NOACTIVATE`.
 - **Click-through:** `WM_NCHITTEST` answers `HTTRANSPARENT` for pixels that are transparent in
-  the sprite (or for the whole ball). Only the cat, the bowl and the visible Play chip take
+  the sprite (or for the whole ball). Only the cat, the bowl and the visible interaction menu take
   input.
 - **Alt+Tab and the taskbar:** `ShowInTaskbar="False"` hides the taskbar button;
   `DesktopWindowService.MarkAsToolWindow` adds `WS_EX_TOOLWINDOW` with an add-only
@@ -112,8 +113,9 @@ The pet window is 192×192 px (64×64 sprite at 3 screen pixels per sprite pixel
 72×48, the ball 48×48. The physical size is fixed; only the WPF (DIP) size follows the
 monitor's DPI. Input handling lives in each window's `WndProc`:
 
-- cat: opaque pixel click = user interaction, hover shows the Play chip (chip input is
-  enabled only while it is visible and is suppressed during `Playing`);
+- cat: opaque pixel click = user interaction; hovering its exposed window box shows an
+  attached Play/Pet icon menu without making transparent pixels intercept clicks;
+  Pet is disabled until session 06. The menu is hidden during eating, playing and exit;
 - bowl: opaque pixel press counts as a click (+25 food) unless the pointer moves 4 px, which
   turns it into a two-axis drag within the primary work area; on release the session drops it back onto the floor and
   persists the horizontal position only;

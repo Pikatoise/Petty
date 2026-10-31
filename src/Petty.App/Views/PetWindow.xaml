@@ -28,22 +28,6 @@
             </Image.RenderTransform>
         </Image>
 
-        <!-- Shown while the pointer is over the cat; clicking it starts play. -->
-        <Border x:Name="PlayChip"
-                Visibility="Collapsed"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Top"
-                Margin="0,6,0,0"
-                Padding="9,2,9,3"
-                Background="#FFF3DC"
-                BorderBrush="#2B1A12"
-                BorderThickness="2">
-            <TextBlock Text="{DynamicResource Play}"
-                       FontFamily="Consolas"
-                       FontSize="14"
-                       FontWeight="Bold"
-                       Foreground="#2B1A12" />
-        </Border>
     </Grid>
 </Window>
 

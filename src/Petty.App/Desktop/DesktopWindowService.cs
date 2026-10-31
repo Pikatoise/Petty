@@ -333,6 +333,15 @@ public static class DesktopWindowService
         return length > 0 ? buffer.ToString(0, length) : string.Empty;
     }
 
+    /// <summary>True for the shell desktop and its icon-view children, never ordinary windows.</summary>
+    internal static bool IsDesktopSurface(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return false;
+        var root = NativeMethods.GetAncestor(hwnd, NativeMethods.GaRoot);
+        var name = ClassName(root);
+        return name is "Progman" or "WorkerW";
+    }
+
     /// <summary>
     /// Finds the window that hosts the wallpaper. Candidates are tried in order of
     /// preference and each one is validated, because the shell also creates small
