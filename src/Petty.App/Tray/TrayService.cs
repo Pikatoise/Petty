@@ -47,7 +47,7 @@ public sealed class TrayService: IDisposable
 
     private void OnMouseUp(object? sender, MouseEventArgs e)
     {
-        if (e.Button is not (MouseButtons.Left or MouseButtons.Right)) return;
+        if (e.Button != MouseButtons.Right) return;
         if (_popup is not null) { _popup.Close(); return; }
         var popup = new TrayPopupWindow();
         _popup = popup;
