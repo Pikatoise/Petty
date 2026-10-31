@@ -23,10 +23,10 @@ public class SpriteAssetFileTests
             new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
 
         Assert.NotNull(metadata);
-        Assert.Empty(SpriteMetadataValidator.Validate(metadata));
+        Assert.Empty(SpriteMetadataValidator.Validate(metadata, requirePet: true));
 
         var totalFrames = metadata!.Animations.Sum(a => a.FrameCount);
-        Assert.Equal(48, totalFrames);
+        Assert.Equal(52, totalFrames);
 
         var expected = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
@@ -36,6 +36,7 @@ public class SpriteAssetFileTests
             ["eat"] = 6,
             ["sleep"] = 4,
             ["play"] = 8,
+            ["pet"] = 4,
             ["tired"] = 4,
             ["exit"] = 6,
         };

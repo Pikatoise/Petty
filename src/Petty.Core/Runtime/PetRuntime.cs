@@ -73,19 +73,26 @@ public sealed class PetRuntime
         if (delta > _tuning.MaxOfflineSpan) delta = _tuning.MaxOfflineSpan;
 
         Needs = Needs.Advance(delta, _tuning);
+        var previous = Behavior.State;
+        var remaining = previous switch
+        {
+            PetActivity.Playing => _tuning.PlayDuration - Behavior.StateElapsed,
+            PetActivity.Petting => _tuning.PetDuration - Behavior.StateElapsed,
+            _ => TimeSpan.Zero,
+        };
+        var actionSeconds = Math.Max(0, Math.Min(delta.TotalSeconds, remaining.TotalSeconds));
+        if (previous is PetActivity.Playing or PetActivity.Petting)
+        {
+            var duration = previous is PetActivity.Playing ? _tuning.PlayDuration : _tuning.PetDuration;
+            var happiness = previous is PetActivity.Playing ? _tuning.PlayHappinessGain : _tuning.PetHappinessGain;
+            var satiety = previous is PetActivity.Playing ? _tuning.PlaySatietyCost : _tuning.PetSatietyCost;
+            var fraction = actionSeconds / Math.Max(0.001, duration.TotalSeconds);
+            Needs = Needs.AddHappiness(happiness * fraction).AddSatiety(-satiety * fraction);
+        }
         Behavior.Update(delta, Needs, Bowl);
 
         switch (Behavior.State)
         {
-            case PetActivity.Playing:
-                var total = Math.Max(1, _tuning.PlayDuration.TotalSeconds);
-                var fraction = Math.Min(1, delta.TotalSeconds / total);
-                Needs = Needs
-                    .AddHappiness(_tuning.PlayHappinessGain * fraction)
-                    .AddSatiety(-_tuning.PlaySatietyCost * fraction);
-                _biteTimer = TimeSpan.Zero;
-                break;
-
             case PetActivity.Eating:
                 _biteTimer += delta;
                 while (_biteTimer >= _tuning.EatBiteInterval && Bowl.HasFood)
@@ -109,6 +116,8 @@ public sealed class PetRuntime
     }
 
     public bool RequestPlay() => Behavior.RequestPlay();
+
+    public bool RequestPet() => Behavior.RequestPet();
 
     public bool RequestExit() => Behavior.RequestExit();
 

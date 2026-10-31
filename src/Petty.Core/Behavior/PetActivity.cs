@@ -10,6 +10,7 @@ public enum PetActivity
     Eating,
     Sleeping,
     Playing,
+    Petting,
     Tired,
     Exiting,
 }

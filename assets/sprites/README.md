@@ -8,8 +8,8 @@ reproducible, versionable and free of AI artefacts.
 
 ## Layout
 
-- Atlas: `512x384`, 8 columns x 6 rows of `64x64` cells, row-major.
-- Frames: 48 total, `cat-orange-white.json` describes each clip.
+- Atlas: `512x448`, 8 columns x 7 rows of `64x64` cells, row-major.
+- Frames: 52 total, `cat-orange-white.json` describes each clip.
 - Transparent background with a real alpha channel (`color type 6`, 8-bit RGBA).
 - 7-colour palette, hard edges, no anti-aliasing (alpha is only 0 or 255).
 - `groundRow: 52` — the row (including the 1px outline) that touches the ground.
@@ -22,8 +22,9 @@ reproducible, versionable and free of AI artefacts.
 | eat | 6 | 20-25 | 7 | yes |
 | sleep | 4 | 26-29 | 3 | yes |
 | play | 8 | 30-37 | 11 | yes |
-| tired | 4 | 38-41 | 4 | yes |
-| exit | 6 | 42-47 | 9 | no |
+| pet | 4 | 38-41 | 4 | yes |
+| tired | 4 | 42-45 | 4 | yes |
+| exit | 6 | 46-51 | 9 | no |
 
 The ball and the food bowl are **not** part of the atlas: the app draws both from their own
 small PNGs, so the play and eat animations stay reusable.
@@ -32,6 +33,7 @@ small PNGs, so the play and eat animations stay reusable.
 |---|---|---|
 | `bowl-empty.png` / `bowl-full.png` | 24x16 | 72x48 px window, food is the only difference |
 | `ball.png` | 16x16 | 48x48 px window while the cat plays |
+| `hand.png` | 16x16 | 48x48 px window while petting |
 
 Both bowls share one silhouette, so the bowl window hit-tests a single alpha mask while it
 swaps the picture.

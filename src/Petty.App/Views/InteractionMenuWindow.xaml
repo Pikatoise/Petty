@@ -17,7 +17,7 @@
             </Button>
             <Button x:Name="PetButton" ToolTip="{DynamicResource PetAction}" AutomationProperties.Name="{DynamicResource PetAction}"
                     ToolTipService.ShowOnDisabled="True" Style="{StaticResource CozyButton}" Grid.Column="1"
-                    IsEnabled="False" Padding="2" Margin="3,0,0,0" HorizontalAlignment="Stretch">
+                    Click="OnPet" Padding="2" Margin="3,0,0,0" HorizontalAlignment="Stretch">
                 <ui:SymbolIcon Symbol="HandRight24" FontSize="18" IsHitTestVisible="False" />
             </Button>
         </Grid>

@@ -12,6 +12,7 @@ public static class Animations
         new("eat", 7, true, Eat()),
         new("sleep", 3, true, Sleep()),
         new("play", 11, true, Play()),
+        new("pet", 4, true, Pet()),
         new("tired", 4, true, Tired()),
         new("exit", 9, false, Exit()),
     ];
@@ -185,6 +186,14 @@ public static class Animations
             },
         ];
     }
+
+    private static List<CatPose> Pet() =>
+    [
+        new CatPose { Eyes = EyeShape.Happy, HeadY = 24, TailLift = 0.5 },
+        new CatPose { Eyes = EyeShape.Closed, HeadY = 25, BodyY = 37, TailLift = 0.8 },
+        new CatPose { Eyes = EyeShape.Happy, HeadY = 24, TailLift = 1 },
+        new CatPose { Eyes = EyeShape.Closed, HeadY = 23, TailLift = 0.7 },
+    ];
 
     private static List<CatPose> Tired()
     {

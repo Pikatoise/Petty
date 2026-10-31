@@ -40,6 +40,11 @@ public sealed class PetSession : IDisposable
     private readonly DispatcherTimer _hoverTimer;
     private InteractionMenuWindow? _menu;
     private int _menuAnchorX;
+    private TimeSpan _sceneStarted;
+    private TimeSpan _sceneDuration;
+    private readonly PetTuning _tuning;
+    private int _sceneDirection;
+    private double _sceneOrigin;
 
     /// <summary>
     /// How often the shell taskbar is re-read. Auto-hide reveals the bar within a
@@ -65,10 +70,12 @@ public sealed class PetSession : IDisposable
         PetWindow window,
         PropWindow bowl,
         PropWindow ball,
+        PropWindow hand,
         DisplayService displays,
         PetTuning tuning,
         IAppLog log)
     {
+        _tuning = tuning;
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _window = window ?? throw new ArgumentNullException(nameof(window));
         _bowl = bowl ?? throw new ArgumentNullException(nameof(bowl));
@@ -76,7 +83,7 @@ public sealed class PetSession : IDisposable
         ArgumentNullException.ThrowIfNull(displays);
         _log = log ?? throw new ArgumentNullException(nameof(log));
         _surface = new DesktopSurfaceController(displays, window.PhysicalWidth, log);
-        _props = new PetPropsController(bowl, ball, _surface, window.PhysicalWidth);
+        _props = new PetPropsController(bowl, ball, hand, _surface, window.PhysicalWidth);
 
         _animation = new AnimationController(sheet);
         _animation.FrameChanged += OnFrameChanged;
@@ -206,7 +213,7 @@ public sealed class PetSession : IDisposable
             _menu = null;
         }
 
-        _props.HideBall();
+        _props.HideScenes();
     }
 
     private void OnFrameTick(object? sender, EventArgs e)
@@ -231,13 +238,13 @@ public sealed class PetSession : IDisposable
 
         if (moved || climbed)
         {
-            FaceMovement();
+            if (_runtime.Behavior.State is not (PetActivity.Playing or PetActivity.Petting)) FaceMovement();
             ApplyPosition();
         }
 
         if (climbed) _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
 
-        UpdateBallIfPlaying();
+        UpdateScene();
 
         if (_menu?.IsVisible == true)
         {
@@ -254,7 +261,7 @@ public sealed class PetSession : IDisposable
     /// </summary>
     private void SyncFrameInterval()
     {
-        var busy = _motion.IsMoving || _surface.IsFloorMoving || _menu?.IsVisible == true;
+        var busy = _runtime.Behavior.State is PetActivity.Playing or PetActivity.Petting || _motion.IsMoving || _surface.IsFloorMoving || _menu?.IsVisible == true;
         var fps = _animation.CurrentClip?.FramesPerSecond ?? 0;
 
         var interval = busy || fps <= 0
@@ -310,7 +317,7 @@ public sealed class PetSession : IDisposable
         _log.Info($"Behaviour {transition.From} -> {transition.To} ({transition.Reason}).");
 
         _animation.Play(PetAnimationMap.ClipFor(transition.To));
-        if (transition.To is PetActivity.Playing or PetActivity.Eating or PetActivity.Exiting)
+        if (transition.To is PetActivity.Playing or PetActivity.Petting or PetActivity.Eating or PetActivity.Exiting)
         {
             HideInteractionMenu();
             _hoverTimer.Stop();
@@ -336,8 +343,15 @@ public sealed class PetSession : IDisposable
                 break;
 
             case PetActivity.Playing:
-                _props.ShowBall();
-                UpdateBallIfPlaying();
+            case PetActivity.Petting:
+                _motion.Stop();
+                _sceneStarted = _clock.Read(Timestamp());
+                _sceneDuration = transition.To is PetActivity.Playing ? _tuning.PlayDuration : _tuning.PetDuration;
+                _sceneOrigin = _motion.X;
+                _sceneDirection = _motion.X < (WalkArea.Left + WalkArea.Right) / 2 ? 1 : -1;
+                _window.SetFacing(_sceneDirection < 0);
+                if (transition.To is PetActivity.Playing) _props.ShowBall(); else _props.ShowHand();
+                UpdateScene();
                 break;
 
             case PetActivity.Exiting:
@@ -350,15 +364,12 @@ public sealed class PetSession : IDisposable
                 break;
         }
 
-        if (transition.From is PetActivity.Playing)
-        {
-            _props.HideBall();
-        }
+        if (transition.From is PetActivity.Playing or PetActivity.Petting) _props.HideScenes();
 
-        if (transition.From is PetActivity.Playing or PetActivity.Eating)
+        if (transition.From is PetActivity.Playing or PetActivity.Petting or PetActivity.Eating)
             StateChanged?.Invoke(this, transition.From is PetActivity.Eating ? "eat" : "play");
 
-        FaceMovement();
+        if (transition.To is not (PetActivity.Playing or PetActivity.Petting)) FaceMovement();
         ApplyPosition();
         SyncFrameInterval();
     }
@@ -383,6 +394,7 @@ public sealed class PetSession : IDisposable
             _log.Info("Play requested from the pet.");
             _runtime.RequestPlay();
         }
+        else if (action is PetInteraction.Pet) _runtime.RequestPet();
     }
 
     private void OnPointerChanged(object? sender, EventArgs e) => UpdatePointer();
@@ -390,7 +402,7 @@ public sealed class PetSession : IDisposable
     private void UpdatePointer()
     {
         if (_disposed || _menu is null || !NativeMethods.GetCursorPos(out var point)) return;
-        if (_runtime.Behavior.State is PetActivity.Eating or PetActivity.Playing or PetActivity.Exiting)
+        if (_runtime.Behavior.State is PetActivity.Eating or PetActivity.Playing or PetActivity.Petting or PetActivity.Exiting)
         {
             HideInteractionMenu();
             return;
@@ -421,7 +433,7 @@ public sealed class PetSession : IDisposable
     {
         if (_menu?.IsVisible != true) return;
         _menu.Hide();
-        if (_runtime.Behavior.State is not (PetActivity.Eating or PetActivity.Playing or PetActivity.Exiting))
+        if (_runtime.Behavior.State is not (PetActivity.Eating or PetActivity.Playing or PetActivity.Petting or PetActivity.Exiting))
             _hoverTimer.Start();
         SyncFrameInterval();
     }
@@ -469,10 +481,18 @@ public sealed class PetSession : IDisposable
         if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(_props.SeekTargetX(_motion.X));
     }
 
-    private void UpdateBallIfPlaying()
+    private void UpdateScene()
     {
-        if (_runtime.Behavior.State is PetActivity.Playing)
-            _props.UpdateBall(_motion.X, _runtime.Behavior.StateElapsed);
+        var activity = _runtime.Behavior.State;
+        if (activity is not (PetActivity.Playing or PetActivity.Petting)) return;
+        var progress = (_clock.Read(Timestamp()) - _sceneStarted).TotalSeconds / Math.Max(0.001, _sceneDuration.TotalSeconds);
+        if (activity is PetActivity.Playing)
+        {
+            var step = 18 * Math.Sin(Math.Clamp(progress, 0, 1) * Math.PI);
+            _motion.Place(Math.Clamp(_sceneOrigin + _sceneDirection * step, WalkArea.Left, WalkArea.Right));
+            ApplyPosition();
+        }
+        _props.UpdateScene(activity, _motion.X, _sceneDirection, progress);
     }
 
     private void OnWindowGeometryChanged(object? sender, EventArgs e)
@@ -488,9 +508,10 @@ public sealed class PetSession : IDisposable
         _motion.KeepInside(WalkArea);
         ApplyPosition();
         if (change is not SurfaceChange.Display) return;
+        _runtime.Behavior.CancelInteraction();
         _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
         if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(_props.SeekTargetX(_motion.X));
-        UpdateBallIfPlaying();
+        UpdateScene();
     }
 
     private void FaceMovement() => _window.SetFacing(_motion.Facing < 0);

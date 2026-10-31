@@ -1,10 +1,13 @@
 {
   "character": "cat-orange-white",
+  "breedId": null,
+  "coatId": null,
+  "displayName": null,
   "image": "cat-orange-white.png",
   "frameWidth": 64,
   "frameHeight": 64,
   "columns": 8,
-  "rows": 6,
+  "rows": 7,
   "groundRow": 52,
   "animations": [
     {
@@ -50,15 +53,22 @@
       "loop": true
     },
     {
-      "name": "tired",
+      "name": "pet",
       "startIndex": 38,
       "frameCount": 4,
       "framesPerSecond": 4,
       "loop": true
     },
     {
-      "name": "exit",
+      "name": "tired",
       "startIndex": 42,
+      "frameCount": 4,
+      "framesPerSecond": 4,
+      "loop": true
+    },
+    {
+      "name": "exit",
+      "startIndex": 46,
       "frameCount": 6,
       "framesPerSecond": 9,
       "loop": false

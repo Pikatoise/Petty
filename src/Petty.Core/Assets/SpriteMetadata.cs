@@ -56,7 +56,7 @@ public static class SpriteMetadataValidator
         "idle", "walk", "run", "eat", "sleep", "play", "tired", "exit",
     ];
 
-    public static IReadOnlyList<string> Validate(SpriteSheetMetadata? metadata)
+    public static IReadOnlyList<string> Validate(SpriteSheetMetadata? metadata, bool requirePet = false)
     {
         var errors = new List<string>();
         if (metadata is null)
@@ -110,6 +110,8 @@ public static class SpriteMetadataValidator
             if (!names.Contains(required))
                 errors.Add($"Required animation '{required}' is missing.");
         }
+
+        if (requirePet && !names.Contains("pet")) errors.Add("Required animation 'pet' is missing.");
 
         var ordered = metadata.Animations
             .Where(a => a.FrameCount > 0 && a.StartIndex >= 0)

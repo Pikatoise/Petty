@@ -1,6 +1,8 @@
 using Petty.App.Desktop;
 using Petty.App.Views;
 using Petty.Core.Domain;
+using Petty.Core.Behavior;
+using Petty.Core.Runtime;
 
 namespace Petty.App.Pet;
 
@@ -9,13 +11,15 @@ internal sealed class PetPropsController
 {
     private readonly PropWindow _bowl;
     private readonly PropWindow _ball;
+    private readonly PropWindow _hand;
     private readonly DesktopSurfaceController _surface;
     private readonly int _petWidth;
 
-    public PetPropsController(PropWindow bowl, PropWindow ball, DesktopSurfaceController surface, int petWidth)
+    public PetPropsController(PropWindow bowl, PropWindow ball, PropWindow hand, DesktopSurfaceController surface, int petWidth)
     {
         _bowl = bowl;
         _ball = ball;
+        _hand = hand;
         _surface = surface;
         _petWidth = petWidth;
     }
@@ -52,14 +56,23 @@ internal sealed class PetPropsController
     public void HideBall() => _ball.Hide();
     public void ShowBowlFilled(bool filled) => _bowl.ShowFilled(filled);
 
-    public void UpdateBall(double petX, TimeSpan elapsed)
+    public void HideScenes() { _ball.Hide(); _hand.Hide(); }
+    public void ShowHand() => _hand.Show();
+
+    public void UpdateScene(PetActivity activity, double petX, int direction, double progress)
     {
-        var area = _surface.WalkArea;
-        if (area.FloorY <= 0) return;
-        var center = petX + (_petWidth / 2.0);
-        var amplitude = Math.Clamp(area.Width * 0.06, 48, 90);
-        var swing = Math.Sin(elapsed.TotalSeconds * 2.2);
-        var left = Math.Clamp(center + (swing * amplitude) - (_ball.PhysicalWidth / 2.0), area.Left, area.Right);
-        _ball.PlaceAt(left, Floor - _ball.PhysicalHeight - (Math.Abs(swing) * 26));
+        var pose = ActionScene.Sample(activity, progress);
+        if (activity is PetActivity.Playing)
+        {
+            var head = petX + (direction > 0 ? _petWidth * 0.82 : _petWidth * 0.18);
+            var center = head + direction * pose.PropOffset;
+            _ball.PlaceOnFloor(center - _ball.PhysicalWidth / 2.0, Floor);
+        }
+        else if (activity is PetActivity.Petting)
+        {
+            var head = petX + (direction > 0 ? _petWidth * 0.68 : _petWidth * 0.32);
+            _hand.PlaceAt(head - _hand.PhysicalWidth / 2.0 + direction * pose.PropOffset,
+                Floor - 155 + pose.PropHeight);
+        }
     }
 }

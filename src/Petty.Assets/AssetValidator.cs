@@ -55,7 +55,7 @@ public static class AssetValidator
             return new ValidationReport(false, errors, notes);
         }
 
-        errors.AddRange(SpriteMetadataValidator.Validate(metadata));
+        errors.AddRange(SpriteMetadataValidator.Validate(metadata, requirePet: true));
         if (metadata.Character != id || metadata.Image != id + ".png")
             errors.Add("Metadata character or image does not match the variant ID.");
         if (errors.Count > 0) return new ValidationReport(false, errors, notes);

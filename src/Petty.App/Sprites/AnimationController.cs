@@ -29,7 +29,8 @@ public sealed class AnimationController
     /// </summary>
     public bool Play(string clipName)
     {
-        if (!_sheet.TryGetClip(clipName, out var clip)) return false;
+        if (!_sheet.TryGetClip(clipName, out var clip) &&
+            !(clipName == PetAnimationMap.Pet && _sheet.TryGetClip(PetAnimationMap.Idle, out clip))) return false;
 
         var loop = string.Equals(clip.Name, PetAnimationMap.Exit, StringComparison.OrdinalIgnoreCase)
             ? true

@@ -31,11 +31,20 @@ public sealed class PetBehaviorMachine
 
     public void StartIdle() => MoveTo(PetActivity.Idle, "restore");
 
-    public bool RequestPlay()
+    public bool RequestPlay() => RequestInteraction(PetActivity.Playing);
+
+    public bool RequestPet() => RequestInteraction(PetActivity.Petting);
+
+    private bool RequestInteraction(PetActivity activity)
     {
-        if (State is PetActivity.Exiting) return false;
-        MoveTo(PetActivity.Playing, "user-play");
+        if (State is not (PetActivity.Idle or PetActivity.Walking or PetActivity.Running or PetActivity.Sleeping or PetActivity.Tired)) return false;
+        MoveTo(activity, activity is PetActivity.Playing ? "user-play" : "user-pet");
         return true;
+    }
+
+    public void CancelInteraction()
+    {
+        if (State is PetActivity.Playing or PetActivity.Petting) MoveTo(PetActivity.Idle, "scene-cancelled");
     }
 
     public bool RequestExit()
@@ -93,6 +102,10 @@ public sealed class PetBehaviorMachine
 
             case PetActivity.Playing:
                 if (_stateElapsed >= _tuning.PlayDuration) MoveTo(PetActivity.Idle, "play-finished");
+                break;
+
+            case PetActivity.Petting:
+                if (_stateElapsed >= _tuning.PetDuration) MoveTo(PetActivity.Idle, "pet-finished");
                 break;
 
             case PetActivity.Eating:

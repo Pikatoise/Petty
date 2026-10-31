@@ -54,11 +54,24 @@ public static class PropSpriteBuilder
         return canvas;
     }
 
+    public static PixelCanvas BuildHand()
+    {
+        var canvas = new PixelCanvas(16, 16);
+        canvas.FillRect(5, 2, 3, 8, Cream);
+        canvas.FillRect(8, 4, 3, 7, Cream);
+        canvas.FillRect(11, 6, 2, 6, Cream);
+        canvas.FillRect(3, 7, 3, 5, Cream);
+        canvas.FillRect(5, 9, 8, 5, Cream);
+        canvas.Outline(Outline);
+        return canvas;
+    }
+
     public static void Write(string outputDirectory)
     {
         Directory.CreateDirectory(outputDirectory);
         BuildBowl(full: false).SavePng(Path.Combine(outputDirectory, BowlEmptyName));
         BuildBowl(full: true).SavePng(Path.Combine(outputDirectory, BowlFullName));
+        BuildHand().SavePng(Path.Combine(outputDirectory, "hand.png"));
         BuildBall().SavePng(Path.Combine(outputDirectory, BallName));
     }
 }

@@ -15,6 +15,7 @@ public static class PetAnimationMap
     public const string Eat = "eat";
     public const string Sleep = "sleep";
     public const string Play = "play";
+    public const string Pet = "pet";
     public const string Tired = "tired";
     public const string Exit = "exit";
 
@@ -27,6 +28,7 @@ public static class PetAnimationMap
         PetActivity.Eating => Eat,
         PetActivity.Sleeping => Sleep,
         PetActivity.Playing => Play,
+        PetActivity.Petting => Pet,
         PetActivity.Tired => Tired,
         PetActivity.Exiting => Exit,
         _ => Idle,

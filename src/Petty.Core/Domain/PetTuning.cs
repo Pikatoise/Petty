@@ -29,9 +29,13 @@ public sealed class PetTuning
     public TimeSpan MaxEatDuration { get; init; } = TimeSpan.FromSeconds(20);
 
     // Playing.
-    public TimeSpan PlayDuration { get; init; } = TimeSpan.FromSeconds(12);
+    public TimeSpan PlayDuration { get; init; } = TimeSpan.FromSeconds(6);
     public double PlayHappinessGain { get; init; } = 30.0;
     public double PlaySatietyCost { get; init; } = 2.0;
+
+    public TimeSpan PetDuration { get; init; } = TimeSpan.FromSeconds(3);
+    public double PetHappinessGain { get; init; } = 12.0;
+    public double PetSatietyCost { get; init; } = 0.0;
 
     // Behaviour pacing.
     public TimeSpan EnterDuration { get; init; } = TimeSpan.FromSeconds(3);
@@ -80,6 +84,9 @@ public sealed class PetTuning
             PlayDuration = Positive(PlayDuration, TimeSpan.FromSeconds(10)),
             PlayHappinessGain = Math.Max(1, PlayHappinessGain),
             PlaySatietyCost = Math.Max(0, PlaySatietyCost),
+            PetDuration = Positive(PetDuration, TimeSpan.FromSeconds(3)),
+            PetHappinessGain = Math.Max(0, PetHappinessGain),
+            PetSatietyCost = Math.Max(0, PetSatietyCost),
             EnterDuration = Positive(EnterDuration, TimeSpan.FromSeconds(3)),
             ExitDuration = Positive(ExitDuration, TimeSpan.FromSeconds(3)),
             SleepAfterIdle = Positive(SleepAfterIdle, TimeSpan.FromMinutes(2)),

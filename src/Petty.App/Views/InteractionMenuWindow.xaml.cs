@@ -63,6 +63,8 @@ public partial class InteractionMenuWindow : Window
 
     private void OnPlay(object sender, RoutedEventArgs e) => ActionRequested?.Invoke(this, PetInteraction.Play);
 
+    private void OnPet(object sender, RoutedEventArgs e) => ActionRequested?.Invoke(this, PetInteraction.Pet);
+
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
         _handle = new WindowInteropHelper(this).Handle;
