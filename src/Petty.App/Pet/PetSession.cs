@@ -210,6 +210,14 @@ public sealed class PetSession: IDisposable
         return true;
     }
 
+    public void RestoreShell()
+    {
+        if (_disposed) return;
+        _menu?.Hide();
+        _menu?.Attach(_window.Attachment.Mode, _window.Handle);
+        ApplySurfaceChange(_surface.Poll());
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

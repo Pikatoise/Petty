@@ -9,6 +9,8 @@
 
 ## Требования
 
+Portable Windows x64 ZIPs include .NET. See [portable release and manual updates](docs/WINDOWS_RELEASE.md).
+
 - Windows 10/11
 - .NET SDK 10
 

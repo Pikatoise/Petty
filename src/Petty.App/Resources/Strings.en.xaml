@@ -33,6 +33,7 @@
     <sys:String x:Key="SpeciesCat">Cat</sys:String>
     <sys:String x:Key="SpeciesDog">Dog</sys:String>
     <sys:String x:Key="Autostart">Start Petty with Windows</sys:String>
+    <sys:String x:Key="AutostartError">Windows autostart could not be updated. Move Petty to an accessible folder and toggle autostart again in Settings. See petty.log for details.</sys:String>
     <sys:String x:Key="NameLabel">Name</sys:String>
     <sys:String x:Key="Quit">Quit</sys:String>
     <sys:String x:Key="Cancel">Cancel</sys:String>

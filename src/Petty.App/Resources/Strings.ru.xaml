@@ -33,6 +33,7 @@
     <sys:String x:Key="SpeciesCat">Кошка</sys:String>
     <sys:String x:Key="SpeciesDog">Собака</sys:String>
     <sys:String x:Key="Autostart">Запускать Petty вместе с Windows</sys:String>
+    <sys:String x:Key="AutostartError">Не удалось изменить автозапуск Windows. Переместите Petty в доступную папку и переключите автозапуск в настройках ещё раз. Подробности — в petty.log.</sys:String>
     <sys:String x:Key="NameLabel">Имя</sys:String>
     <sys:String x:Key="Quit">Выйти</sys:String>
     <sys:String x:Key="Cancel">Отмена</sys:String>

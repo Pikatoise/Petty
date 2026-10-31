@@ -19,6 +19,7 @@ public sealed class TrayService: IDisposable
     private TrayPopupWindow? _popup;
     private readonly Icon? _iconImage;
     private readonly IntPtr _iconHandle;
+    private bool _disposed;
 
     public TrayService(string iconPath, IAppLog log)
     {
@@ -60,8 +61,15 @@ public sealed class TrayService: IDisposable
         popup.ShowAtCursor();
     }
 
+    // NotifyIcon itself handles TaskbarCreated and re-adds the same icon ID.
+    public void ClosePopup() => _popup?.Close();
+
+    public void ShowWarning(string message) => _icon.ShowBalloonTip(5000, "Petty", message, ToolTipIcon.Warning);
+
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         _popup?.Close();
         _icon.MouseUp -= OnMouseUp;
         _icon.Visible = false;

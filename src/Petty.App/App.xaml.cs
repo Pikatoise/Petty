@@ -51,6 +51,7 @@ public partial class App: Application
     private bool _stateWasPersisted;
     private bool _shutdownStarted;
     private Localization? _localization;
+    private ShellRestartWatcher? _shellWatcher;
 #if DEBUG
     private DebugTuningStore? _debugStore;
     private DebugTuning _debugTuning = new();
@@ -73,6 +74,7 @@ public partial class App: Application
             _log = new FileAppLog(_paths.LogFile);
             var preferences = new PreferencesStore(Path.Combine(_paths.DataDirectory, "preferences.json"));
             _localization = new Localization(preferences, preferences.Load(message => _log.Warn(message)));
+            _localization.AutostartChanged += (_, _) => SynchronizeAutostart();
         }
         catch (Exception ex)
         {
@@ -119,6 +121,8 @@ public partial class App: Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _shellWatcher?.Dispose();
+        _shellWatcher = null;
         _exitTimer?.Stop();
         _autoSaveTimer?.Stop();
         _settings?.Close();
@@ -141,6 +145,18 @@ public partial class App: Application
         _singleInstance = null;
         _log?.Info("Petty stopped.");
         base.OnExit(e);
+    }
+
+    protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
+    {
+        _log?.Info($"Windows session ending ({e.ReasonSessionEnding}); saving without departure animation.");
+        _shutdownStarted = true;
+        _exitTimer?.Stop();
+        _autoSaveTimer?.Stop();
+        SaveState("session-ending");
+        // WPF calls Shutdown after this non-cancelled event; OnExit disposes resources.
+        base.OnSessionEnding(e);
+        e.Cancel = false;
     }
 
     private void StartPet()
@@ -241,6 +257,7 @@ public partial class App: Application
                   $"{_sheet.FrameWidth}x{_sheet.FrameHeight} frames, ground row {_sheet.GroundRow}.");
 
         StartSession(runtime, tuning);
+        SynchronizeAutostart();
 
         // WPF finishes applying the window styles after the first frame, so the style
         // audit waits until the dispatcher is idle instead of reporting a false alarm.
@@ -313,6 +330,39 @@ public partial class App: Application
         }
 
         if (_tray is null) CreateTray();
+        _shellWatcher ??= new ShellRestartWatcher(RestoreShell);
+    }
+
+    private void SynchronizeAutostart()
+    {
+        // Diagnostic runs must not register temporary builds or change the owner's startup entry.
+        if (!string.IsNullOrWhiteSpace(_options.DataDirectory) ||
+            !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(PetPaths.DataDirectoryVariable)))
+        {
+            _log?.Info("Autostart integration skipped for an isolated data directory.");
+            return;
+        }
+        try
+        {
+            AutostartService.Apply(_localization!.Preferences.Autostart);
+            _log?.Info($"Autostart synchronized (enabled={_localization.Preferences.Autostart}).");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException or NotSupportedException)
+        {
+            _log?.Error("Could not synchronize Windows autostart. Move Petty to an accessible folder and retry the setting.", ex);
+            _tray?.ShowWarning(Localization.Text("AutostartError"));
+        }
+    }
+
+    private void RestoreShell()
+    {
+        if (_shutdownStarted || _window is null) return;
+        _tray?.ClosePopup();
+        _window.AttachToDesktop(_options.DesktopLayer, _log!);
+        foreach (var prop in Windows.OfType<PropWindow>())
+            prop.AttachToDesktop(_options.DesktopLayer, _log!);
+        _session?.RestoreShell();
+        _log?.Info("Shell restart: desktop windows reattached; tray icon restoration is handled by NotifyIcon.");
     }
 
     /// <summary>

@@ -18,6 +18,7 @@ internal sealed class Localization
 
     public UserPreferences Preferences { get; private set; }
     public event EventHandler? LanguageChanged;
+    public event EventHandler? AutostartChanged;
 
     public static string Text(string key) => (string)Application.Current.FindResource(key);
 
@@ -32,6 +33,7 @@ internal sealed class Localization
         var updated = Preferences with { Autostart = enabled };
         _store.Save(updated);
         Preferences = updated;
+        AutostartChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void SetLanguage(string? language)
