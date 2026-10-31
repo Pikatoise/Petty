@@ -32,6 +32,7 @@ public sealed class PetSession : IDisposable
     private readonly PropWindow _bowl;
     private readonly DesktopSurfaceController _surface;
     private readonly PetPropsController _props;
+    private readonly BowlDisplay _bowlDisplay;
     private readonly IAppLog _log;
     private readonly AnimationController _animation;
     private readonly PetMotion _motion;
@@ -72,6 +73,7 @@ public sealed class PetSession : IDisposable
         PropWindow ball,
         PropWindow hand,
         DisplayService displays,
+        string assetDirectory,
         PetTuning tuning,
         IAppLog log)
     {
@@ -84,6 +86,7 @@ public sealed class PetSession : IDisposable
         _log = log ?? throw new ArgumentNullException(nameof(log));
         _surface = new DesktopSurfaceController(displays, window.PhysicalWidth, log);
         _props = new PetPropsController(bowl, ball, hand, _surface, window.PhysicalWidth);
+        _bowlDisplay = new BowlDisplay(bowl, _surface, assetDirectory, window.Attachment.Mode, log);
 
         _animation = new AnimationController(sheet);
         _animation.FrameChanged += OnFrameChanged;
@@ -154,7 +157,7 @@ public sealed class PetSession : IDisposable
 
         _animation.Play(PetAnimationMap.ClipFor(_runtime.Behavior.State));
 
-        _props.ShowBowlFilled(_runtime.Bowl.HasFood);
+        _bowlDisplay.UpdateLevel(_runtime.Bowl.Food, _runtime.Bowl.Capacity);
         _props.HideBall();
 
         _frameTimer.Start();
@@ -171,6 +174,7 @@ public sealed class PetSession : IDisposable
         if (_disposed || _exitRequested) return false;
 
         _exitRequested = true;
+        _bowlDisplay.Stop();
         _exitStarted = _clock.Read(Timestamp());
 
         if (!_runtime.RequestExit())
@@ -214,6 +218,7 @@ public sealed class PetSession : IDisposable
         }
 
         _props.HideScenes();
+        _bowlDisplay.Dispose();
     }
 
     private void OnFrameTick(object? sender, EventArgs e)
@@ -287,7 +292,7 @@ public sealed class PetSession : IDisposable
 
         if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
         _runtime.Update(delta, DateTimeOffset.UtcNow);
-        _props.ShowBowlFilled(_runtime.Bowl.HasFood);
+        _bowlDisplay.UpdateLevel(_runtime.Bowl.Food, _runtime.Bowl.Capacity);
 
         if (!_exitRequested || _exitCompleted) return;
 
@@ -458,8 +463,9 @@ public sealed class PetSession : IDisposable
 
     private void OnBowlClicked(object? sender, EventArgs e)
     {
+        if (_exitRequested || !_bowlDisplay.TryPour(_runtime.Bowl.Food, _runtime.Bowl.Capacity)) return;
         var added = _runtime.RefillBowl();
-        _props.ShowBowlFilled(_runtime.Bowl.HasFood);
+        _bowlDisplay.UpdateLevel(_runtime.Bowl.Food, _runtime.Bowl.Capacity);
         _log.Info($"Bowl filled with {added:F0}; food {_runtime.Bowl.Food:F0}/{_runtime.Bowl.Capacity:F0}.");
 
         if (added > 0) StateChanged?.Invoke(this, "feed");

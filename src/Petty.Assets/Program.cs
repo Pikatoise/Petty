@@ -31,7 +31,7 @@ try
     var variants = Variant.Load(Path.Combine("assets", "sprites", "catalog.json"));
     if (!verifyOnly) Directory.CreateDirectory(outputDirectory);
     if (verifyOnly && regenerate) throw new ArgumentException("--verify and --regenerate cannot be combined.");
-    var shared = new[] { "tray-cat.png", "petty.ico", "bowl-empty.png", "bowl-full.png", "ball.png", "hand.png" }.Select(f => Path.Combine(outputDirectory, f)).ToArray();
+    var shared = new[] { "tray-cat.png", "petty.ico", "bowl-empty.png", "bowl-full.png", "ball.png", "hand.png", "bowl-25.png", "bowl-50.png", "bowl-75.png", "pour-0.png", "pour-1.png", "pour-2.png", "pour-3.png", "pour-4.png", "pour-5.png" }.Select(f => Path.Combine(outputDirectory, f)).ToArray();
     if (!verifyOnly && (regenerate || shared.Any(path => !File.Exists(path))))
     {
         var temporary = Directory.CreateTempSubdirectory("petty-assets-");

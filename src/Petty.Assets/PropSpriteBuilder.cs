@@ -20,7 +20,7 @@ public static class PropSpriteBuilder
     public const int BallSize = 16;
     public const string BallName = "ball.png";
 
-    public static PixelCanvas BuildBowl(bool full)
+    public static PixelCanvas BuildBowl(int level)
     {
         var canvas = new PixelCanvas(BowlWidth, BowlHeight);
 
@@ -30,15 +30,36 @@ public static class PropSpriteBuilder
         canvas.FillEllipse(12, 5, 10, 3, Cream);          // rim
         canvas.FillEllipse(12, 5, 7.5, 1.8, Outline);     // opening
 
-        if (full)
+        // Food occupies existing opaque pixels so the silhouette never changes.
+        for (var i = 0; i < level; i++)
         {
-            canvas.FillEllipse(12, 5, 6.5, 1.3, Orange);  // kibble
-            canvas[8, 5] = Cream;
-            canvas[13, 4] = Cream;
-            canvas[16, 5] = Cream;
+            var x = 7 + i * 3;
+            canvas[x, 5] = Orange;
+            canvas[x + 1, 5] = CreamShade;
+            if (i > 0) canvas[x, 4] = Orange;
         }
 
         canvas.Outline(Outline);
+        return canvas;
+    }
+
+    public static PixelCanvas BuildPour(int frame)
+    {
+        var canvas = new PixelCanvas(24, 32);
+        var y = frame == 0 ? 1 : 3;
+        canvas.FillRect(11, y + 1, 8, 10, Cream);
+        canvas.FillRect(12, y, 6, 1, OrangeDark);
+        canvas.FillRect(12, y + 3, 6, 3, Orange);
+        canvas.FillRect(11, y + 9, 8, 2, OrangeDark);
+        canvas.Outline(Outline);
+        if (frame is >= 1 and <= 4)
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                var dropY = 14 + ((frame * 4 + i * 5) % 17);
+                canvas.FillRect(10 - i % 2, dropY, 2, 2, i % 2 == 0 ? Orange : CreamShade);
+            }
+        }
         return canvas;
     }
 
@@ -69,8 +90,12 @@ public static class PropSpriteBuilder
     public static void Write(string outputDirectory)
     {
         Directory.CreateDirectory(outputDirectory);
-        BuildBowl(full: false).SavePng(Path.Combine(outputDirectory, BowlEmptyName));
-        BuildBowl(full: true).SavePng(Path.Combine(outputDirectory, BowlFullName));
+        BuildBowl(0).SavePng(Path.Combine(outputDirectory, BowlEmptyName));
+        for (var level = 1; level <= 3; level++)
+            BuildBowl(level).SavePng(Path.Combine(outputDirectory, $"bowl-{level * 25}.png"));
+        BuildBowl(4).SavePng(Path.Combine(outputDirectory, BowlFullName));
+        for (var frame = 0; frame < 6; frame++)
+            BuildPour(frame).SavePng(Path.Combine(outputDirectory, $"pour-{frame}.png"));
         BuildHand().SavePng(Path.Combine(outputDirectory, "hand.png"));
         BuildBall().SavePng(Path.Combine(outputDirectory, BallName));
     }

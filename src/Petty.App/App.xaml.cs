@@ -42,7 +42,6 @@ public partial class App: Application
     private PropWindow? _ballWindow;
     private PropWindow? _handWindow;
     private PropImage? _bowlEmptyImage;
-    private PropImage? _bowlFullImage;
     private PetSession? _session;
     private TrayService? _tray;
     private SettingsWindow? _settings;
@@ -127,7 +126,6 @@ public partial class App: Application
         _bowlWindow = null;
         _ballWindow = null;
         _bowlEmptyImage = null;
-        _bowlFullImage = null;
         _tray?.Dispose();
         _tray = null;
         if (_localization is not null) _localization.LanguageChanged -= OnLanguageChanged;
@@ -255,7 +253,7 @@ public partial class App: Application
 
         _session?.Dispose();
         _session = new PetSession(
-            runtime, _sheet!, _window, _bowlWindow!, _ballWindow!, _handWindow!, _displayService, tuning, _log!);
+            runtime, _sheet!, _window, _bowlWindow!, _ballWindow!, _handWindow!, _displayService, _assetDirectory!, tuning, _log!);
         _session.ExitAnimationCompleted += OnExitAnimationCompleted;
         _session.StateChanged += (_, reason) => SaveState(reason);
         _session.Start();
@@ -277,18 +275,17 @@ public partial class App: Application
     private void CreatePropWindows()
     {
         _bowlEmptyImage = PropImage.Load(Path.Combine(_assetDirectory!, "bowl-empty.png"));
-        _bowlFullImage = PropImage.Load(Path.Combine(_assetDirectory!, "bowl-full.png"));
         var ballImage = PropImage.Load(Path.Combine(_assetDirectory!, "ball.png"));
 
-        _bowlWindow = new PropWindow(_bowlEmptyImage, _bowlFullImage, interactive: true, _log!);
+        _bowlWindow = new PropWindow(_bowlEmptyImage, interactive: true, _log!);
         _bowlWindow.Show();
         _bowlWindow.AttachToDesktop(_options.DesktopLayer, _log!);
 
-        _ballWindow = new PropWindow(ballImage, fullImage: null, interactive: false, _log!);
+        _ballWindow = new PropWindow(ballImage, interactive: false, _log!);
         _ballWindow.Show();
         _ballWindow.AttachToDesktop(_options.DesktopLayer, _log!);
         _ballWindow.Hide();
-        _handWindow = new PropWindow(PropImage.Load(Path.Combine(_assetDirectory!, "hand.png")), null, interactive: false, _log!);
+        _handWindow = new PropWindow(PropImage.Load(Path.Combine(_assetDirectory!, "hand.png")), interactive: false, _log!);
         _handWindow.Show();
         _handWindow.AttachToDesktop(_options.DesktopLayer, _log!);
         _handWindow.Hide();
@@ -429,7 +426,6 @@ public partial class App: Application
         _ballWindow?.Close();
         _ballWindow = null;
         _bowlEmptyImage = null;
-        _bowlFullImage = null;
 
         _tray?.Dispose();
         _tray = null;

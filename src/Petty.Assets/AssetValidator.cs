@@ -170,6 +170,10 @@ public static class AssetValidator
         CheckSmallSprite(directory, errors, notes,
             PropSpriteBuilder.BallName, PropSpriteBuilder.BallSize, PropSpriteBuilder.BallSize, "ball", keepMargin: true);
 
+        foreach (var level in new[] { 25, 50, 75 })
+            CheckSmallSprite(directory, errors, notes, $"bowl-{level}.png", PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, $"bowl {level}", keepMargin: false);
+        for (var frame = 0; frame < 6; frame++)
+            CheckSmallSprite(directory, errors, notes, $"pour-{frame}.png", 24, 32, $"pour {frame}", keepMargin: false);
         CheckBowlMasks(directory, errors);
         }
 
@@ -238,22 +242,21 @@ public static class AssetValidator
     private static void CheckBowlMasks(string directory, List<string> errors)
     {
         var empty = Path.Combine(directory, PropSpriteBuilder.BowlEmptyName);
-        var full = Path.Combine(directory, PropSpriteBuilder.BowlFullName);
-        if (!File.Exists(empty) || !File.Exists(full)) return;
-
+        if (!File.Exists(empty)) return;
         var a = PixelCanvas.LoadPng(empty);
-        var b = PixelCanvas.LoadPng(full);
-        if (a.Width != b.Width || a.Height != b.Height) return;
-
-        for (var y = 0; y < a.Height; y++)
+        foreach (var name in new[] { "bowl-25.png", "bowl-50.png", "bowl-75.png", PropSpriteBuilder.BowlFullName })
         {
-            for (var x = 0; x < a.Width; x++)
-            {
-                if (a.IsOpaque(x, y) == b.IsOpaque(x, y)) continue;
-
-                errors.Add($"The empty and full bowl differ in opacity at {x},{y}; the window hit-tests one mask.");
-                return;
-            }
+            var path = Path.Combine(directory, name);
+            if (!File.Exists(path)) continue;
+            var b = PixelCanvas.LoadPng(path);
+            if (a.Width != b.Width || a.Height != b.Height) continue;
+            for (var y = 0; y < a.Height; y++)
+                for (var x = 0; x < a.Width; x++)
+                    if (a.IsOpaque(x, y) != b.IsOpaque(x, y))
+                    {
+                        errors.Add($"Bowl mask differs for {name} at {x},{y}.");
+                        return;
+                    }
         }
     }
 

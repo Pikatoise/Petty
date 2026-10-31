@@ -20,7 +20,6 @@ public partial class PropWindow : Window
     private const int DragThreshold = 4;
 
     private readonly PropImage _hitMask;
-    private readonly PropImage? _fullImage;
     private readonly bool _interactive;
     private readonly IAppLog _log;
     private readonly int _physicalWidth;
@@ -35,12 +34,10 @@ public partial class PropWindow : Window
     private int _pressCursorY;
     private int _pressLeft;
     private int _pressTop;
-    private bool _filled;
 
-    public PropWindow(PropImage hitMask, PropImage? fullImage, bool interactive, IAppLog log)
+    public PropWindow(PropImage hitMask, bool interactive, IAppLog log)
     {
         _hitMask = hitMask ?? throw new ArgumentNullException(nameof(hitMask));
-        _fullImage = fullImage;
         _interactive = interactive;
         _log = log ?? throw new ArgumentNullException(nameof(log));
         _physicalWidth = hitMask.Width * PetWindow.ScreenPixelsPerSpritePixel;
@@ -94,13 +91,11 @@ public partial class PropWindow : Window
         if (mode != DesktopLayerMode.Disabled) DesktopWindowService.Attach(_handle, log, mode);
     }
 
-    /// <summary>Shows the "has food" picture; both bowls share one alpha mask.</summary>
-    public void ShowFilled(bool filled)
+    public void ShowImage(PropImage image)
     {
-        if (_fullImage is null || _filled == filled) return;
-
-        _filled = filled;
-        PropImageControl.Source = filled ? _fullImage.Image : _hitMask.Image;
+        if (image.Width != _hitMask.Width || image.Height != _hitMask.Height)
+            throw new ArgumentException("Prop image dimensions must match the hit mask.", nameof(image));
+        PropImageControl.Source = image.Image;
     }
 
     public void PlaceAt(double screenX, double screenTop) =>

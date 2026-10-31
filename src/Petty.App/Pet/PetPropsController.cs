@@ -54,7 +54,6 @@ internal sealed class PetPropsController
 
     public void ShowBall() => _ball.Show();
     public void HideBall() => _ball.Hide();
-    public void ShowBowlFilled(bool filled) => _bowl.ShowFilled(filled);
 
     public void HideScenes() { _ball.Hide(); _hand.Hide(); }
     public void ShowHand() => _hand.Show();

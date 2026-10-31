@@ -55,6 +55,20 @@ public sealed class PetStateStoreTests : IDisposable
     }
 
     [Fact]
+    public void FoodPersistsWhenPourIsInterrupted()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var runtime = Petty.Core.Runtime.PetRuntime.Restore(Sample(food: 10), PetTuning.Default, now);
+        var pour = new Petty.Core.Runtime.BowlPresentation();
+        Assert.True(pour.TryStart(runtime.Bowl.Food, runtime.Bowl.Capacity));
+        runtime.RefillBowl();
+        var store = new PetStateStore(_path);
+        store.Save(runtime.ToSnapshot());
+        pour.Stop();
+        Assert.Equal(35, store.Load().Snapshot!.BowlFood);
+    }
+
+    [Fact]
     public void SaveLeavesNoTemporaryFile()
     {
         var store = new PetStateStore(_path);

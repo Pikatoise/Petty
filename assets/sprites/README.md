@@ -31,12 +31,13 @@ small PNGs, so the play and eat animations stay reusable.
 
 | Prop | Size | Used as |
 |---|---|---|
-| `bowl-empty.png` / `bowl-full.png` | 24x16 | 72x48 px window, food is the only difference |
+| `bowl-empty.png`, `bowl-25.png`, `bowl-50.png`, `bowl-75.png`, `bowl-full.png` | 24x16 | 72x48 px bowl, five food levels |
+| `pour-0.png` … `pour-5.png` | 24x32 | click-through packet and falling food frames |
 | `ball.png` | 16x16 | 48x48 px window while the cat plays |
 | `hand.png` | 16x16 | 48x48 px window while petting |
 
-Both bowls share one silhouette, so the bowl window hit-tests a single alpha mask while it
-swaps the picture.
+All five bowls share one silhouette, so the bowl window hit-tests a single alpha mask while it
+swaps the picture. Food amounts round up to the next quarter; zero alone is displayed empty.
 
 ## Regenerate
 
