@@ -117,7 +117,7 @@ The settings window demonstrates Cozy Home resources based on WPF UI 4.3.0 and l
 switching. `preferences.json` stores the language override and autostart preference
 separately from pet state; system UI language defaults to Russian for `ru` locales
 and English otherwise. The creator, pet action and tray commands also use these strings;
-autostart registration and the full UI redesign remain later stages.
+autostart registration follows the saved preference; public Release excludes developer UI.
 
 The pet window is 192×192 px (64×64 sprite at 3 screen pixels per sprite pixel), the bowl
 72×72, the ball/hand 48×48. The physical size is fixed; only the WPF (DIP) size follows the

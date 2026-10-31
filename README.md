@@ -1,27 +1,36 @@
 <p align="center">
-  <img src="assets/sprites/packs/british-shorthair/british-shorthair-blue.png" width="512" alt="Кадры анимации Petty">
+  <img src="assets/sprites/packs/british-shorthair/british-shorthair-blue.png" width="512" alt="Petty animation atlas">
 </p>
 
 <h1 align="center">Petty</h1>
 
 <p align="center">Pixel desktop pets for Windows: eight breeds of cats and dogs, five coats per breed.<br>
-Гуляет сам, спит, хочет есть, ест из миски, которую можно наполнить и перетащить, и играет с мячиком по кнопке Play над головой.</p>
+One active pet that wanders, sleeps, eats from a draggable bowl, plays with a ball and responds to petting.</p>
 
-## Требования
+## Run the portable release
 
-Portable Windows x64 ZIPs include .NET. See [portable release and manual updates](docs/WINDOWS_RELEASE.md).
+Extract the entire Windows x64 ZIP and start `Petty.exe`; .NET is included. See the
+[RU/EN quick start](docs/PORTABLE_README.md), [release details](docs/WINDOWS_RELEASE.md)
+and [owner acceptance checklist](docs/RELEASE_CHECKLIST.md). Real OS/desktop acceptance
+is still pending; simulated checks are not evidence of actual Explorer/logoff behavior.
 
-- Windows 10/11
-- .NET SDK 10
+## Build from source
 
-## Сборка, тесты, запуск
+- Windows 11 x64 primary; Windows 10 best effort, unverified here.
+- .NET SDK 10 (needed only to build).
 
 ```powershell
-dotnet build Petty.slnx -c Release
-dotnet test Petty.slnx
+dotnet build Petty.slnx -c Release -m:1
+dotnet test Petty.slnx -m:1
 dotnet run --project src/Petty.App
 ```
 
-Готовый файл — `src/Petty.App/bin/Release/net10.0-windows10.0.19041.0/Petty.exe`.
+Build output: `src/Petty.App/bin/Release/net10.0-windows10.0.19041.0/Petty.exe`.
 
-При первом запуске короткий мастер спросит имя кота и покажет живое превью; при следующих запусках состояние подхватывается само. Значок в трее — единственная точка входа: **Pet settings** переименовывает кота или создаёт нового, **Exit application** проигрывает анимацию ухода и закрывает приложение.
+The first-run creator selects species, breed, coat and name with live preview.
+Later launches restore the pet without offline needs decay. Right-click the tray
+for Settings or animated Exit; closing Settings keeps the pet running. Data stays
+in `%LOCALAPPDATA%\Petty`; autostart can be disabled in Settings.
+
+Art is deterministic procedural pixel art; the runtime does not generate assets.
+See [architecture](docs/ARCHITECTURE.md) for responsibilities and known shell constraints.
