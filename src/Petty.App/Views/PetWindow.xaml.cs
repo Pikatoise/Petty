@@ -1,9 +1,8 @@
-using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
 using Petty.Core.Diagnostics;
+using System.Windows;
+using System.Windows.Interop;
 
 namespace Petty.App.Views;
 
@@ -12,7 +11,7 @@ namespace Petty.App.Views;
 /// the taskbar and hit-tests the sprite's alpha channel so only the cat itself takes
 /// mouse input. Window placement is delegated to <see cref="DesktopWindowService"/>.
 /// </summary>
-public partial class PetWindow : Window
+public partial class PetWindow: Window
 {
     /// <summary>Sprite pixels are drawn at 3x, i.e. one 64x64 frame becomes 192x192 screen pixels.</summary>
     public const int ScreenPixelsPerSpritePixel = 3;

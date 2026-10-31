@@ -1,6 +1,5 @@
-using System.IO;
-using System.Windows.Media.Imaging;
 using Petty.Core.Assets;
+using System.Windows.Media.Imaging;
 
 namespace Petty.App.Sprites;
 

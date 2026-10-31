@@ -1,14 +1,14 @@
-using System.Windows;
-using System.Windows.Interop;
 using Petty.App.Desktop;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
+using System.Windows;
+using System.Windows.Interop;
 
 namespace Petty.App.Views;
 
 public enum PetInteraction { Play, Pet }
 
-public partial class InteractionMenuWindow : Window
+public partial class InteractionMenuWindow: Window
 {
     public const double MenuWidth = 82;
     public const double MenuHeight = 36;

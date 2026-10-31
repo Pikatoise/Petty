@@ -1,9 +1,9 @@
+using Petty.Core.Assets;
+using Petty.Core.Domain;
 using System.IO;
 using System.Text.Json;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Petty.Core.Assets;
-using Petty.Core.Domain;
 
 namespace Petty.App.Sprites;
 

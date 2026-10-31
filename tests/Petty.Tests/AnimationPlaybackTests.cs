@@ -11,13 +11,13 @@ public class AnimationPlaybackTests
         int frames = 8,
         double fps = 8,
         bool loop = true) => new()
-    {
-        Name = name,
-        StartIndex = 0,
-        FrameCount = frames,
-        FramesPerSecond = fps,
-        Loop = loop,
-    };
+        {
+            Name = name,
+            StartIndex = 0,
+            FrameCount = frames,
+            FramesPerSecond = fps,
+            Loop = loop,
+        };
 
     [Fact]
     public void StartsOnFrameZero()

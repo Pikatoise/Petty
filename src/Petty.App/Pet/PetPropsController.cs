@@ -1,7 +1,7 @@
 using Petty.App.Desktop;
 using Petty.App.Views;
-using Petty.Core.Domain;
 using Petty.Core.Behavior;
+using Petty.Core.Domain;
 using Petty.Core.Runtime;
 
 namespace Petty.App.Pet;

@@ -1,9 +1,9 @@
+using Petty.App.Views;
+using Petty.Core.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using Petty.Core.Diagnostics;
-using Petty.App.Views;
 
 namespace Petty.App.Tray;
 
@@ -11,7 +11,7 @@ namespace Petty.App.Tray;
 /// Notification-area icon. Exactly two commands (settings, exit); no double-click
 /// action. The icon handle is created from the generated PNG and destroyed on dispose.
 /// </summary>
-public sealed class TrayService : IDisposable
+public sealed class TrayService: IDisposable
 {
     public const string TrayIconFileName = "tray-cat.png";
 

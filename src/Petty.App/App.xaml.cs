@@ -6,8 +6,8 @@ using Petty.App.Views;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
 using Petty.Core.Persistence;
-using Petty.Core.Runtime;
 using Petty.Core.Preferences;
+using Petty.Core.Runtime;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -22,7 +22,7 @@ namespace Petty.App;
 /// </summary>
 public partial class App: Application
 {
-    private sealed class StartupMessageException(string message) : Exception(message) { }
+    private sealed class StartupMessageException(string message): Exception(message) { }
     private static readonly JsonSerializerOptions ReportJsonOptions = new() { WriteIndented = true };
 
     private readonly DisplayService _displayService = new();

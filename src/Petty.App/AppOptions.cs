@@ -1,6 +1,5 @@
-using System.Globalization;
-using System.IO;
 using Petty.App.Desktop;
+using System.Globalization;
 
 namespace Petty.App;
 

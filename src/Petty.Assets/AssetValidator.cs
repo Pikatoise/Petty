@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Petty.Core.Assets;
+using System.Text.Json;
 
 namespace Petty.Assets;
 
@@ -161,20 +161,20 @@ public static class AssetValidator
         CheckWalkLoop(atlas, metadata, errors, notes);
         if (checkShared)
         {
-        CheckSmallSprite(directory, errors, notes,
-            TrayIconBuilder.ImageName, TrayIconBuilder.Size, TrayIconBuilder.Size, "tray icon", keepMargin: true);
-        CheckSmallSprite(directory, errors, notes,
-            PropSpriteBuilder.BowlEmptyName, PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, "empty bowl", keepMargin: false);
-        CheckSmallSprite(directory, errors, notes,
-            PropSpriteBuilder.BowlFullName, PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, "full bowl", keepMargin: false);
-        CheckSmallSprite(directory, errors, notes,
-            PropSpriteBuilder.BallName, PropSpriteBuilder.BallSize, PropSpriteBuilder.BallSize, "ball", keepMargin: true);
+            CheckSmallSprite(directory, errors, notes,
+                TrayIconBuilder.ImageName, TrayIconBuilder.Size, TrayIconBuilder.Size, "tray icon", keepMargin: true);
+            CheckSmallSprite(directory, errors, notes,
+                PropSpriteBuilder.BowlEmptyName, PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, "empty bowl", keepMargin: false);
+            CheckSmallSprite(directory, errors, notes,
+                PropSpriteBuilder.BowlFullName, PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, "full bowl", keepMargin: false);
+            CheckSmallSprite(directory, errors, notes,
+                PropSpriteBuilder.BallName, PropSpriteBuilder.BallSize, PropSpriteBuilder.BallSize, "ball", keepMargin: true);
 
-        foreach (var level in new[] { 25, 50, 75 })
-            CheckSmallSprite(directory, errors, notes, $"bowl-{level}.png", PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, $"bowl {level}", keepMargin: false);
-        for (var frame = 0; frame < 6; frame++)
-            CheckSmallSprite(directory, errors, notes, $"pour-{frame}.png", 24, 32, $"pour {frame}", keepMargin: false);
-        CheckBowlFrames(directory, errors);
+            foreach (var level in new[] { 25, 50, 75 })
+                CheckSmallSprite(directory, errors, notes, $"bowl-{level}.png", PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, $"bowl {level}", keepMargin: false);
+            for (var frame = 0; frame < 6; frame++)
+                CheckSmallSprite(directory, errors, notes, $"pour-{frame}.png", 24, 32, $"pour {frame}", keepMargin: false);
+            CheckBowlFrames(directory, errors);
         }
 
         notes.Add($"atlas {atlas.Width}x{atlas.Height}, {metadata.Animations.Count} clips, {occupiedCells.Count} frames");

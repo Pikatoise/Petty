@@ -5,7 +5,7 @@ using Forms = System.Windows.Forms;
 
 namespace Petty.App.Views;
 
-public partial class TrayPopupWindow : Window
+public partial class TrayPopupWindow: Window
 {
     public TrayPopupWindow()
     {

@@ -1,6 +1,6 @@
+using Petty.Core.Preferences;
 using System.Globalization;
 using System.Windows;
-using Petty.Core.Preferences;
 
 namespace Petty.App;
 

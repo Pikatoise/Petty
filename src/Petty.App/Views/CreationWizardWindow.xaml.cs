@@ -1,14 +1,14 @@
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Threading;
 using Petty.App.Sprites;
 using Petty.Core.Animation;
 using Petty.Core.Domain;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace Petty.App.Views;
 
 /// <summary>Collects the name and appearance; application composition creates the pet.</summary>
-public partial class CreationWizardWindow : Window
+public partial class CreationWizardWindow: Window
 {
     private sealed record SpeciesOption(string Id, string Label);
     private BreedOption[] _breeds = [];

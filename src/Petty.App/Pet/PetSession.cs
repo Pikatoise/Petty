@@ -1,5 +1,3 @@
-using System.Windows.Threading;
-using System.Diagnostics;
 using Microsoft.Win32;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
@@ -9,6 +7,8 @@ using Petty.Core.Behavior;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
 using Petty.Core.Runtime;
+using System.Diagnostics;
+using System.Windows.Threading;
 
 namespace Petty.App.Pet;
 
@@ -21,7 +21,7 @@ namespace Petty.App.Pet;
 ///  - a ~200 ms simulation timer advances needs and the state machine.
 /// Both are stopped when the session is disposed.
 /// </summary>
-public sealed class PetSession : IDisposable
+public sealed class PetSession: IDisposable
 {
     private static readonly TimeSpan MinFrameInterval = TimeSpan.FromMilliseconds(20);
     private static readonly TimeSpan MaxFrameDelta = TimeSpan.FromMilliseconds(250);

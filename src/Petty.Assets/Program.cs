@@ -1,6 +1,6 @@
-using System.Text.Json;
 using Petty.Assets;
 using Petty.Core.Assets;
+using System.Text.Json;
 
 var outputDirectory = "assets/sprites";
 var verifyOnly = false;

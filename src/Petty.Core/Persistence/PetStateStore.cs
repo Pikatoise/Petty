@@ -1,6 +1,6 @@
+using Petty.Core.Domain;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Petty.Core.Domain;
 
 namespace Petty.Core.Persistence;
 

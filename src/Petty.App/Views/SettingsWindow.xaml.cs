@@ -1,8 +1,8 @@
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Controls;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace Petty.App.Views;
 
@@ -10,7 +10,7 @@ namespace Petty.App.Views;
 /// Rename and recreate. Breed and coat are fixed after creation and are only shown.
 /// The window never shuts the application down; closing it leaves the pet running.
 /// </summary>
-public partial class SettingsWindow : Window
+public partial class SettingsWindow: Window
 {
     private static readonly Brush ErrorBrush = new SolidColorBrush(Color.FromRgb(0xB0, 0x00, 0x20));
     private static readonly Brush OkBrush = new SolidColorBrush(Color.FromRgb(0x2E, 0x6B, 0x2E));

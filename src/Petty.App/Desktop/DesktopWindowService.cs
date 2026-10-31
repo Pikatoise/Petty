@@ -1,6 +1,6 @@
+using Petty.Core.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using Petty.Core.Diagnostics;
 
 namespace Petty.App.Desktop;
 

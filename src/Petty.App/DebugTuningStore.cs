@@ -1,7 +1,7 @@
 #if DEBUG
+using Petty.Core.Diagnostics;
 using System.IO;
 using System.Text.Json;
-using Petty.Core.Diagnostics;
 
 namespace Petty.App;
 

@@ -3,7 +3,7 @@ using Petty.Core.Persistence;
 
 namespace Petty.Tests;
 
-public sealed class PetStateStoreTests : IDisposable
+public sealed class PetStateStoreTests: IDisposable
 {
     private readonly string _directory;
     private readonly string _path;

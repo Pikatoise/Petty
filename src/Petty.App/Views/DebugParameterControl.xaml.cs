@@ -4,7 +4,7 @@ using System.Windows.Controls;
 
 namespace Petty.App.Views;
 
-public partial class DebugParameterControl : UserControl
+public partial class DebugParameterControl: UserControl
 {
     public DebugParameterControl() => InitializeComponent();
 

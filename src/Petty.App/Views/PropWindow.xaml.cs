@@ -1,10 +1,10 @@
-using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace Petty.App.Views;
 
@@ -14,7 +14,7 @@ namespace Petty.App.Views;
 /// pass clicks to whatever is underneath. The bowl is interactive (click to refill, drag
 /// to move); the ball is purely decorative and always click-through.
 /// </summary>
-public partial class PropWindow : Window
+public partial class PropWindow: Window
 {
     /// <summary>Pixels the pointer must travel before a press counts as a drag, not a click.</summary>
     private const int DragThreshold = 4;

@@ -6,8 +6,15 @@ namespace Petty.Tests;
 public class BowlPresentationTests
 {
     [Theory]
-    [InlineData(0, 0)] [InlineData(1, 1)] [InlineData(25, 1)] [InlineData(26, 2)]
-    [InlineData(50, 2)] [InlineData(51, 3)] [InlineData(75, 3)] [InlineData(76, 4)] [InlineData(100, 4)]
+    [InlineData(0, 0)]
+    [InlineData(1, 1)]
+    [InlineData(25, 1)]
+    [InlineData(26, 2)]
+    [InlineData(50, 2)]
+    [InlineData(51, 3)]
+    [InlineData(75, 3)]
+    [InlineData(76, 4)]
+    [InlineData(100, 4)]
     public void FoodRoundsUpToVisibleQuarters(double food, int expected) =>
         Assert.Equal(expected, BowlPresentation.Level(food, 100));
 

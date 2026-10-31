@@ -1,5 +1,5 @@
-using System.Buffers.Binary;
 using Petty.Core.Assets;
+using System.Buffers.Binary;
 
 namespace Petty.Tests;
 

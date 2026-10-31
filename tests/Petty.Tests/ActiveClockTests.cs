@@ -9,8 +9,14 @@ public class ActiveClockTests
     public void RestoreKeepsNeedsFromOldSave()
     {
         var now = DateTimeOffset.UtcNow;
-        var snapshot = new PetSnapshot { PetName = "Muffin", Satiety = 60, Happiness = 80,
-            BowlFood = 30, LastUpdatedUtc = now.AddDays(-30) };
+        var snapshot = new PetSnapshot
+        {
+            PetName = "Muffin",
+            Satiety = 60,
+            Happiness = 80,
+            BowlFood = 30,
+            LastUpdatedUtc = now.AddDays(-30)
+        };
 
         var runtime = PetRuntime.Restore(snapshot, PetTuning.Default, now);
 

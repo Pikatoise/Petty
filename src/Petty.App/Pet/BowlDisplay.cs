@@ -1,16 +1,16 @@
-using System.Diagnostics;
-using System.IO;
-using System.Windows.Threading;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
 using Petty.App.Views;
 using Petty.Core.Diagnostics;
 using Petty.Core.Runtime;
+using System.Diagnostics;
+using System.IO;
+using System.Windows.Threading;
 
 namespace Petty.App.Pet;
 
 /// <summary>Owns bowl images and the click-through pouring effect for one session.</summary>
-internal sealed class BowlDisplay : IDisposable
+internal sealed class BowlDisplay: IDisposable
 {
     private readonly PropWindow _bowl;
     private readonly PropWindow _effect;
