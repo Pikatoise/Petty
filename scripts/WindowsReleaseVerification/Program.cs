@@ -69,6 +69,12 @@ internal static class Program
                     Require(Get(app, "_session") is not null, "Pet session did not start.");
                     using (var second = Process.Start(new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "Petty.exe")) { UseShellExecute = false, WindowStyle = ProcessWindowStyle.Hidden })!)
                         Require(second.WaitForExit(3000) && second.ExitCode == 3, "Second instance did not exit promptly with code 3.");
+                    Invoke(app, "ShowSettings");
+                    var settings = (SettingsWindow)Get(app, "_settings")!;
+                    Invoke(settings, "ShowAutostartError");
+                    Require(((System.Windows.Controls.TextBlock)settings.FindName("StatusText")).Text.Length > 0,
+                        "Silent autostart error feedback is missing.");
+                    settings.Close();
                     var tray = Get(app, "_tray")!;
                     Invoke(tray, "OnMouseUp", null, new Forms.MouseEventArgs(Forms.MouseButtons.Right, 1, 0, 0, 0));
                     Require(Get(tray, "_popup") is not null, "Tray popup did not open.");

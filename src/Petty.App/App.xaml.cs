@@ -350,7 +350,8 @@ public partial class App: Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException or NotSupportedException)
         {
             _log?.Error("Could not synchronize Windows autostart. Move Petty to an accessible folder and retry the setting.", ex);
-            _tray?.ShowWarning(Localization.Text("AutostartError"));
+            ShowSettings();
+            _settings?.ShowAutostartError();
         }
     }
 

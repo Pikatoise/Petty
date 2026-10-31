@@ -64,8 +64,6 @@ public sealed class TrayService: IDisposable
     // NotifyIcon itself handles TaskbarCreated and re-adds the same icon ID.
     public void ClosePopup() => _popup?.Close();
 
-    public void ShowWarning(string message) => _icon.ShowBalloonTip(5000, "Petty", message, ToolTipIcon.Warning);
-
     public void Dispose()
     {
         if (_disposed) return;

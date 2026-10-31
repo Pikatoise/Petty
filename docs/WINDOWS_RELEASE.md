@@ -12,7 +12,7 @@ After the first successful pet startup, Petty enables autostart by default using
 disable it; the disabled preference is respected on later starts. Moving the folder
 requires one manual launch from the new location to repair the quoted executable path.
 Windows can delay startup or independently disable startup applications in Task Manager.
-An inaccessible registry or unsupported path is logged and reported through the tray;
+An inaccessible registry or unsupported path is logged and shown inline in Settings;
 Petty continues running. Paths exceeding the Run key's 260-character command limit
 must be shortened.
 

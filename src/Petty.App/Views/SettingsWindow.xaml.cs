@@ -98,6 +98,8 @@ public partial class SettingsWindow: Window
 
     private string Text(string key) => (string)FindResource(key);
 
+    internal void ShowAutostartError() => ShowStatus(Text("AutostartError"), ErrorBrush);
+
     private void UpdateAppearance() => AppearanceText.Text = string.Format(Text("AppearanceFormat"), Localization.SpeciesName(_species), Localization.BreedName(_breed));
 
     private void ShowStatus(string text, Brush brush)
