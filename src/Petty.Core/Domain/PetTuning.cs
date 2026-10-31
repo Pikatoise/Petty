@@ -8,15 +8,14 @@ namespace Petty.Core.Domain;
 public sealed class PetTuning
 {
     // Needs decay.
-    public double SatietyDecayPerHour { get; init; } = 4.0;
-    public double HappinessDecayPerHour { get; init; } = 3.0;
+    public double SatietyDecayPerMinute { get; init; } = 4.0 / 60;
+    public double HappinessDecayPerMinute { get; init; } = 3.0 / 60;
     public TimeSpan MaxOfflineSpan { get; init; } = TimeSpan.FromDays(7);
 
     // Thresholds (0-100).
     public double HungryThreshold { get; init; } = 30.0;
     public double TiredThreshold { get; init; } = 20.0;
     public double SatietyRecoveryThreshold { get; init; } = 45.0;
-    public double SleepHappinessThreshold { get; init; } = 45.0;
 
     // Bowl.
     public double BowlCapacity { get; init; } = 100.0;
@@ -41,7 +40,8 @@ public sealed class PetTuning
     public TimeSpan EnterDuration { get; init; } = TimeSpan.FromSeconds(3);
     public TimeSpan ExitDuration { get; init; } = TimeSpan.FromSeconds(3);
     public TimeSpan SleepAfterIdle { get; init; } = TimeSpan.FromMinutes(2);
-    public TimeSpan SleepDuration { get; init; } = TimeSpan.FromMinutes(10);
+    public TimeSpan SleepMinDuration { get; init; } = TimeSpan.FromSeconds(120);
+    public TimeSpan SleepMaxDuration { get; init; } = TimeSpan.FromSeconds(600);
 
     /// <summary>
     /// Safety caps: a walk normally ends when the pet reaches its target (the view
@@ -53,6 +53,7 @@ public sealed class PetTuning
     public TimeSpan WanderMaxInterval { get; init; } = TimeSpan.FromSeconds(10);
     public TimeSpan SeekTimeout { get; init; } = TimeSpan.FromSeconds(120);
     public double RunChance { get; init; } = 0.2;
+    public double SleepChance { get; init; } = 1.0;
 
     // Runtime.
     public TimeSpan TickInterval { get; init; } = TimeSpan.FromMilliseconds(200);
@@ -66,15 +67,17 @@ public sealed class PetTuning
         static double Clamp(double value, double min, double max) =>
             double.IsNaN(value) ? min : Math.Clamp(value, min, max);
 
+        var sleepMin = Positive(SleepMinDuration, TimeSpan.FromSeconds(120));
+        var sleepMax = Positive(SleepMaxDuration, TimeSpan.FromSeconds(600));
+
         return new PetTuning
         {
-            SatietyDecayPerHour = Math.Max(0, SatietyDecayPerHour),
-            HappinessDecayPerHour = Math.Max(0, HappinessDecayPerHour),
+            SatietyDecayPerMinute = Math.Max(0, SatietyDecayPerMinute),
+            HappinessDecayPerMinute = Math.Max(0, HappinessDecayPerMinute),
             MaxOfflineSpan = Positive(MaxOfflineSpan, TimeSpan.FromDays(7)),
             HungryThreshold = Clamp(HungryThreshold, 1, 100),
             TiredThreshold = Clamp(TiredThreshold, 0, 100),
             SatietyRecoveryThreshold = Clamp(SatietyRecoveryThreshold, 1, 100),
-            SleepHappinessThreshold = Clamp(SleepHappinessThreshold, 0, 100),
             BowlCapacity = Math.Max(1, BowlCapacity),
             BowlFoodPerClick = Math.Max(1, BowlFoodPerClick),
             EatFoodPerBite = Math.Max(0.1, EatFoodPerBite),
@@ -90,13 +93,15 @@ public sealed class PetTuning
             EnterDuration = Positive(EnterDuration, TimeSpan.FromSeconds(3)),
             ExitDuration = Positive(ExitDuration, TimeSpan.FromSeconds(3)),
             SleepAfterIdle = Positive(SleepAfterIdle, TimeSpan.FromMinutes(2)),
-            SleepDuration = Positive(SleepDuration, TimeSpan.FromMinutes(10)),
+            SleepMinDuration = sleepMin,
+            SleepMaxDuration = sleepMax < sleepMin ? sleepMin : sleepMax,
             WalkDuration = Positive(WalkDuration, TimeSpan.FromSeconds(60)),
             RunDuration = Positive(RunDuration, TimeSpan.FromSeconds(60)),
             WanderMinInterval = Positive(WanderMinInterval, TimeSpan.FromSeconds(3)),
             WanderMaxInterval = Positive(WanderMaxInterval, TimeSpan.FromSeconds(10)),
             SeekTimeout = Positive(SeekTimeout, TimeSpan.FromSeconds(120)),
             RunChance = Clamp(RunChance, 0, 1),
+            SleepChance = Clamp(SleepChance, 0, 1),
             TickInterval = Positive(TickInterval, TimeSpan.FromMilliseconds(200)),
             AutoSaveInterval = Positive(AutoSaveInterval, TimeSpan.FromMinutes(2)),
         };

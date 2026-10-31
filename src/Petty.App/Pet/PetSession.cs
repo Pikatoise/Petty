@@ -43,7 +43,6 @@ public sealed class PetSession : IDisposable
     private int _menuAnchorX;
     private TimeSpan _sceneStarted;
     private TimeSpan _sceneDuration;
-    private readonly PetTuning _tuning;
     private int _sceneDirection;
     private double _sceneOrigin;
 
@@ -58,6 +57,7 @@ public sealed class PetSession : IDisposable
 
     private readonly ActiveClock _clock = new(Timestamp());
     private TimeSpan _lastFrameTick;
+    private TimeSpan _lastFrameRealTick;
     private TimeSpan _lastSimulationTick;
     private TimeSpan _exitStarted;
     private bool _started;
@@ -77,7 +77,6 @@ public sealed class PetSession : IDisposable
         PetTuning tuning,
         IAppLog log)
     {
-        _tuning = tuning;
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _window = window ?? throw new ArgumentNullException(nameof(window));
         _bowl = bowl ?? throw new ArgumentNullException(nameof(bowl));
@@ -121,6 +120,23 @@ public sealed class PetSession : IDisposable
         _bowl.DragCompleted += OnBowlDragged;
     }
 
+#if DEBUG
+    public string DebugClip => _animation.CurrentClip?.Name ?? "—";
+    public double DebugFps => _animation.CurrentClip?.FramesPerSecond ?? 0;
+    private double _debugTimeScale = 1;
+    public void ApplyDebugTuning(PetTuning tuning, double timeScale)
+    {
+        _runtime.SetTuning(tuning);
+        if (!_exitRequested)
+        {
+            _clock.SetSpeed(timeScale, Timestamp());
+            _debugTimeScale = timeScale;
+            if (_started) SyncFrameInterval();
+        }
+    }
+    public void RefreshDebugBowl() => _bowlDisplay.UpdateLevel(_runtime.Bowl.Food, _runtime.Bowl.Capacity);
+#endif
+
     public event EventHandler? ExitAnimationCompleted;
 
     /// <summary>Raised with a short reason whenever the saved state should be written now.</summary>
@@ -152,7 +168,9 @@ public sealed class PetSession : IDisposable
         _menu.Hide();
 
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
-        _lastFrameTick = _clock.Read(Timestamp());
+        var startedAt = Timestamp();
+        _lastFrameRealTick = _clock.Read(startedAt);
+        _lastFrameTick = SimulationTime(startedAt);
         _lastSimulationTick = _lastFrameTick;
 
         _animation.Play(PetAnimationMap.ClipFor(_runtime.Behavior.State));
@@ -175,7 +193,12 @@ public sealed class PetSession : IDisposable
 
         _exitRequested = true;
         _bowlDisplay.Stop();
-        _exitStarted = _clock.Read(Timestamp());
+        var exitAt = Timestamp();
+        _exitStarted = _clock.Read(exitAt);
+#if DEBUG
+        _clock.SetSpeed(1, exitAt);
+        _debugTimeScale = 1;
+#endif
 
         if (!_runtime.RequestExit())
         {
@@ -225,18 +248,27 @@ public sealed class PetSession : IDisposable
     {
         if (_disposed) return;
 
-        var elapsed = _clock.Read(Timestamp());
+        var now = Timestamp();
+        var realElapsed = _clock.Read(now);
+        var elapsed = SimulationTime(now);
+        var realDelta = realElapsed - _lastFrameRealTick;
         var delta = elapsed - _lastFrameTick;
+        _lastFrameRealTick = realElapsed;
         _lastFrameTick = elapsed;
 
         if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
-        if (delta > MaxFrameDelta) delta = MaxFrameDelta;
+        if (realDelta < TimeSpan.Zero) realDelta = TimeSpan.Zero;
+        if (realDelta > MaxFrameDelta)
+        {
+            delta = TimeSpan.FromTicks((long)(delta.Ticks * (MaxFrameDelta.TotalSeconds / realDelta.TotalSeconds)));
+            realDelta = MaxFrameDelta;
+        }
 
         _animation.Advance(delta);
 
         var wasMoving = _motion.IsMoving;
         var moved = _motion.Update(delta);
-        var climbed = _surface.AdvanceFloor(delta);
+        var climbed = _surface.AdvanceFloor(realDelta);
 
         if (wasMoving && !_motion.IsMoving && !_exitRequested)
             _runtime.NotifyArrived();
@@ -268,6 +300,9 @@ public sealed class PetSession : IDisposable
     {
         var busy = _runtime.Behavior.State is PetActivity.Playing or PetActivity.Petting || _motion.IsMoving || _surface.IsFloorMoving || _menu?.IsVisible == true;
         var fps = _animation.CurrentClip?.FramesPerSecond ?? 0;
+#if DEBUG
+        fps *= _debugTimeScale;
+#endif
 
         var interval = busy || fps <= 0
             ? MinFrameInterval
@@ -286,7 +321,9 @@ public sealed class PetSession : IDisposable
     {
         if (_disposed) return;
 
-        var elapsed = _clock.Read(Timestamp());
+        var now = Timestamp();
+        var realElapsed = _clock.Read(now);
+        var elapsed = SimulationTime(now);
         var delta = elapsed - _lastSimulationTick;
         _lastSimulationTick = elapsed;
 
@@ -296,7 +333,7 @@ public sealed class PetSession : IDisposable
 
         if (!_exitRequested || _exitCompleted) return;
 
-        var timedOut = elapsed - _exitStarted > ExitSafetyTimeout;
+        var timedOut = realElapsed - _exitStarted > ExitSafetyTimeout;
         var offScreen = _runtime.IsExitAnimationComplete && !_motion.IsMoving;
 
         if (!offScreen && !timedOut) return;
@@ -307,6 +344,15 @@ public sealed class PetSession : IDisposable
             : "Exit animation completed; the pet reached the screen edge.");
 
         ExitAnimationCompleted?.Invoke(this, EventArgs.Empty);
+    }
+
+    private TimeSpan SimulationTime(TimeSpan timestamp)
+    {
+#if DEBUG
+        return _clock.ReadScaled(timestamp);
+#else
+        return _clock.Read(timestamp);
+#endif
     }
 
     private static TimeSpan Timestamp() => Stopwatch.GetElapsedTime(0, Stopwatch.GetTimestamp());
@@ -350,8 +396,8 @@ public sealed class PetSession : IDisposable
             case PetActivity.Playing:
             case PetActivity.Petting:
                 _motion.Stop();
-                _sceneStarted = _clock.Read(Timestamp());
-                _sceneDuration = transition.To is PetActivity.Playing ? _tuning.PlayDuration : _tuning.PetDuration;
+                _sceneStarted = SimulationTime(Timestamp());
+                _sceneDuration = _runtime.Behavior.InteractionDuration;
                 _sceneOrigin = _motion.X;
                 _sceneDirection = _motion.X < (WalkArea.Left + WalkArea.Right) / 2 ? 1 : -1;
                 _window.SetFacing(_sceneDirection < 0);
@@ -491,7 +537,7 @@ public sealed class PetSession : IDisposable
     {
         var activity = _runtime.Behavior.State;
         if (activity is not (PetActivity.Playing or PetActivity.Petting)) return;
-        var progress = (_clock.Read(Timestamp()) - _sceneStarted).TotalSeconds / Math.Max(0.001, _sceneDuration.TotalSeconds);
+        var progress = (SimulationTime(Timestamp()) - _sceneStarted).TotalSeconds / Math.Max(0.001, _sceneDuration.TotalSeconds);
         if (activity is PetActivity.Playing)
         {
             var step = 18 * Math.Sin(Math.Clamp(progress, 0, 1) * Math.PI);

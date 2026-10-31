@@ -10,8 +10,8 @@ public class PetRuntimeTests
 
     private static PetTuning Tuning() => new()
     {
-        SatietyDecayPerHour = 0,
-        HappinessDecayPerHour = 0,
+        SatietyDecayPerMinute = 0,
+        HappinessDecayPerMinute = 0,
         HungryThreshold = 30,
         TiredThreshold = 20,
         SatietyRecoveryThreshold = 45,
@@ -157,7 +157,7 @@ public class PetRuntimeTests
     [Fact]
     public void OneHourActiveUpdateDecaysNeeds()
     {
-        var tuning = new PetTuning { SatietyDecayPerHour = 60, HappinessDecayPerHour = 0 };
+        var tuning = new PetTuning { SatietyDecayPerMinute = 1, HappinessDecayPerMinute = 0 };
         var runtime = CreateRuntime(satiety: 100, happiness: 100, tuning: tuning);
 
         runtime.Update(TimeSpan.FromHours(1), Now);

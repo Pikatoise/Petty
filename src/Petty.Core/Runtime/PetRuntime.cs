@@ -9,7 +9,7 @@ namespace Petty.Core.Runtime;
 /// </summary>
 public sealed class PetRuntime
 {
-    private readonly PetTuning _tuning;
+    private PetTuning _tuning;
     private TimeSpan _biteTimer;
 
     private PetRuntime(PetSnapshot snapshot, PetTuning tuning, Random? random)
@@ -21,6 +21,21 @@ public sealed class PetRuntime
         Behavior = new PetBehaviorMachine(tuning, random);
         LastUpdatedUtc = snapshot.LastUpdatedUtc;
     }
+
+#if DEBUG
+    public void SetTuning(PetTuning tuning)
+    {
+        _tuning = tuning ?? throw new ArgumentNullException(nameof(tuning));
+        Behavior.SetTuning(tuning);
+    }
+
+    public void SetNeeds(double satiety, double happiness) => Needs = Needs.FromValues(satiety, happiness);
+    public void SetBowlFood(double amount)
+    {
+        Bowl.Consume(Bowl.Food);
+        Bowl.Fill(amount);
+    }
+#endif
 
     public PetSnapshot Snapshot { get; }
 
@@ -76,14 +91,13 @@ public sealed class PetRuntime
         var previous = Behavior.State;
         var remaining = previous switch
         {
-            PetActivity.Playing => _tuning.PlayDuration - Behavior.StateElapsed,
-            PetActivity.Petting => _tuning.PetDuration - Behavior.StateElapsed,
+            PetActivity.Playing or PetActivity.Petting => Behavior.InteractionDuration - Behavior.StateElapsed,
             _ => TimeSpan.Zero,
         };
         var actionSeconds = Math.Max(0, Math.Min(delta.TotalSeconds, remaining.TotalSeconds));
         if (previous is PetActivity.Playing or PetActivity.Petting)
         {
-            var duration = previous is PetActivity.Playing ? _tuning.PlayDuration : _tuning.PetDuration;
+            var duration = Behavior.InteractionDuration;
             var happiness = previous is PetActivity.Playing ? _tuning.PlayHappinessGain : _tuning.PetHappinessGain;
             var satiety = previous is PetActivity.Playing ? _tuning.PlaySatietyCost : _tuning.PetSatietyCost;
             var fraction = actionSeconds / Math.Max(0.001, duration.TotalSeconds);

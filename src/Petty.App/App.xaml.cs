@@ -51,6 +51,12 @@ public partial class App: Application
     private bool _stateWasPersisted;
     private bool _shutdownStarted;
     private Localization? _localization;
+#if DEBUG
+    private DebugTuningStore? _debugStore;
+    private DebugTuning _debugTuning = new();
+    private DebugWindow? _debugWindow;
+    private bool _debugLoadError;
+#endif
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -117,6 +123,10 @@ public partial class App: Application
         _autoSaveTimer?.Stop();
         _settings?.Close();
         _settings = null;
+#if DEBUG
+        _debugWindow?.Close();
+        _debugWindow = null;
+#endif
         _session?.Dispose();
         _session = null;
         _window = null;
@@ -137,6 +147,17 @@ public partial class App: Application
     {
         var now = DateTimeOffset.UtcNow;
         var tuning = PetTuning.Default.Sanitized();
+#if DEBUG
+        _debugStore = new DebugTuningStore(Path.Combine(_paths!.DataDirectory, "dev-tuning.json"));
+        try { _debugTuning = _debugStore.Load(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
+        {
+            _log!.Error("Could not load debug tuning; defaults are in use.", ex);
+            _debugTuning = new DebugTuning();
+            _debugLoadError = true;
+        }
+        tuning = _debugTuning.ToPetTuning();
+#endif
         _tuning = tuning;
 
         _store = new PetStateStore(_paths!.StateFile, tuning);
@@ -274,6 +295,9 @@ public partial class App: Application
         _session?.Dispose();
         _session = new PetSession(
             runtime, _sheet!, _window, _bowlWindow!, _ballWindow!, _handWindow!, _displayService, _assetDirectory!, tuning, _log!);
+#if DEBUG
+        _session.ApplyDebugTuning(tuning, _debugTuning.TimeScale);
+#endif
         _session.ExitAnimationCompleted += OnExitAnimationCompleted;
         _session.StateChanged += (_, reason) => SaveState(reason);
         _session.Start();
@@ -321,7 +345,24 @@ public partial class App: Application
         _tray = new TrayService(iconPath, _log!);
         _tray.SettingsRequested += (_, _) => ShowSettings();
         _tray.ExitRequested += (_, _) => RequestExitFromTray();
+#if DEBUG
+        _tray.DebugRequested += (_, _) => ShowDebugWindow();
+#endif
     }
+
+#if DEBUG
+    private void ShowDebugWindow()
+    {
+        if (_runtime is null || _debugStore is null) return;
+        if (_debugWindow is { IsVisible: true }) { _debugWindow.Activate(); return; }
+        _debugWindow = new DebugWindow(_runtime, () => _session, _debugTuning, _debugStore,
+            settings => { _debugTuning = settings; _tuning = settings.ToPetTuning(); _session?.ApplyDebugTuning(_tuning, settings.TimeScale); },
+            () => SaveState("debug"));
+        if (_debugLoadError) _debugWindow.ShowLoadError();
+        _debugWindow.Closed += (_, _) => _debugWindow = null;
+        _debugWindow.Show();
+    }
+#endif
 
     internal void LogError(string message, Exception exception) => _log?.Error(message, exception);
 
@@ -362,6 +403,10 @@ public partial class App: Application
         var wizard = new CreationWizardWindow(_variants, firstRun: false, PetNameRules.DefaultName, warning: null, _sheet);
         if (wizard.ShowDialog() != true) return;
 
+#if DEBUG
+        _debugWindow?.Close();
+        _debugWindow = null;
+#endif
         if (!ReferenceEquals(_sheet, wizard.SelectedSheet))
         {
             _session?.Dispose();
@@ -398,18 +443,20 @@ public partial class App: Application
 
     private void OnAutoSaveTick(object? sender, EventArgs e) => SaveState("autosave");
 
-    private void SaveState(string reason)
+    private bool SaveState(string reason)
     {
-        if (!_stateWasPersisted || _runtime is null || _store is null) return;
+        if (!_stateWasPersisted || _runtime is null || _store is null) return false;
 
         try
         {
             _store.Save(_runtime.ToSnapshot());
             _log?.Info($"Pet state saved ({reason}).");
+            return true;
         }
         catch (Exception ex)
         {
             _log?.Error($"Could not save pet state ({reason}).", ex);
+            return false;
         }
     }
 
@@ -427,6 +474,10 @@ public partial class App: Application
 
         _settings?.Close();
         _settings = null;
+#if DEBUG
+        _debugWindow?.Close();
+        _debugWindow = null;
+#endif
 
         if (_paths is not null) WriteReport(_paths.FinalReportFile, "final");
 

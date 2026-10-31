@@ -8,6 +8,21 @@ public sealed class ActiveClock(TimeSpan initialTimestamp)
     private TimeSpan _last = initialTimestamp;
     private TimeSpan _total;
     private bool _suspended;
+#if DEBUG
+    private TimeSpan _scaledTotal;
+    private double _speed = 1;
+
+    public TimeSpan ReadScaled(TimeSpan timestamp)
+    {
+        lock (_gate) { Advance(timestamp); return _scaledTotal; }
+    }
+
+    public void SetSpeed(double speed, TimeSpan timestamp)
+    {
+        if (!double.IsFinite(speed) || speed < 0.1 || speed > 20) throw new ArgumentOutOfRangeException(nameof(speed));
+        lock (_gate) { Advance(timestamp); _speed = speed; }
+    }
+#endif
 
     public TimeSpan Read(TimeSpan timestamp)
     {
@@ -39,7 +54,12 @@ public sealed class ActiveClock(TimeSpan initialTimestamp)
         if (delta < TimeSpan.Zero) return _total;
         _last = timestamp;
         if (!_suspended && delta > TimeSpan.Zero && delta <= MaxObservedGap)
+        {
             _total += delta;
+#if DEBUG
+            _scaledTotal += TimeSpan.FromTicks((long)Math.Round(delta.Ticks * _speed));
+#endif
+        }
         return _total;
     }
 }

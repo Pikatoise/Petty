@@ -11,7 +11,8 @@ public class PetBehaviorMachineTests
         ExitDuration = TimeSpan.FromSeconds(3),
         PlayDuration = TimeSpan.FromSeconds(10),
         SleepAfterIdle = TimeSpan.FromSeconds(60),
-        SleepDuration = TimeSpan.FromMinutes(10),
+        SleepMinDuration = TimeSpan.FromMinutes(10),
+        SleepMaxDuration = TimeSpan.FromMinutes(10),
         WalkDuration = TimeSpan.FromSeconds(2),
         RunDuration = TimeSpan.FromSeconds(1),
         WanderMinInterval = TimeSpan.FromHours(1),
@@ -118,6 +119,92 @@ public class PetBehaviorMachineTests
         Assert.Equal(PetActivity.Sleeping, machine.State);
 
         machine.OnUserInteraction();
+        Assert.Equal(PetActivity.Idle, machine.State);
+    }
+
+    [Fact]
+    public void CertainSleepWorksWhenHappinessIsLow()
+    {
+        var tuning = new PetTuning { SleepAfterIdle = TimeSpan.FromSeconds(2), SleepChance = 1,
+            WanderMinInterval = TimeSpan.FromHours(1), WanderMaxInterval = TimeSpan.FromHours(1) };
+        var machine = new PetBehaviorMachine(tuning, new Random(1));
+        machine.Update(TimeSpan.FromSeconds(2), Needs.FromValues(80, 20), new Bowl(0, 100));
+        Assert.Equal(PetActivity.Sleeping, machine.State);
+    }
+
+    [Fact]
+    public void StarvingPetWithoutFoodCanSleepButSeeksFoodFirstWhenAvailable()
+    {
+        var tuning = new PetTuning { SleepAfterIdle = TimeSpan.FromSeconds(2), SleepChance = 1,
+            WanderMinInterval = TimeSpan.FromHours(1), WanderMaxInterval = TimeSpan.FromHours(1) };
+        var machine = new PetBehaviorMachine(tuning, new Random(1));
+        var needs = Needs.FromValues(0, 0);
+        machine.Update(TimeSpan.FromMilliseconds(200), needs, new Bowl(0, 100));
+        Assert.Equal(PetActivity.Tired, machine.State);
+        machine.Update(TimeSpan.FromSeconds(2), needs, new Bowl(0, 100));
+        Assert.Equal(PetActivity.Sleeping, machine.State);
+        machine.Update(TimeSpan.FromMilliseconds(200), needs, new Bowl(25, 100));
+        Assert.Equal(PetActivity.SeekingFood, machine.State);
+    }
+
+    [Fact]
+    public void SleepProbabilityIsCheckedOncePerIdleInterval()
+    {
+        var tuning = new PetTuning { SleepAfterIdle = TimeSpan.FromSeconds(2), SleepChance = 0.5,
+            WanderMinInterval = TimeSpan.FromHours(1), WanderMaxInterval = TimeSpan.FromHours(1) };
+        var machine = new PetBehaviorMachine(tuning, new SequenceRandom(0.5, 0.8, 0.2));
+        var bowl = new Bowl(0, 100);
+        machine.Update(TimeSpan.FromSeconds(2), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Idle, machine.State);
+        machine.Update(TimeSpan.FromSeconds(1), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Idle, machine.State);
+        machine.Update(TimeSpan.FromSeconds(1), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Sleeping, machine.State);
+    }
+
+    [Fact]
+    public void IdleTimeAccumulatesAcrossWalksAndZeroChanceNeverSleeps()
+    {
+        var tuning = new PetTuning { SleepAfterIdle = TimeSpan.FromSeconds(5), SleepChance = 1,
+            WanderMinInterval = TimeSpan.FromSeconds(2), WanderMaxInterval = TimeSpan.FromSeconds(2), RunChance = 0 };
+        var machine = new PetBehaviorMachine(tuning, new Random(1));
+        var bowl = new Bowl(0, 100);
+        machine.Update(TimeSpan.FromSeconds(2), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Walking, machine.State);
+        machine.NotifyArrived();
+        machine.Update(TimeSpan.FromSeconds(2), Needs.Full, bowl);
+        machine.NotifyArrived();
+        machine.Update(TimeSpan.FromSeconds(1), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Sleeping, machine.State);
+        var noSleep = new PetBehaviorMachine(new PetTuning { SleepAfterIdle = TimeSpan.FromSeconds(1), SleepChance = 0,
+            WanderMinInterval = TimeSpan.FromHours(1), WanderMaxInterval = TimeSpan.FromHours(1) }, new Random(1));
+        noSleep.Update(TimeSpan.FromSeconds(10), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Idle, noSleep.State);
+    }
+
+    private sealed class SequenceRandom(params double[] values) : Random
+    {
+        private int _index;
+        public override double NextDouble() => values[Math.Min(_index++, values.Length - 1)];
+    }
+
+    [Fact]
+    public void SleepDurationIsSampledOncePerSleepWithinConfiguredRange()
+    {
+        var tuning = new PetTuning { SleepAfterIdle = TimeSpan.FromSeconds(1), SleepChance = 1,
+            SleepMinDuration = TimeSpan.FromSeconds(100), SleepMaxDuration = TimeSpan.FromSeconds(200),
+            WanderMinInterval = TimeSpan.FromHours(1), WanderMaxInterval = TimeSpan.FromHours(1) };
+        var machine = new PetBehaviorMachine(tuning, new SequenceRandom(0, 0.25, 0.5, 0.75));
+        var bowl = new Bowl(0, 100);
+        machine.Update(TimeSpan.FromSeconds(1), Needs.Full, bowl);
+        machine.Update(TimeSpan.FromSeconds(124.9), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Sleeping, machine.State);
+        machine.Update(TimeSpan.FromSeconds(0.1), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Idle, machine.State);
+        machine.Update(TimeSpan.FromSeconds(1), Needs.Full, bowl);
+        machine.Update(TimeSpan.FromSeconds(174.9), Needs.Full, bowl);
+        Assert.Equal(PetActivity.Sleeping, machine.State);
+        machine.Update(TimeSpan.FromSeconds(0.1), Needs.Full, bowl);
         Assert.Equal(PetActivity.Idle, machine.State);
     }
 

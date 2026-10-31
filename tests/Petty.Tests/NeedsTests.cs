@@ -7,7 +7,7 @@ public class NeedsTests
     [Fact]
     public void DecayIsProportionalToElapsedHours()
     {
-        var tuning = new PetTuning { SatietyDecayPerHour = 4, HappinessDecayPerHour = 2 };
+        var tuning = new PetTuning { SatietyDecayPerMinute = 4.0 / 60, HappinessDecayPerMinute = 2.0 / 60 };
         var needs = Needs.Full;
 
         var after = needs.Advance(TimeSpan.FromHours(2), tuning);
@@ -17,9 +17,19 @@ public class NeedsTests
     }
 
     [Fact]
+    public void DecayRatesAreMeasuredPerMinute()
+    {
+        var tuning = new PetTuning { SatietyDecayPerMinute = 2, HappinessDecayPerMinute = 1 };
+        var after = Needs.Full.Advance(TimeSpan.FromMinutes(3), tuning);
+        Assert.Equal(94, after.Satiety, 3);
+        Assert.Equal(97, after.Happiness, 3);
+        Assert.Equal(96, Needs.Full.Advance(TimeSpan.FromMinutes(60), PetTuning.Default).Satiety, 3);
+    }
+
+    [Fact]
     public void ValuesNeverLeaveTheZeroToHundredRange()
     {
-        var tuning = new PetTuning { SatietyDecayPerHour = 1000, HappinessDecayPerHour = 1000 };
+        var tuning = new PetTuning { SatietyDecayPerMinute = 1000.0 / 60, HappinessDecayPerMinute = 1000.0 / 60 };
 
         var after = Needs.Full.Advance(TimeSpan.FromDays(30), tuning);
         Assert.Equal(0, after.Satiety);

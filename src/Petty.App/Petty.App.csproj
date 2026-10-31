@@ -25,6 +25,10 @@
     <Using Remove="System.Drawing" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Page Remove="Views\DebugWindow.xaml;Views\DebugParameterControl.xaml" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Petty.Core\Petty.Core.csproj" />
     <PackageReference Include="WPF-UI" Version="4.3.0" GeneratePathProperty="true" />

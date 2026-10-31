@@ -18,11 +18,11 @@ public readonly record struct Needs(double Satiety, double Happiness)
         if (elapsed <= TimeSpan.Zero)
             return this;
 
-        var hours = elapsed.TotalHours;
+        var minutes = elapsed.TotalMinutes;
 
         return FromValues(
-            Satiety - (tuning.SatietyDecayPerHour * hours),
-            Happiness - (tuning.HappinessDecayPerHour * hours));
+            Satiety - (tuning.SatietyDecayPerMinute * minutes),
+            Happiness - (tuning.HappinessDecayPerMinute * minutes));
     }
 
     public Needs WithSatiety(double value) => new(Clamp(value), Happiness);

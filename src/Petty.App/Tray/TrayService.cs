@@ -41,6 +41,9 @@ public sealed class TrayService : IDisposable
     public event EventHandler? SettingsRequested;
 
     public event EventHandler? ExitRequested;
+#if DEBUG
+    public event EventHandler? DebugRequested;
+#endif
 
     private void OnMouseUp(object? sender, MouseEventArgs e)
     {
@@ -51,6 +54,9 @@ public sealed class TrayService : IDisposable
         popup.Closed += (_, _) => _popup = null;
         popup.SettingsRequested += (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty);
         popup.ExitRequested += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
+#if DEBUG
+        popup.DebugRequested += (_, _) => DebugRequested?.Invoke(this, EventArgs.Empty);
+#endif
         popup.ShowAtCursor();
     }
 

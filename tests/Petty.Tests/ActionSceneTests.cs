@@ -9,7 +9,7 @@ public class ActionSceneTests
     [Fact]
     public void InteractionsRejectOverlapAndApplyFullEffectOnce()
     {
-        var tuning = new PetTuning { SatietyDecayPerHour = 0, HappinessDecayPerHour = 0 };
+        var tuning = new PetTuning { SatietyDecayPerMinute = 0, HappinessDecayPerMinute = 0 };
         var now = DateTimeOffset.UtcNow;
         var runtime = PetRuntime.Restore(new PetSnapshot { PetName = "Cat", Satiety = 80, Happiness = 20 }, tuning, now);
         Assert.True(runtime.RequestPet());

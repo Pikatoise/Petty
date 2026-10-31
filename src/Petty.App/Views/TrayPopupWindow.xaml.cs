@@ -10,6 +10,15 @@ public partial class TrayPopupWindow : Window
     public TrayPopupWindow()
     {
         InitializeComponent();
+#if DEBUG
+        var grid = (System.Windows.Controls.Grid)((System.Windows.Controls.Border)Content).Child;
+        grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+        var debug = new System.Windows.Controls.Button { Style = (Style)FindResource("CozyButton"), Margin = new Thickness(0, 4, 0, 0) };
+        debug.SetResourceReference(System.Windows.Controls.ContentControl.ContentProperty, "DebugMenu");
+        System.Windows.Controls.Grid.SetRow(debug, 2);
+        debug.Click += (_, _) => { Close(); DebugRequested?.Invoke(this, EventArgs.Empty); };
+        grid.Children.Add(debug);
+#endif
         Deactivated += OnDeactivated;
         Closing += (_, _) => Deactivated -= OnDeactivated;
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
@@ -17,6 +26,9 @@ public partial class TrayPopupWindow : Window
 
     public event EventHandler? SettingsRequested;
     public event EventHandler? ExitRequested;
+#if DEBUG
+    public event EventHandler? DebugRequested;
+#endif
 
     public void ShowAtCursor()
     {
