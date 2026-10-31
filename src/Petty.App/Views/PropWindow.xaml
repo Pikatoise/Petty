@@ -20,7 +20,10 @@
     <Grid x:Name="Root" Background="Transparent">
         <Image x:Name="PropImageControl"
                Stretch="Fill"
+               RenderTransformOrigin="0.5,0.5"
                RenderOptions.BitmapScalingMode="NearestNeighbor"
-               RenderOptions.EdgeMode="Aliased" />
+               RenderOptions.EdgeMode="Aliased">
+            <Image.RenderTransform><RotateTransform x:Name="PropRotation" /></Image.RenderTransform>
+        </Image>
     </Grid>
 </Window>

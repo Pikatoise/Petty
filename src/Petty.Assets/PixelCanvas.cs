@@ -207,6 +207,9 @@ public sealed class PixelCanvas
     public byte[] ToPngBytes()
     {
         using var bitmap = new Bitmap(Width, Height, PixelFormat.Format32bppArgb);
+        // WPF and console hosts may have different DPI contexts. Pin PNG metadata
+        // so identical pixels also produce identical asset bytes in either host.
+        bitmap.SetResolution(96, 96);
         var data = bitmap.LockBits(
             new Rectangle(0, 0, Width, Height),
             ImageLockMode.WriteOnly,

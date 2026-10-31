@@ -13,6 +13,9 @@ public partial class CreationWizardWindow: Window
     private sealed record SpeciesOption(string Id, string Label);
     private BreedOption[] _breeds = [];
     private sealed record BreedOption(SpriteVariant Variant, string Label);
+    private readonly IReadOnlyList<SpriteVariant> _variants;
+    private SpriteVariant[] _coats = [];
+    private int _coatIndex;
     private SpriteClip? _idle;
     private readonly AnimationPlayback _playback = new();
     private readonly DispatcherTimer _previewTimer = new();
@@ -20,6 +23,7 @@ public partial class CreationWizardWindow: Window
     public CreationWizardWindow(IReadOnlyList<SpriteVariant> variants, bool firstRun, string initialName, string? warning,
         SpriteSheet? initialSheet = null)
     {
+        _variants = variants;
         InitializeComponent();
         if (!firstRun)
         {
@@ -37,6 +41,7 @@ public partial class CreationWizardWindow: Window
         SelectedSheet = initialSheet;
         _breeds = variants.GroupBy(v => (v.SpeciesId.ToLowerInvariant(), v.BreedId.ToLowerInvariant()))
             .Select(group => group.FirstOrDefault(v => v.AssetId == initialSheet?.Metadata.Character)
+                ?? group.FirstOrDefault(v => v.IsDefault)
                 ?? group.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId)
                 ?? group.OrderBy(v => v.AssetId, StringComparer.OrdinalIgnoreCase).First())
             .Select(v => new BreedOption(v, Localization.BreedName(v.BreedId))).ToArray();
@@ -58,7 +63,7 @@ public partial class CreationWizardWindow: Window
     }
 
     public string ConfirmedName { get; private set; } = string.Empty;
-    public SpriteVariant? SelectedVariant => (BreedSelector.SelectedItem as BreedOption)?.Variant;
+    public SpriteVariant? SelectedVariant => _coats.Length == 0 ? null : _coats[_coatIndex];
     public SpriteSheet? SelectedSheet { get; private set; }
 
     private void OnSpeciesChanged(object sender, SelectionChangedEventArgs e)
@@ -71,6 +76,28 @@ public partial class CreationWizardWindow: Window
 
     private void OnBreedChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (BreedSelector.SelectedItem is not BreedOption breed) return;
+        _coats = _variants.Where(v => v.SpeciesId.Equals(breed.Variant.SpeciesId, StringComparison.OrdinalIgnoreCase)
+                && v.BreedId.Equals(breed.Variant.BreedId, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(v => v.IsDefault).ThenBy(v => v.AssetId, StringComparer.OrdinalIgnoreCase).ToArray();
+        _coatIndex = Math.Max(0, Array.FindIndex(_coats, v => v.AssetId == breed.Variant.AssetId));
+        LoadSelectedCoat();
+    }
+
+    private void OnPreviousCoat(object sender, RoutedEventArgs e) => ChangeCoat(-1);
+    private void OnNextCoat(object sender, RoutedEventArgs e) => ChangeCoat(1);
+
+    private void ChangeCoat(int direction)
+    {
+        if (_coats.Length < 2) return;
+        _coatIndex = (_coatIndex + direction + _coats.Length) % _coats.Length;
+        LoadSelectedCoat();
+    }
+
+    private void LoadSelectedCoat()
+    {
+        PreviousCoatButton.IsEnabled = NextCoatButton.IsEnabled = _coats.Length > 1;
+        CoatPositionText.Text = string.Format(Localization.Text("CoatPositionFormat"), _coatIndex + 1, _coats.Length);
         if (SelectedVariant is not { } variant) return;
         try
         {

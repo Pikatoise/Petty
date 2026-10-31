@@ -1,0 +1,81 @@
+{
+  "character": "persian-shaded-silver",
+  "speciesId": "cat",
+  "breedId": "persian",
+  "coatId": "shaded-silver",
+  "displayName": "Persian / shaded silver",
+  "isDefault": false,
+  "playContactX": 58,
+  "playContactY": 49,
+  "image": "persian-shaded-silver.png",
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "columns": 8,
+  "rows": 8,
+  "groundRow": 53,
+  "animations": [
+    {
+      "name": "idle",
+      "startIndex": 0,
+      "frameCount": 8,
+      "framesPerSecond": 6,
+      "loop": true
+    },
+    {
+      "name": "walk",
+      "startIndex": 8,
+      "frameCount": 8,
+      "framesPerSecond": 10,
+      "loop": true
+    },
+    {
+      "name": "run",
+      "startIndex": 16,
+      "frameCount": 8,
+      "framesPerSecond": 14,
+      "loop": true
+    },
+    {
+      "name": "eat",
+      "startIndex": 24,
+      "frameCount": 6,
+      "framesPerSecond": 7,
+      "loop": true
+    },
+    {
+      "name": "sleep",
+      "startIndex": 30,
+      "frameCount": 4,
+      "framesPerSecond": 3,
+      "loop": true
+    },
+    {
+      "name": "play",
+      "startIndex": 34,
+      "frameCount": 12,
+      "framesPerSecond": 10,
+      "loop": true
+    },
+    {
+      "name": "pet",
+      "startIndex": 46,
+      "frameCount": 6,
+      "framesPerSecond": 5,
+      "loop": true
+    },
+    {
+      "name": "tired",
+      "startIndex": 52,
+      "frameCount": 4,
+      "framesPerSecond": 4,
+      "loop": true
+    },
+    {
+      "name": "exit",
+      "startIndex": 56,
+      "frameCount": 8,
+      "framesPerSecond": 10,
+      "loop": false
+    }
+  ]
+}

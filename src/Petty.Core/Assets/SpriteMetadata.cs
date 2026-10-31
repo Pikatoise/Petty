@@ -28,6 +28,13 @@ public sealed class SpriteSheetMetadata
 
     public string? DisplayName { get; set; }
 
+    /// <summary>Preferred installed coat for this breed in the creator.</summary>
+    public bool IsDefault { get; set; }
+
+    /// <summary>Extended play paw contact in sprite pixels; optional for older/custom sheets.</summary>
+    public int? PlayContactX { get; set; }
+    public int? PlayContactY { get; set; }
+
     /// <summary>File name of the atlas PNG relative to the metadata file.</summary>
     public string Image { get; set; } = string.Empty;
 
@@ -73,6 +80,9 @@ public static class SpriteMetadataValidator
         if (metadata.SpeciesId is not null && metadata.SpeciesId is not ("cat" or "dog")) errors.Add("Species id must be cat or dog.");
         if (metadata.BreedId is not null && !IsValidId(metadata.BreedId)) errors.Add("Breed id is invalid.");
         if (metadata.CoatId is not null && !IsValidId(metadata.CoatId)) errors.Add("Coat id is invalid.");
+        if (metadata.PlayContactX is { } contactX && (contactX < 1 || contactX >= metadata.FrameWidth) ||
+            metadata.PlayContactY is { } contactY && (contactY < 1 || contactY >= metadata.FrameHeight))
+            errors.Add("Play paw contact must be inside the sprite frame.");
         if (metadata.Animations is null || metadata.Animations.Any(clip => clip is null))
         {
             errors.Add("Animation clips are missing or invalid.");

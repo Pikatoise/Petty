@@ -1,4 +1,5 @@
 using Petty.Core.Assets;
+using Petty.Core.Domain;
 using System.Buffers.Binary;
 
 namespace Petty.Tests;
@@ -11,7 +12,7 @@ public class SpriteAssetFileTests
 {
     private static readonly string RepositoryRoot = FindRepositoryRoot();
     private static readonly string SpriteDirectory = Path.Combine(RepositoryRoot, "assets", "sprites");
-    private static readonly string MetadataPath = Path.Combine(SpriteDirectory, "cat-orange-white.json");
+    private static readonly string MetadataPath = Path.Combine(SpriteDirectory, "packs", PetCatalog.DefaultBreedId, PetCatalog.DefaultAssetId + ".json");
 
     [Fact]
     public void ShippedMetadataIsValidAndCoversEveryFrame()
@@ -26,19 +27,19 @@ public class SpriteAssetFileTests
         Assert.Empty(SpriteMetadataValidator.Validate(metadata, requirePet: true));
 
         var totalFrames = metadata!.Animations.Sum(a => a.FrameCount);
-        Assert.Equal(52, totalFrames);
+        Assert.Equal(64, totalFrames);
 
         var expected = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
-            ["idle"] = 4,
+            ["idle"] = 8,
             ["walk"] = 8,
             ["run"] = 8,
             ["eat"] = 6,
             ["sleep"] = 4,
-            ["play"] = 8,
-            ["pet"] = 4,
+            ["play"] = 12,
+            ["pet"] = 6,
             ["tired"] = 4,
-            ["exit"] = 6,
+            ["exit"] = 8,
         };
 
         foreach (var (name, count) in expected)
@@ -55,7 +56,7 @@ public class SpriteAssetFileTests
     public void AtlasPngMatchesMetadataAndHasRealAlpha()
     {
         var metadata = LoadMetadata();
-        var atlasPath = Path.Combine(SpriteDirectory, metadata.Image);
+        var atlasPath = Path.Combine(Path.GetDirectoryName(MetadataPath)!, metadata.Image);
 
         Assert.True(File.Exists(atlasPath), $"Missing atlas: {atlasPath}");
 
@@ -68,22 +69,38 @@ public class SpriteAssetFileTests
     }
 
     [Fact]
-    public void CatalogVariantsHaveValidAtlases()
+    public void ShippedPacksContainEightBreedsAndFortyValidCoats()
     {
-        using var catalog = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(SpriteDirectory, "catalog.json")));
-        foreach (var variant in catalog.RootElement.EnumerateArray())
+        var paths = Directory.GetFiles(Path.Combine(SpriteDirectory, "packs"), "*.json", SearchOption.AllDirectories);
+        Assert.Equal(40, paths.Length);
+        var metadataList = new List<SpriteSheetMetadata>();
+        foreach (var path in paths)
         {
-            var id = variant.GetProperty("id").GetString()!;
+            var id = Path.GetFileNameWithoutExtension(path);
             var metadata = System.Text.Json.JsonSerializer.Deserialize<SpriteSheetMetadata>(
-                File.ReadAllText(Path.Combine(SpriteDirectory, id + ".json")),
+                File.ReadAllText(path),
                 new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
             Assert.Equal(id, metadata.Character);
-            Assert.Empty(SpriteMetadataValidator.Validate(metadata));
-            var header = ReadPngHeader(Path.Combine(SpriteDirectory, metadata.Image));
+            Assert.Empty(SpriteMetadataValidator.Validate(metadata, requirePet: true));
+            var header = ReadPngHeader(Path.Combine(Path.GetDirectoryName(path)!, metadata.Image));
             Assert.Equal(metadata.Columns * metadata.FrameWidth, header.Width);
             Assert.Equal(metadata.Rows * metadata.FrameHeight, header.Height);
             Assert.Equal(6, header.ColorType);
+            metadataList.Add(metadata);
         }
+        Assert.Equal(40, metadataList.Select(m => m.Character).Distinct().Count());
+        Assert.Equal(8, metadataList.Select(m => m.BreedId).Distinct().Count());
+        Assert.Equal(4, metadataList.Where(m => m.SpeciesId == "cat").Select(m => m.BreedId).Distinct().Count());
+        Assert.Equal(4, metadataList.Where(m => m.SpeciesId == "dog").Select(m => m.BreedId).Distinct().Count());
+        foreach (var breed in metadataList.GroupBy(m => m.BreedId))
+        {
+            Assert.Equal(5, breed.Count());
+            Assert.Equal(5, breed.Select(m => m.CoatId).Distinct().Count());
+            Assert.Single(breed, m => m.IsDefault);
+        }
+        Assert.DoesNotContain(metadataList, m => m.Character == PetCatalog.LegacyAssetId);
+        Assert.False(File.Exists(Path.Combine(SpriteDirectory, PetCatalog.LegacyAssetId + ".png")));
+        Assert.False(File.Exists(Path.Combine(SpriteDirectory, PetCatalog.LegacyAssetId + ".json")));
     }
 
     [Fact]

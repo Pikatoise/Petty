@@ -56,6 +56,14 @@ public sealed class AnimationController
         return true;
     }
 
+    /// <summary>Displays an absolute scene frame without accumulating a second clock.</summary>
+    public void ShowSceneFrame(int frameIndex)
+    {
+        if (CurrentClip is null) return;
+        var frame = CurrentClip[frameIndex];
+        if (!ReferenceEquals(frame, CurrentFrame)) SetFrame(frame);
+    }
+
     private void SetFrame(SpriteFrame frame)
     {
         CurrentFrame = frame;

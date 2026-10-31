@@ -6,6 +6,7 @@ var outputDirectory = "assets/sprites";
 var verifyOnly = false;
 var regenerate = false;
 string? packDirectory = null;
+string? previewDirectory = null;
 for (var i = 0; i < args.Length; i++)
 {
     switch (args[i])
@@ -14,8 +15,9 @@ for (var i = 0; i < args.Length; i++)
         case "--verify": verifyOnly = true; break;
         case "--regenerate": regenerate = true; break;
         case "--pack" when i + 1 < args.Length: packDirectory = args[++i]; break;
+        case "--preview" when i + 1 < args.Length: previewDirectory = args[++i]; break;
         case "-h" or "--help":
-            Console.WriteLine("Petty.Assets [--out directory] [--verify|--regenerate] [--pack directory]");
+            Console.WriteLine("Petty.Assets [--out directory] [--verify|--regenerate] [--pack directory] [--preview directory]");
             return 0;
         default: Console.Error.WriteLine($"Unknown argument: {args[i]}"); return 2;
     }
@@ -28,7 +30,7 @@ try
         if (!verifyOnly || regenerate) throw new ArgumentException("--pack requires --verify.");
         return ValidatePacks([packDirectory], []);
     }
-    var variants = Variant.Load(Path.Combine("assets", "sprites", "catalog.json"));
+    var breeds = BreedDesign.Load(Path.Combine("assets", "breed-designs.json"));
     if (!verifyOnly) Directory.CreateDirectory(outputDirectory);
     if (verifyOnly && regenerate) throw new ArgumentException("--verify and --regenerate cannot be combined.");
     var shared = new[] { "tray-cat.png", "petty.ico", "bowl-empty.png", "bowl-full.png", "ball.png", "hand.png", "bowl-25.png", "bowl-50.png", "bowl-75.png", "pour-0.png", "pour-1.png", "pour-2.png", "pour-3.png", "pour-4.png", "pour-5.png" }.Select(f => Path.Combine(outputDirectory, f)).ToArray();
@@ -45,31 +47,25 @@ try
         }
         finally { temporary.Delete(recursive: true); }
     }
-    var passed = true;
-    foreach (var variant in variants)
+    if (!verifyOnly) BreedPackBuilder.Generate(breeds, outputDirectory, regenerate);
+    if (previewDirectory is not null) BreedPackBuilder.WritePreview(breeds, previewDirectory);
+    var passed = shared.All(File.Exists);
+    foreach (var path in shared.Where(path => !File.Exists(path))) Console.Error.WriteLine($"Missing shared asset: {path}");
+    if (passed)
     {
-        var files = new[] { Path.Combine(outputDirectory, variant.Id + ".png"), Path.Combine(outputDirectory, variant.Id + ".json") };
-        var source = variant.Source is null ? null : new[]
-        {
-            Path.Combine("assets", "sprites", variant.Source, variant.Id + ".png"),
-            Path.Combine("assets", "sprites", variant.Source, variant.Id + ".json"),
-        };
-        ValidationReport? report = null;
-        try { report = AssetValidator.ValidateDirectory(outputDirectory, variant); }
-        catch (Exception ex) when (ex is IOException or ArgumentException or OutOfMemoryException or NullReferenceException or InvalidOperationException or JsonException) { Console.Error.WriteLine(ex.Message); }
-        if (!verifyOnly && (regenerate || report?.Passed != true))
-        {
-            Console.WriteLine($"Generating {variant.Id}...");
-            if (source is null) AtlasWriter.Write(AtlasBuilder.Build(variant), outputDirectory);
-            else for (var i = 0; i < files.Length; i++) AtlasWriter.WriteIfChanged(files[i], File.ReadAllBytes(source[i]));
-            report = AssetValidator.ValidateDirectory(outputDirectory, variant);
-        }
-        foreach (var error in report?.Errors ?? ["Asset validation failed."]) Console.Error.WriteLine($"{variant.Id}: {error}");
-        if (report?.Passed != true || shared.Any(path => !File.Exists(path))) passed = false;
+        // Props are stored at the shared root, independently of breed-pack directories.
+        var report = AssetValidator.ValidateShared(outputDirectory);
+        foreach (var error in report.Errors) Console.Error.WriteLine(error);
+        passed &= report.Passed;
     }
     var packRoot = Path.Combine(outputDirectory, "packs");
     if (Directory.Exists(packRoot))
-        passed &= ValidatePacks(Directory.EnumerateDirectories(packRoot), variants.Select(v => v.Id)) == 0;
+        passed &= ValidatePacks(Directory.EnumerateDirectories(packRoot), []) == 0;
+    else { Console.Error.WriteLine("No breed packs found."); passed = false; }
+    foreach (var breed in breeds)
+        foreach (var coat in breed.Coats)
+            if (!File.Exists(Path.Combine(packRoot, breed.Id, breed.Id + "-" + coat.Id + ".json")))
+            { Console.Error.WriteLine($"Missing approved coat: {breed.Id}/{coat.Id}"); passed = false; }
     Console.WriteLine(passed ? "ASSET VALIDATION PASSED" : "ASSET VALIDATION FAILED");
     return passed ? 0 : 1;
 }
@@ -92,9 +88,9 @@ static int ValidatePacks(IEnumerable<string> directories, IEnumerable<string> ex
             continue;
         }
         var paths = Directory.EnumerateFiles(directory, "*.json").ToArray();
-        if (paths.Length != 3)
+        if (paths.Length is not (3 or 5))
         {
-            Console.Error.WriteLine($"Pack {directory} must contain exactly three metadata files.");
+            Console.Error.WriteLine($"Pack {directory} must contain three legacy or five current coat metadata files.");
             passed = false;
         }
         foreach (var png in Directory.EnumerateFiles(directory, "*.png"))

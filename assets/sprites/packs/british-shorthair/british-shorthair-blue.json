@@ -1,76 +1,80 @@
 {
-  "character": "cat-orange-white",
-  "breedId": null,
-  "coatId": null,
-  "displayName": null,
-  "image": "cat-orange-white.png",
+  "character": "british-shorthair-blue",
+  "speciesId": "cat",
+  "breedId": "british-shorthair",
+  "coatId": "blue",
+  "displayName": "British Shorthair / blue",
+  "isDefault": true,
+  "playContactX": 58,
+  "playContactY": 45,
+  "image": "british-shorthair-blue.png",
   "frameWidth": 64,
   "frameHeight": 64,
   "columns": 8,
-  "rows": 7,
-  "groundRow": 52,
+  "rows": 8,
+  "groundRow": 53,
   "animations": [
     {
       "name": "idle",
       "startIndex": 0,
-      "frameCount": 4,
-      "framesPerSecond": 5,
+      "frameCount": 8,
+      "framesPerSecond": 6,
       "loop": true
     },
     {
       "name": "walk",
-      "startIndex": 4,
+      "startIndex": 8,
       "frameCount": 8,
-      "framesPerSecond": 9,
+      "framesPerSecond": 10,
       "loop": true
     },
     {
       "name": "run",
-      "startIndex": 12,
+      "startIndex": 16,
       "frameCount": 8,
       "framesPerSecond": 14,
       "loop": true
     },
     {
       "name": "eat",
-      "startIndex": 20,
+      "startIndex": 24,
       "frameCount": 6,
       "framesPerSecond": 7,
       "loop": true
     },
     {
       "name": "sleep",
-      "startIndex": 26,
+      "startIndex": 30,
       "frameCount": 4,
       "framesPerSecond": 3,
       "loop": true
     },
     {
       "name": "play",
-      "startIndex": 30,
-      "frameCount": 8,
-      "framesPerSecond": 11,
+      "startIndex": 34,
+      "frameCount": 12,
+      "framesPerSecond": 10,
       "loop": true
     },
     {
       "name": "pet",
-      "startIndex": 38,
-      "frameCount": 4,
-      "framesPerSecond": 4,
+      "startIndex": 46,
+      "frameCount": 6,
+      "framesPerSecond": 5,
       "loop": true
     },
     {
       "name": "tired",
-      "startIndex": 42,
+      "startIndex": 52,
       "frameCount": 4,
       "framesPerSecond": 4,
       "loop": true
     },
     {
       "name": "exit",
-      "startIndex": 46,
-      "frameCount": 6,
-      "framesPerSecond": 9,
+      "startIndex": 56,
+      "frameCount": 8,
+      "framesPerSecond": 10,
       "loop": false
     }
   ]

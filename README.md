@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="assets/sprites/cat-orange-white.png" width="512" alt="Кадры анимации Petty">
+  <img src="assets/sprites/packs/british-shorthair/british-shorthair-blue.png" width="512" alt="Кадры анимации Petty">
 </p>
 
 <h1 align="center">Petty</h1>
 
-<p align="center">Пиксельный кот, который живёт на рабочем столе Windows.<br>
+<p align="center">Pixel desktop pets for Windows: eight breeds of cats and dogs, five coats per breed.<br>
 Гуляет сам, спит, хочет есть, ест из миски, которую можно наполнить и перетащить, и играет с мячиком по кнопке Play над головой.</p>
 
 ## Требования

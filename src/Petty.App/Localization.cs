@@ -22,7 +22,8 @@ internal sealed class Localization
     public static string Text(string key) => (string)Application.Current.FindResource(key);
 
     public static string BreedName(string breedId) =>
-        breedId.Equals("cat", StringComparison.OrdinalIgnoreCase) ? Text("BreedCat") : breedId.Replace('-', ' ');
+        Application.Current.TryFindResource("Breed-" + breedId) as string
+        ?? (breedId.Equals("cat", StringComparison.OrdinalIgnoreCase) ? Text("BreedCat") : breedId.Replace('-', ' '));
 
     public static string SpeciesName(string speciesId) => Text(speciesId == "dog" ? "SpeciesDog" : "SpeciesCat");
 

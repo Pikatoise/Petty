@@ -84,7 +84,9 @@ public sealed class PetSession: IDisposable
         ArgumentNullException.ThrowIfNull(displays);
         _log = log ?? throw new ArgumentNullException(nameof(log));
         _surface = new DesktopSurfaceController(displays, window.PhysicalWidth, log);
-        _props = new PetPropsController(bowl, ball, hand, _surface, window.PhysicalWidth);
+        _props = new PetPropsController(bowl, ball, hand, _surface, window.PhysicalWidth,
+            sheet.Metadata.PlayContactX ?? 58, sheet.Metadata.PlayContactY ?? 45, sheet.GroundRow,
+            sheet.Metadata.SpeciesId == "dog" ? 50 : 54);
         _bowlDisplay = new BowlDisplay(bowl, _surface, assetDirectory, window.Attachment.Mode, log);
 
         _animation = new AnimationController(sheet);
@@ -264,7 +266,7 @@ public sealed class PetSession: IDisposable
             realDelta = MaxFrameDelta;
         }
 
-        _animation.Advance(delta);
+        if (_runtime.Behavior.State is not PetActivity.Playing) _animation.Advance(delta);
 
         var wasMoving = _motion.IsMoving;
         var moved = _motion.Update(delta);
@@ -275,7 +277,7 @@ public sealed class PetSession: IDisposable
 
         if (moved || climbed)
         {
-            if (_runtime.Behavior.State is not (PetActivity.Playing or PetActivity.Petting)) FaceMovement();
+            if (_runtime.Behavior.State is not (PetActivity.Playing or PetActivity.Petting or PetActivity.Eating)) FaceMovement();
             ApplyPosition();
         }
 
@@ -393,6 +395,13 @@ public sealed class PetSession: IDisposable
                 _motion.Seek(_props.SeekTargetX(_motion.X));
                 break;
 
+            case PetActivity.Eating:
+                _motion.Stop();
+                // A small backward positioning step must not leave the pet
+                // facing away from the food once it starts eating.
+                _window.SetFacing(_props.IsBowlLeft(_motion.X));
+                break;
+
             case PetActivity.Playing:
             case PetActivity.Petting:
                 _motion.Stop();
@@ -420,7 +429,7 @@ public sealed class PetSession: IDisposable
         if (transition.From is PetActivity.Playing or PetActivity.Petting or PetActivity.Eating)
             StateChanged?.Invoke(this, transition.From is PetActivity.Eating ? "eat" : "play");
 
-        if (transition.To is not (PetActivity.Playing or PetActivity.Petting)) FaceMovement();
+        if (transition.To is not (PetActivity.Playing or PetActivity.Petting or PetActivity.Eating)) FaceMovement();
         ApplyPosition();
         SyncFrameInterval();
     }
@@ -537,14 +546,17 @@ public sealed class PetSession: IDisposable
     {
         var activity = _runtime.Behavior.State;
         if (activity is not (PetActivity.Playing or PetActivity.Petting)) return;
-        var progress = (SimulationTime(Timestamp()) - _sceneStarted).TotalSeconds / Math.Max(0.001, _sceneDuration.TotalSeconds);
+        var elapsed = (SimulationTime(Timestamp()) - _sceneStarted).TotalSeconds;
+        var progress = elapsed / Math.Max(0.001, _sceneDuration.TotalSeconds);
         if (activity is PetActivity.Playing)
         {
-            var step = 18 * Math.Sin(Math.Clamp(progress, 0, 1) * Math.PI);
-            _motion.Place(Math.Clamp(_sceneOrigin + _sceneDirection * step, WalkArea.Left, WalkArea.Right));
-            ApplyPosition();
+            if (_animation.CurrentClip is not { } clip) return;
+            var pose = ActionScene.SamplePlay(elapsed, _sceneDuration.TotalSeconds,
+                clip.Frames.Count, clip.FramesPerSecond, _props.PlayExitDistance(_sceneOrigin, _sceneDirection), _props.PlayContactLift);
+            _animation.ShowSceneFrame(pose.FrameIndex);
+            _props.UpdatePlay(_motion.X, _sceneDirection, pose);
         }
-        _props.UpdateScene(activity, _motion.X, _sceneDirection, progress);
+        else _props.UpdateScene(activity, _motion.X, _sceneDirection, progress);
     }
 
     private void OnWindowGeometryChanged(object? sender, EventArgs e)

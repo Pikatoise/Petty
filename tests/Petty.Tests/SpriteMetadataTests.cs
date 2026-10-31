@@ -31,6 +31,17 @@ public class SpriteMetadataTests
         Assert.Empty(SpriteMetadataValidator.Validate(Valid()));
     }
 
+    [Theory]
+    [InlineData(64, 45)]
+    [InlineData(58, 0)]
+    public void PlayContactOutsideSpriteIsRejected(int x, int y)
+    {
+        var metadata = Valid();
+        metadata.PlayContactX = x;
+        metadata.PlayContactY = y;
+        Assert.Contains(SpriteMetadataValidator.Validate(metadata), error => error.Contains("Play paw contact"));
+    }
+
     [Fact]
     public void SpeciesIsOptionalForLegacyAndLimitedToCatsOrDogs()
     {

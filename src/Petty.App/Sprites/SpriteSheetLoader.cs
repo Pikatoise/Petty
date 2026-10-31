@@ -11,7 +11,7 @@ namespace Petty.App.Sprites;
 /// Locates the shipped atlas both in a build output (<c>Assets/Sprites</c>) and in
 /// a developer checkout (<c>assets/sprites</c> relative to the repository root).
 /// </summary>
-public sealed record SpriteVariant(string AssetId, string BreedId, string CoatId, string DisplayName, string Directory, string SpeciesId = "cat")
+public sealed record SpriteVariant(string AssetId, string BreedId, string CoatId, string DisplayName, string Directory, string SpeciesId = "cat", bool IsDefault = false)
 {
     public override string ToString() => DisplayName;
 }
@@ -40,7 +40,7 @@ public static class SpriteAssetLocator
             foreach (var path in paths)
             {
                 var id = Path.GetFileNameWithoutExtension(path);
-                if (id.Equals("catalog", StringComparison.OrdinalIgnoreCase) || !IsValidId(id) || duplicates.Contains(id) || variants.ContainsKey(id)) continue;
+                if (id.Equals("catalog", StringComparison.OrdinalIgnoreCase) || id == PetCatalog.LegacyAssetId || !IsValidId(id) || duplicates.Contains(id) || variants.ContainsKey(id)) continue;
                 try
                 {
                     var metadata = JsonSerializer.Deserialize<SpriteSheetMetadata>(File.ReadAllText(path),
@@ -53,9 +53,9 @@ public static class SpriteAssetLocator
                         reportProblem?.Invoke($"Invalid sprite definition: {path}");
                         continue;
                     }
-                    var breed = metadata.BreedId ?? PetCatalog.DefaultBreedId;
+                    var breed = metadata.BreedId ?? "cat";
                     var coat = metadata.CoatId ?? (id == PetCatalog.DefaultAssetId ? PetCatalog.DefaultCoatId : id);
-                    variants.Add(id, new SpriteVariant(id, breed, coat, string.IsNullOrWhiteSpace(metadata.DisplayName) ? id.Replace('-', ' ') : metadata.DisplayName, Path.GetDirectoryName(path)!, metadata.SpeciesId ?? "cat"));
+                    variants.Add(id, new SpriteVariant(id, breed, coat, string.IsNullOrWhiteSpace(metadata.DisplayName) ? id.Replace('-', ' ') : metadata.DisplayName, Path.GetDirectoryName(path)!, metadata.SpeciesId ?? "cat", metadata.IsDefault));
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
                 {
@@ -73,13 +73,11 @@ public static class SpriteAssetLocator
     {
         if (string.IsNullOrEmpty(assetId) || assetId.Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '-')))
             throw new InvalidDataException("Invalid sprite asset ID.");
-        foreach (var candidate in Candidates())
-        {
-            if (File.Exists(Path.Combine(candidate, assetId + ".json"))) return candidate;
-        }
-
-        return null;
+        return Discover().FirstOrDefault(v => v.AssetId == assetId)?.Directory;
     }
+
+    public static string? FindSharedDirectory() => Candidates().FirstOrDefault(directory =>
+        File.Exists(Path.Combine(directory, "tray-cat.png")) && File.Exists(Path.Combine(directory, "bowl-empty.png")));
 
     private static IEnumerable<string> Candidates()
     {

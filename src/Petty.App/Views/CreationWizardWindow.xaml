@@ -17,12 +17,29 @@
         </Grid.ColumnDefinitions>
 
         <Border Background="{StaticResource CozySurface}" BorderBrush="{StaticResource CozyEdge}" BorderThickness="1" CornerRadius="14">
+            <StackPanel VerticalAlignment="Center">
             <Image x:Name="PreviewImage"
                    Width="192"
                    Height="192"
                    Stretch="Uniform"
                    RenderOptions.BitmapScalingMode="NearestNeighbor"
                    RenderOptions.EdgeMode="Aliased" />
+                <Grid Margin="12,8,12,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="36" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="36" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="PreviousCoatButton" Content="←" Style="{StaticResource CozyButton}"
+                            Padding="0" MinWidth="0" Width="36" Height="32" FontSize="18" IsEnabled="False" Click="OnPreviousCoat"
+                            ToolTip="{DynamicResource PreviousCoat}" AutomationProperties.Name="{DynamicResource PreviousCoat}" />
+                    <TextBlock x:Name="CoatPositionText" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{StaticResource CozyMuted}" />
+                    <Button x:Name="NextCoatButton" Grid.Column="2" Content="→" Style="{StaticResource CozyButton}"
+                            Padding="0" MinWidth="0" Width="36" Height="32" FontSize="18" IsEnabled="False" Click="OnNextCoat"
+                            ToolTip="{DynamicResource NextCoat}" AutomationProperties.Name="{DynamicResource NextCoat}" />
+                </Grid>
+            </StackPanel>
         </Border>
 
         <StackPanel Grid.Column="1" Margin="22,0,0,0">

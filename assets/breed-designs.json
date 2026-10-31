@@ -1,0 +1,59 @@
+[
+  {"id":"british-shorthair","species":"cat","name":"British Shorthair","bodyX":10,"bodyY":14,"width":15,"height":9,"headX":20,"headY":9,"head":"round","ears":"small","tail":"upright","coats":[
+    {"id":"blue","pattern":"solid","colors":["8694A6","5D697F","ACB7C5","F2E8D6","C9C3B9","66758A"]},
+    {"id":"blue-white","pattern":"bicolor","colors":["8694A6","5D697F","ACB7C5","F2E8D6","C9C3B9","66758A"]},
+    {"id":"cream","pattern":"solid","colors":["DEC29A","B99676","F5DEC0","FFF2DC","D6C5B0","C6A278"]},
+    {"id":"silver-tabby","pattern":"tabby","colors":["A7B0B6","748292","D5D8D2","F5EFDE","C4C6C3","505C70"]},
+    {"id":"brown-spotted","pattern":"spotted","colors":["AC8B65","7E6252","D1AD7C","F4E4CA","C5B29C","53484B"]}
+  ]},
+  {"id":"maine-coon","species":"cat","name":"Maine Coon","bodyX":8,"bodyY":13,"width":19,"height":10,"headX":20,"headY":7,"head":"wedge","ears":"tuft","tail":"plume","fluffy":true,"coats":[
+    {"id":"brown-tabby","pattern":"tabby","colors":["AD8B60","745849","D3B581","F6E6CA","CDBBA0","4C4140"]},
+    {"id":"red-tabby-white","pattern":"tabby","colors":["D99550","AE673E","F0BB77","FFF0D8","DCC4A7","A55D36"]},
+    {"id":"black-smoke","pattern":"smoke","colors":["555464","373848","858596","D6D4CF","AAAEB7","343344"]},
+    {"id":"silver-classic","pattern":"classic","colors":["A6ACBA","6E778A","D4D7D8","F4EEDD","C5C9CE","4C5269"]},
+    {"id":"tortoiseshell","pattern":"tortie","colors":["595060","3E3949","837181","F2D8B7","B89C8D","D38B4F"]}
+  ]},
+  {"id":"siamese","species":"cat","name":"Siamese","bodyX":11,"bodyY":14,"width":14,"height":6,"headX":20,"headY":8,"head":"wedge","ears":"large","tail":"straight","coats":[
+    {"id":"seal-point","pattern":"point","colors":["DCCCB0","BBAB98","F4E5CC","F8EFD9","C9B7A2","57454A"]},
+    {"id":"blue-point","pattern":"point","colors":["D2D3CB","ADB6B8","F2F0DE","FAF3DF","BDC7C8","68788F"]},
+    {"id":"chocolate-point","pattern":"point","colors":["E3CDAF","BDA48D","F5E8D0","FFF0D8","CEB59F","90674F"]},
+    {"id":"lilac-point","pattern":"point","colors":["DED4D5","B4A9BA","F4ECE3","FFF3E8","C5B7C4","9C91A5"]},
+    {"id":"lynx-point","pattern":"lynx","colors":["DBD4C1","B7ADA0","F5EBD6","FFF1DB","CEC0B0","787383"]}
+  ]},
+  {"id":"persian","species":"cat","name":"Persian","bodyX":9,"bodyY":16,"width":17,"height":9,"headX":20,"headY":12,"head":"flat","ears":"small","tail":"plume","fluffy":true,"coats":[
+    {"id":"white","pattern":"solid","colors":["EAE2D8","BEB8C1","FFF4E4","FFF6E5","D4C9C7","C2B6BA"]},
+    {"id":"cream","pattern":"solid","colors":["E5CBA8","BDA184","FCE5C3","FFF0D9","D4BFA8","CBAC85"]},
+    {"id":"red-white","pattern":"bicolor","colors":["D8985D","AD704E","F1BD7E","FFF1D8","D6C2A9","AF6D40"]},
+    {"id":"black-white","pattern":"bicolor","colors":["575564","393B4D","87828D","F6EBD8","C7BEBA","3F3F51"]},
+    {"id":"shaded-silver","pattern":"shaded","colors":["CDD1D2","949EAE","EFF0E7","FFF4DF","CCD0D0","8994A5"]}
+  ]},
+  {"id":"cardigan-corgi","species":"dog","name":"Cardigan Welsh Corgi","bodyX":8,"bodyY":17,"width":18,"height":7,"headX":18,"headY":9,"head":"muzzle","ears":"large","tail":"plume","coats":[
+    {"id":"red-white","pattern":"bicolor","colors":["C98A52","9C6044","E9B575","FFF0D3","D3BFA2","9C6245"]},
+    {"id":"sable-white","pattern":"sable","colors":["BB955C","85684E","DBB97E","FFF0D6","CCB99C","665143"]},
+    {"id":"black-tricolor","pattern":"tricolor","colors":["575463","393848","85818B","F5EBD8","C4B9A9","CF9459"]},
+    {"id":"blue-merle","pattern":"merle","colors":["9BA6B7","6E7D92","C6CDD3","F7EFDC","C2BFB7","4F566C"]},
+    {"id":"brindle-white","pattern":"brindle","colors":["B48B62","87664D","D4AB7B","F9EDD3","CCBAA1","5E4C48"]}
+  ]},
+  {"id":"dachshund","species":"dog","name":"Dachshund","bodyX":6,"bodyY":19,"width":21,"height":5,"headX":17,"headY":14,"head":"muzzle","ears":"drop","tail":"straight","coats":[
+    {"id":"red","pattern":"solid","colors":["BB7951","8B533F","E0A16C","F0D0AA","BA927A","AA6B4A"]},
+    {"id":"black-tan","pattern":"tricolor","colors":["514C59","343341","82717C","CB955D","AA764E","D9A66C"]},
+    {"id":"chocolate-tan","pattern":"tricolor","colors":["906752","67493F","B78A66","E3B576","B68A5D","D49F63"]},
+    {"id":"silver-dapple","pattern":"dapple","colors":["A6A2B3","737287","D1C8CB","D9AA76","AB825D","575365"]},
+    {"id":"brindle","pattern":"brindle","colors":["B78457","885C43","DBAA75","EEC99D","B99A7D","5B4543"]}
+  ]},
+  {"id":"border-collie","species":"dog","name":"Border Collie","bodyX":10,"bodyY":13,"width":16,"height":8,"headX":18,"headY":8,"head":"muzzle","ears":"semi","tail":"plume","fluffy":true,"coats":[
+    {"id":"black-white","pattern":"bicolor","colors":["565767","393C4F","848492","F7EEDC","C2BFBB","414455"]},
+    {"id":"red-white","pattern":"bicolor","colors":["A86B55","794B42","D19977","FFF0D8","CDBBA8","804F45"]},
+    {"id":"blue-merle","pattern":"merle","colors":["98A3B6","6A778F","C4CCD4","F7EEDC","C4BFB9","4E5369"]},
+    {"id":"red-merle","pattern":"merle","colors":["C4A38C","967B73","E2C4A5","FFF0D8","D2BDAC","8C5C4F"]},
+    {"id":"tricolor","pattern":"tricolor","colors":["535361","353849","81808B","F6EBD9","C3B9B0","D09A63"]}
+  ]},
+  {"id":"siberian-husky","species":"dog","name":"Siberian Husky","bodyX":10,"bodyY":13,"width":15,"height":10,"headX":18,"headY":7,"head":"muzzle","ears":"tuft","tail":"curl","fluffy":true,"coats":[
+    {"id":"black-white","pattern":"mask","colors":["656471","414556","92929F","FAF0DE","CCC8C4","494B5D"]},
+    {"id":"gray-white","pattern":"mask","colors":["A2ABBA","758298","CCD1D7","FFF2DE","C5C6C8","65748C"]},
+    {"id":"red-white","pattern":"mask","colors":["B8866F","8B625B","DAB099","FFF0D9","D0BFB0","8E625A"]},
+    {"id":"agouti","pattern":"agouti","colors":["B3A18A","82766E","D5C4A8","F0DFC5","B9A898","5D5B63"]},
+    {"id":"piebald","pattern":"piebald","colors":["8E98AC","65718A","B9C2CA","FFF1DC","C8C3BD","535F76"]}
+  ]}
+]
+

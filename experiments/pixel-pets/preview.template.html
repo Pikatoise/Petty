@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel pets — generator study</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#1e222c;color:#e8e2d2;font:15px system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:32px}h1{font:700 28px monospace;margin:0 0 10px}p{color:#b1b6bf;line-height:1.6}header{margin-bottom:24px}.controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:22px 0}button,select{background:#343c4d;color:#eee4cc;border:1px solid #566079;padding:9px 14px;border-radius:5px;font:inherit}label{display:flex;align-items:center;gap:8px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.card{border:1px solid #434a5b;border-radius:8px;overflow:hidden}.card h2{font:16px monospace;padding:14px;margin:0;background:#282e3b}.stage{display:flex;align-items:center;justify-content:center;height:240px;background-color:var(--stage,#323a47);background-image:linear-gradient(45deg,#ffffff05 25%,transparent 25%,transparent 75%,#ffffff05 75%),linear-gradient(45deg,#ffffff05 25%,transparent 25%,transparent 75%,#ffffff05 75%);background-size:24px 24px;background-position:0 0,12px 12px}canvas{image-rendering:pixelated;flex-shrink:0}.caption{padding:12px;color:#b1b6bf;font:12px monospace}.strip{overflow:auto;margin-top:28px;border-top:1px solid #434a5b;padding-top:20px}.strip canvas{display:block;margin-bottom:10px}a{color:#f0bd80}input{accent-color:#e6ad73}footer{margin-top:30px;font-size:13px;color:#9ea4af}
+</style>
+<main>
+<header><h1>PIXEL PETS / GENERATOR STUDY</h1><p>Original pixel clusters + procedural poses. Isolated experiment, no connection to the app.<br>64 × 64 transparent cells; authored on a 32 × 32 logical grid. No smoothing.</p></header>
+<div class="controls">
+<label>Animation <select id="clip"></select></label>
+<label>Scale <select id="scale"><option value="1">1× · 64px</option><option value="3" selected>3× · 192px</option><option value="5">5× · 320px</option></select></label>
+<button id="pause">Pause</button><button id="step">Next frame</button>
+<label><input id="flip" type="checkbox">Face left</label>
+<label>Background <select id="bg"><option value="#323a47">Slate</option><option value="#ede0c5">Cream</option><option value="#151820">Dark</option></select></label>
+</div>
+<div class="grid" id="grid"></div>
+<section class="strip"><h2 style="font:16px monospace">CURRENT CLIP / ALL FRAMES · 2×</h2><div id="strips"></div></section>
+<footer>Visual direction: <a href="https://luizmelo.itch.io/pet-cat-pack">Pet Cats Pack — LuizMelo</a> and <a href="https://benvictus.itch.io/pixel-dogs">Pixel Dogs — Benvictus</a>. Original artwork in this experiment; reference assets are not bundled.<br>Limited proof of concept: fixed silhouettes per species, selected poses, no app-ready content pack.</footer>
+</main>
+<script>
+const data = /*MANIFEST*/;
+const clipSelect=document.querySelector('#clip'),scaleSelect=document.querySelector('#scale');
+for(const clip of data.clips) clipSelect.add(new Option(clip.name,clip.name));
+let paused=false,elapsed=0,last=0;
+const cards=data.variants.map(v=>{
+ const card=document.createElement('article');card.className='card';
+ card.innerHTML=`<h2>${v.id}</h2><div class="stage"><canvas width="64" height="64"></canvas></div><div class="caption"></div>`;
+ document.querySelector('#grid').append(card);
+ const strip=document.createElement('canvas');strip.width=768;strip.height=64;strip.style.width='1536px';strip.style.height='128px';
+ const label=document.createElement('p');label.textContent=v.id;document.querySelector('#strips').append(label,strip);
+ const image=new Image();image.src=v.png;
+ return {card,canvas:card.querySelector('canvas'),image,strip};
+});
+function drawFrame(ctx,image,clip,frame,x=0){const cell=clip.start===undefined?clip.row*8+frame:clip.start+frame;ctx.drawImage(image,(cell%8)*64,Math.floor(cell/8)*64,64,64,x,0,64,64)}
+function render(){
+ const clip=data.clips.find(c=>c.name===clipSelect.value);
+ const frame=Math.floor(elapsed*clip.fps)%clip.frames,scale=+scaleSelect.value;
+ for(const {card,canvas,image,strip} of cards){
+  if(!image.complete||!image.naturalWidth)continue;
+  canvas.style.width=canvas.style.height=`${64*scale}px`;
+  card.querySelector('.stage').style.height=`${Math.max(240,64*scale+24)}px`;
+  canvas.style.transform=document.querySelector('#flip').checked?'scaleX(-1)':'';
+  const ctx=canvas.getContext('2d');ctx.clearRect(0,0,64,64);ctx.imageSmoothingEnabled=false;
+  drawFrame(ctx,image,clip,frame);
+  card.querySelector('.caption').textContent=`${clip.name} / frame ${frame+1} of ${clip.frames} / ${clip.fps} fps`;
+  const sc=strip.getContext('2d');sc.clearRect(0,0,768,64);for(let i=0;i<clip.frames;i++)drawFrame(sc,image,clip,i,i*64);
+ }
+}
+clipSelect.onchange=()=>{elapsed=0;render()};scaleSelect.onchange=render;
+document.querySelector('#flip').onchange=render;
+document.querySelector('#pause').onclick=()=>{paused=!paused;document.querySelector('#pause').textContent=paused?'Resume':'Pause'};
+document.querySelector('#step').onclick=()=>{paused=true;document.querySelector('#pause').textContent='Resume';const c=data.clips.find(c=>c.name===clipSelect.value);elapsed=(Math.floor(elapsed*c.fps)+1)/c.fps+0.00001;render()};
+document.querySelector('#bg').onchange=e=>document.documentElement.style.setProperty('--stage',e.target.value);
+function tick(t){if(last&&!paused)elapsed+=(t-last)/1000;last=t;render();requestAnimationFrame(tick)}requestAnimationFrame(tick);
+</script>
+</html>

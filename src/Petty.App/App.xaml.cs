@@ -167,7 +167,7 @@ public partial class App: Application
         if (load.Status is LoadStatus.UnsupportedVersion)
             throw new StartupMessageException(Localization.Text("StateUnsupported"));
 
-        var assetDirectory = SpriteAssetLocator.FindDirectory(PetCatalog.DefaultAssetId)
+        var assetDirectory = SpriteAssetLocator.FindSharedDirectory()
             ?? throw new StartupMessageException(Localization.Text("AssetsMissing"));
 
         _assetDirectory = assetDirectory;
@@ -181,9 +181,12 @@ public partial class App: Application
         {
             try
             {
-                var variant = _variants.FirstOrDefault(v => v.AssetId == load.Snapshot.AssetId)
+                var savedAsset = load.Snapshot.AssetId == PetCatalog.LegacyAssetId ? PetCatalog.DefaultAssetId : load.Snapshot.AssetId;
+                var variant = _variants.FirstOrDefault(v => v.AssetId == savedAsset)
                     ?? throw new InvalidDataException($"Saved sprite '{load.Snapshot.AssetId}' was not found.");
                 _sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
+                if (PetCatalog.MigrateLegacyAppearance(load.Snapshot))
+                    _log.Info($"Migrated retired appearance '{PetCatalog.LegacyAssetId}' to '{PetCatalog.DefaultAssetId}'; pet identity and needs preserved.");
                 _stateWasPersisted = true;
                 runtime = PetRuntime.Restore(load.Snapshot, tuning, now);
                 _log.Info($"Restored '{runtime.Snapshot.PetName}' (satiety {runtime.Needs.Satiety:F0}, happiness {runtime.Needs.Happiness:F0}).");

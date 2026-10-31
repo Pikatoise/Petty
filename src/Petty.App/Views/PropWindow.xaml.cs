@@ -107,6 +107,8 @@ public partial class PropWindow: Window
             _physicalWidth,
             _physicalHeight);
 
+    public void SetRotation(double degrees) => PropRotation.Angle = degrees % 360;
+
     /// <summary>
     /// Puts the prop on the floor line: the window may have transparent rows below the
     /// sprite, so those are taken out of the top instead of letting it hover.
