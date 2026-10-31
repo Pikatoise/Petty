@@ -33,15 +33,21 @@ public static class PropSpriteBuilder
         {
             // A stepped mound rises from the bowl as the inventory increases.
             var top = 12 - (level - 1) * 3;
+            var center = level >= 2 ? 11 : 12;
             for (var y = top; y <= 13; y++)
             {
                 var halfWidth = Math.Min(6, 2 + (y - top));
-                canvas.FillRect(12 - halfWidth, y, halfWidth * 2 + 1, 1, OrangeDark);
-                if (halfWidth > 2) canvas.FillRect(13 - halfWidth, y, halfWidth * 2 - 1, 1, Orange);
+                canvas.FillRect(center - halfWidth, y, halfWidth * 2 + 1, 1, OrangeDark);
+                if (halfWidth > 2) canvas.FillRect(center + 1 - halfWidth, y, halfWidth * 2 - 1, 1, Orange);
             }
-            if (level >= 2) canvas[11, top + 1] = CreamShade;
-            if (level >= 3) canvas[15, top + 4] = CreamShade;
-            if (level >= 4) canvas[9, top + 6] = CreamShade;
+            if (level >= 2)
+            {
+                canvas.FillRect(8, 14, 8, 1, Cream);
+                canvas.FillRect(18, 12, 1, 2, Cream);
+                canvas[10, top + 1] = CreamShade;
+            }
+            if (level >= 3) canvas[14, top + 4] = CreamShade;
+            if (level >= 4) canvas[8, top + 6] = CreamShade;
         }
 
         canvas.Outline(Outline);
