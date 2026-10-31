@@ -174,7 +174,7 @@ public static class AssetValidator
             CheckSmallSprite(directory, errors, notes, $"bowl-{level}.png", PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, $"bowl {level}", keepMargin: false);
         for (var frame = 0; frame < 6; frame++)
             CheckSmallSprite(directory, errors, notes, $"pour-{frame}.png", 24, 32, $"pour {frame}", keepMargin: false);
-        CheckBowlMasks(directory, errors);
+        CheckBowlFrames(directory, errors);
         }
 
         notes.Add($"atlas {atlas.Width}x{atlas.Height}, {metadata.Animations.Count} clips, {occupiedCells.Count} frames");
@@ -185,8 +185,7 @@ public static class AssetValidator
 
     /// <summary>
     /// Small hand-drawn props share the atlas rules (hard alpha, palette, a real
-    /// silhouette). The click-through masks of the two bowls must match, because the
-    /// bowl window hit-tests one mask while showing either picture.
+    /// silhouette). Each bowl image supplies its own click-through mask.
     /// </summary>
     private static void CheckSmallSprite(
         string directory,
@@ -239,24 +238,20 @@ public static class AssetValidator
         notes.Add($"{label} {sprite.Width}x{sprite.Height}, {bounds.OpaqueCount} opaque pixels");
     }
 
-    private static void CheckBowlMasks(string directory, List<string> errors)
+    private static void CheckBowlFrames(string directory, List<string> errors)
     {
-        var empty = Path.Combine(directory, PropSpriteBuilder.BowlEmptyName);
-        if (!File.Exists(empty)) return;
-        var a = PixelCanvas.LoadPng(empty);
-        foreach (var name in new[] { "bowl-25.png", "bowl-50.png", "bowl-75.png", PropSpriteBuilder.BowlFullName })
+        var names = new[] { PropSpriteBuilder.BowlEmptyName, "bowl-25.png", "bowl-50.png", "bowl-75.png", PropSpriteBuilder.BowlFullName };
+        var previousTop = int.MaxValue;
+        foreach (var name in names)
         {
             var path = Path.Combine(directory, name);
             if (!File.Exists(path)) continue;
-            var b = PixelCanvas.LoadPng(path);
-            if (a.Width != b.Width || a.Height != b.Height) continue;
-            for (var y = 0; y < a.Height; y++)
-                for (var x = 0; x < a.Width; x++)
-                    if (a.IsOpaque(x, y) != b.IsOpaque(x, y))
-                    {
-                        errors.Add($"Bowl mask differs for {name} at {x},{y}.");
-                        return;
-                    }
+            var sprite = PixelCanvas.LoadPng(path);
+            if (sprite.Width != PropSpriteBuilder.BowlWidth || sprite.Height != PropSpriteBuilder.BowlHeight) continue;
+            var bounds = Measure(sprite);
+            if (bounds.MinY > previousTop) errors.Add($"Food mound gets lower in {name}.");
+            if (bounds.MaxY != 22) errors.Add($"Bowl baseline differs in {name}.");
+            previousTop = bounds.MinY;
         }
     }
 

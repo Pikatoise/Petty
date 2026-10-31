@@ -19,7 +19,7 @@ public partial class PropWindow : Window
     /// <summary>Pixels the pointer must travel before a press counts as a drag, not a click.</summary>
     private const int DragThreshold = 4;
 
-    private readonly PropImage _hitMask;
+    private PropImage _hitMask;
     private readonly bool _interactive;
     private readonly IAppLog _log;
     private readonly int _physicalWidth;
@@ -95,6 +95,7 @@ public partial class PropWindow : Window
     {
         if (image.Width != _hitMask.Width || image.Height != _hitMask.Height)
             throw new ArgumentException("Prop image dimensions must match the hit mask.", nameof(image));
+        _hitMask = image;
         PropImageControl.Source = image.Image;
     }
 

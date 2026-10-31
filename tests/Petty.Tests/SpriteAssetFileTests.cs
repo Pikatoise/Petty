@@ -133,8 +133,8 @@ public class SpriteAssetFileTests
     {
         foreach (var (file, width, height) in new[]
                  {
-                     ("bowl-empty.png", 24, 16),
-                     ("bowl-full.png", 24, 16),
+                     ("bowl-empty.png", 24, 24),
+                     ("bowl-full.png", 24, 24),
                      ("ball.png", 16, 16),
                  })
         {

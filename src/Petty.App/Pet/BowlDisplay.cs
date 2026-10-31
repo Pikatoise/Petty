@@ -76,7 +76,7 @@ internal sealed class BowlDisplay : IDisposable
     {
         var bowl = _bowl.ScreenRect;
         var left = (double)bowl.Left;
-        var top = (double)bowl.Top - _effect.PhysicalHeight + 15;
+        var top = (double)bowl.Top - _effect.PhysicalHeight + 39;
         if (_surface.PrimaryDisplay is { } display)
         {
             var bounds = display.UsableArea;

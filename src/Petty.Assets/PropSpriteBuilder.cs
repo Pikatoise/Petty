@@ -7,13 +7,13 @@ namespace Petty.Assets;
 /// into pet frames, so the cat's animations stay reusable while the props are added,
 /// removed or moved at runtime.
 ///
-/// The empty and full bowl share the same silhouette on purpose: the window keeps one
-/// alpha mask for click-through and only swaps the picture when food appears.
+/// Bowl frames share a fixed size and floor baseline. The food mound grows above
+/// the rim; each displayed frame supplies its own click-through mask.
 /// </summary>
 public static class PropSpriteBuilder
 {
     public const int BowlWidth = 24;
-    public const int BowlHeight = 16;
+    public const int BowlHeight = 24;
     public const string BowlEmptyName = "bowl-empty.png";
     public const string BowlFullName = "bowl-full.png";
 
@@ -24,19 +24,24 @@ public static class PropSpriteBuilder
     {
         var canvas = new PixelCanvas(BowlWidth, BowlHeight);
 
-        canvas.FillEllipse(12, 8.5, 9.5, 6, Extra);       // rounded body
-        canvas.FillRect(10, 13, 4, 1, CreamShade);        // foot shadow
+        canvas.FillEllipse(12, 16.5, 9.5, 6, Extra);
+        canvas.FillRect(10, 21, 4, 1, CreamShade);
+        canvas.FillEllipse(12, 13, 10, 3, Cream);
+        canvas.FillEllipse(12, 13, 7.5, 1.8, Outline);
 
-        canvas.FillEllipse(12, 5, 10, 3, Cream);          // rim
-        canvas.FillEllipse(12, 5, 7.5, 1.8, Outline);     // opening
-
-        // Food occupies existing opaque pixels so the silhouette never changes.
-        for (var i = 0; i < level; i++)
+        if (level > 0)
         {
-            var x = 7 + i * 3;
-            canvas[x, 5] = Orange;
-            canvas[x + 1, 5] = CreamShade;
-            if (i > 0) canvas[x, 4] = Orange;
+            // A stepped mound rises from the bowl as the inventory increases.
+            var top = 12 - (level - 1) * 3;
+            for (var y = top; y <= 13; y++)
+            {
+                var halfWidth = Math.Min(6, 2 + (y - top));
+                canvas.FillRect(12 - halfWidth, y, halfWidth * 2 + 1, 1, OrangeDark);
+                if (halfWidth > 2) canvas.FillRect(13 - halfWidth, y, halfWidth * 2 - 1, 1, Orange);
+            }
+            if (level >= 2) canvas[11, top + 1] = CreamShade;
+            if (level >= 3) canvas[15, top + 4] = CreamShade;
+            if (level >= 4) canvas[9, top + 6] = CreamShade;
         }
 
         canvas.Outline(Outline);
