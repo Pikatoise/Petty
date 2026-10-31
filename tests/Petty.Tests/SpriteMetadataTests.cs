@@ -32,6 +32,17 @@ public class SpriteMetadataTests
     }
 
     [Fact]
+    public void SpeciesIsOptionalForLegacyAndLimitedToCatsOrDogs()
+    {
+        var metadata = Valid();
+        Assert.Empty(SpriteMetadataValidator.Validate(metadata));
+        metadata.SpeciesId = "dog";
+        Assert.Empty(SpriteMetadataValidator.Validate(metadata));
+        metadata.SpeciesId = "other";
+        Assert.Contains(SpriteMetadataValidator.Validate(metadata), error => error.Contains("Species"));
+    }
+
+    [Fact]
     public void MissingRequiredClipIsReported()
     {
         var metadata = Valid();

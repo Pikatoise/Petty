@@ -8,7 +8,7 @@
     <sys:String x:Key="Close">Close</sys:String>
     <sys:String x:Key="NameSaved">Name saved.</sys:String>
     <sys:String x:Key="NameInvalid">Enter a name of 1–24 characters without control characters.</sys:String>
-    <sys:String x:Key="AppearanceFormat">Breed: {0}</sys:String>
+    <sys:String x:Key="AppearanceFormat">Species: {0} · Breed: {1}</sys:String>
     <sys:String x:Key="ConfirmNew">Create a new pet? This replaces the current pet and its saved state.</sys:String>
     <sys:String x:Key="ConfirmReplace">Replace pet</sys:String>
     <sys:String x:Key="PreferencesError">Could not save preferences. Check the log and try again.</sys:String>
@@ -18,7 +18,10 @@
     <sys:String x:Key="WizardDescription">A small pixel pet for your desktop.</sys:String>
     <sys:String x:Key="BreedLabel">Breed:</sys:String>
     <sys:String x:Key="BreedCat">Cat</sys:String>
-    <sys:String x:Key="GenerateCoat">Generate coat</sys:String>
+    <sys:String x:Key="SpeciesLabel">Species</sys:String>
+    <sys:String x:Key="SpeciesCat">Cat</sys:String>
+    <sys:String x:Key="SpeciesDog">Dog</sys:String>
+    <sys:String x:Key="Autostart">Start Petty with Windows</sys:String>
     <sys:String x:Key="NameLabel">Name</sys:String>
     <sys:String x:Key="Quit">Quit</sys:String>
     <sys:String x:Key="Cancel">Cancel</sys:String>
@@ -36,4 +39,5 @@
     <sys:String x:Key="SavedAppearanceMissing">The saved appearance '{0}' is missing. Restore its sprite files and restart Petty. Your save was not changed.</sys:String>
     <sys:String x:Key="AssetsMissing">The sprite assets are missing or invalid. Restore them and restart Petty. Your save was not changed.</sys:String>
     <sys:String x:Key="StateUnsupported">The saved state is from an unsupported version. Update Petty; the save was not changed.</sys:String>
+    <sys:String x:Key="SavedAppearanceRecovery">The saved appearance '{0}' is missing or invalid. Restore its files and restart Petty, or choose Yes to replace the saved pet by creating a new one. Choose No to keep the existing save.</sys:String>
 </ResourceDictionary>

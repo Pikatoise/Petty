@@ -20,6 +20,8 @@ public sealed class SpriteSheetMetadata
 {
     public string Character { get; set; } = string.Empty;
 
+    public string? SpeciesId { get; set; }
+
     public string? BreedId { get; set; }
 
     public string? CoatId { get; set; }
@@ -68,6 +70,7 @@ public static class SpriteMetadataValidator
         if (!IsValidId(metadata.Character)) errors.Add("Character id is invalid.");
         if (!string.Equals(metadata.Image, metadata.Character + ".png", StringComparison.Ordinal))
             errors.Add("Image must be the character ID followed by .png.");
+        if (metadata.SpeciesId is not null && metadata.SpeciesId is not ("cat" or "dog")) errors.Add("Species id must be cat or dog.");
         if (metadata.BreedId is not null && !IsValidId(metadata.BreedId)) errors.Add("Breed id is invalid.");
         if (metadata.CoatId is not null && !IsValidId(metadata.CoatId)) errors.Add("Coat id is invalid.");
         if (metadata.Animations is null || metadata.Animations.Any(clip => clip is null))

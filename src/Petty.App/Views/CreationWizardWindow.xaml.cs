@@ -10,6 +10,8 @@ namespace Petty.App.Views;
 /// <summary>Collects the name and appearance; application composition creates the pet.</summary>
 public partial class CreationWizardWindow : Window
 {
+    private sealed record SpeciesOption(string Id, string Label);
+    private BreedOption[] _breeds = [];
     private sealed record BreedOption(SpriteVariant Variant, string Label);
     private SpriteClip? _idle;
     private readonly AnimationPlayback _playback = new();
@@ -33,14 +35,19 @@ public partial class CreationWizardWindow : Window
         }
         _previewTimer.Tick += OnPreviewTick;
         SelectedSheet = initialSheet;
-        var representatives = variants.GroupBy(v => v.BreedId, StringComparer.OrdinalIgnoreCase)
+        _breeds = variants.GroupBy(v => (v.SpeciesId.ToLowerInvariant(), v.BreedId.ToLowerInvariant()))
             .Select(group => group.FirstOrDefault(v => v.AssetId == initialSheet?.Metadata.Character)
                 ?? group.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId)
                 ?? group.OrderBy(v => v.AssetId, StringComparer.OrdinalIgnoreCase).First())
             .Select(v => new BreedOption(v, Localization.BreedName(v.BreedId))).ToArray();
-        BreedSelector.ItemsSource = representatives;
-        BreedSelector.SelectedItem = representatives.FirstOrDefault(v => v.Variant.AssetId == initialSheet?.Metadata.Character)
-            ?? representatives.FirstOrDefault(v => v.Variant.AssetId == PetCatalog.DefaultAssetId) ?? representatives.FirstOrDefault();
+        var species = _breeds.Select(v => v.Variant.SpeciesId).Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(id => new SpeciesOption(id, Localization.SpeciesName(id))).ToArray();
+        SpeciesSelector.ItemsSource = species;
+        var initialSpecies = _breeds.FirstOrDefault(v => v.Variant.AssetId == initialSheet?.Metadata.Character)?.Variant.SpeciesId;
+        SpeciesSelector.SelectedItem = species.FirstOrDefault(v => v.Id == initialSpecies)
+            ?? species.FirstOrDefault(v => v.Id == "cat") ?? species.FirstOrDefault();
+        var initialBreed = _breeds.FirstOrDefault(v => v.Variant.AssetId == initialSheet?.Metadata.Character);
+        if (initialBreed is not null) BreedSelector.SelectedItem = initialBreed;
         if (BreedSelector.SelectedItem is null)
         {
             ErrorText.Text = Localization.Text("NoSprites");
@@ -53,6 +60,14 @@ public partial class CreationWizardWindow : Window
     public string ConfirmedName { get; private set; } = string.Empty;
     public SpriteVariant? SelectedVariant => (BreedSelector.SelectedItem as BreedOption)?.Variant;
     public SpriteSheet? SelectedSheet { get; private set; }
+
+    private void OnSpeciesChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (SpeciesSelector.SelectedItem is not SpeciesOption species) return;
+        var options = _breeds.Where(v => v.Variant.SpeciesId.Equals(species.Id, StringComparison.OrdinalIgnoreCase)).ToArray();
+        BreedSelector.ItemsSource = options;
+        BreedSelector.SelectedItem = options.FirstOrDefault(v => v.Variant.AssetId == PetCatalog.DefaultAssetId) ?? options.FirstOrDefault();
+    }
 
     private void OnBreedChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -69,7 +84,7 @@ public partial class CreationWizardWindow : Window
             ErrorText.Text = string.Empty;
             CreateButton.IsEnabled = true;
         }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or NotSupportedException)
         {
             SelectedSheet = null;
             _idle = null;
@@ -90,14 +105,6 @@ public partial class CreationWizardWindow : Window
     private void ShowPreviewFrame()
     {
         if (_idle is not null) PreviewImage.Source = _idle[_playback.FrameIndex].Image;
-    }
-
-    private void OnGenerateCoat(object sender, RoutedEventArgs e)
-    {
-        if (_idle is null) return;
-        _playback.Play(_idle.Metadata, restart: true);
-        ShowPreviewFrame();
-        ErrorText.Text = string.Empty;
     }
 
     private void OnCreate(object sender, RoutedEventArgs e)

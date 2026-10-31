@@ -11,7 +11,7 @@ namespace Petty.App.Sprites;
 /// Locates the shipped atlas both in a build output (<c>Assets/Sprites</c>) and in
 /// a developer checkout (<c>assets/sprites</c> relative to the repository root).
 /// </summary>
-public sealed record SpriteVariant(string AssetId, string BreedId, string CoatId, string DisplayName, string Directory)
+public sealed record SpriteVariant(string AssetId, string BreedId, string CoatId, string DisplayName, string Directory, string SpeciesId = "cat")
 {
     public override string ToString() => DisplayName;
 }
@@ -55,7 +55,7 @@ public static class SpriteAssetLocator
                     }
                     var breed = metadata.BreedId ?? PetCatalog.DefaultBreedId;
                     var coat = metadata.CoatId ?? (id == PetCatalog.DefaultAssetId ? PetCatalog.DefaultCoatId : id);
-                    variants.Add(id, new SpriteVariant(id, breed, coat, string.IsNullOrWhiteSpace(metadata.DisplayName) ? id.Replace('-', ' ') : metadata.DisplayName, Path.GetDirectoryName(path)!));
+                    variants.Add(id, new SpriteVariant(id, breed, coat, string.IsNullOrWhiteSpace(metadata.DisplayName) ? id.Replace('-', ' ') : metadata.DisplayName, Path.GetDirectoryName(path)!, metadata.SpeciesId ?? "cat"));
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
                 {

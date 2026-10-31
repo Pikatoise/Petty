@@ -30,6 +30,8 @@
             <ComboBoxItem Content="Русский" Tag="ru" />
             <ComboBoxItem Content="English" Tag="en" />
         </ComboBox>
+        <CheckBox x:Name="AutostartCheck" Content="{DynamicResource Autostart}" Margin="0,14,0,0"
+                  Checked="OnAutostartChanged" Unchecked="OnAutostartChanged" />
         </StackPanel>
         </Border>
 

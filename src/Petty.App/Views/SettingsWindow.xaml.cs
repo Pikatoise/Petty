@@ -18,16 +18,19 @@ public partial class SettingsWindow : Window
     private readonly Localization _localization;
     private readonly IAppLog _log;
     private readonly string _breed;
+    private readonly string _species;
     private bool _ready;
 
-    internal SettingsWindow(string petName, string breed, Localization localization, IAppLog log)
+    internal SettingsWindow(string petName, string species, string breed, Localization localization, IAppLog log)
     {
         _localization = localization;
         _log = log;
         _breed = breed;
+        _species = species;
         InitializeComponent();
         NameBox.Text = petName;
         LanguageSelector.SelectedIndex = localization.Preferences.Language switch { "ru" => 1, "en" => 2, _ => 0 };
+        AutostartCheck.IsChecked = localization.Preferences.Autostart;
         UpdateAppearance();
         _ready = true;
         Loaded += (_, _) => NameBox.SelectAll();
@@ -78,9 +81,24 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private void OnAutostartChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_ready) return;
+        var old = _localization.Preferences.Autostart;
+        try { _localization.SetAutostart(AutostartCheck.IsChecked == true); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            _log.Error("Could not save preferences.", ex);
+            _ready = false;
+            AutostartCheck.IsChecked = old;
+            _ready = true;
+            ShowStatus(Text("PreferencesError"), ErrorBrush);
+        }
+    }
+
     private string Text(string key) => (string)FindResource(key);
 
-    private void UpdateAppearance() => AppearanceText.Text = string.Format(Text("AppearanceFormat"), Localization.BreedName(_breed));
+    private void UpdateAppearance() => AppearanceText.Text = string.Format(Text("AppearanceFormat"), Localization.SpeciesName(_species), Localization.BreedName(_breed));
 
     private void ShowStatus(string text, Brush brush)
     {

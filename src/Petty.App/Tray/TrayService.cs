@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Petty.Core.Diagnostics;
+using Petty.App.Views;
 
 namespace Petty.App.Tray;
 
@@ -15,33 +16,24 @@ public sealed class TrayService : IDisposable
     public const string TrayIconFileName = "tray-cat.png";
 
     private readonly NotifyIcon _icon;
-    private readonly ContextMenuStrip _menu;
+    private TrayPopupWindow? _popup;
     private readonly Icon? _iconImage;
     private readonly IntPtr _iconHandle;
-    private readonly ToolStripMenuItem _settingsItem;
-    private readonly ToolStripMenuItem _exitItem;
 
-    public TrayService(string iconPath, IAppLog log, string settingsText, string exitText)
+    public TrayService(string iconPath, IAppLog log)
     {
         using var bitmap = new Bitmap(iconPath);
         _iconHandle = bitmap.GetHicon();
         _iconImage = Icon.FromHandle(_iconHandle);
 
-        _menu = new ContextMenuStrip();
-        _settingsItem = new ToolStripMenuItem(settingsText, null,
-            (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
-        _exitItem = new ToolStripMenuItem(exitText, null,
-            (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
-        _menu.Items.Add(_settingsItem);
-        _menu.Items.Add(_exitItem);
-
         _icon = new NotifyIcon
         {
             Icon = _iconImage,
             Text = "Petty",
-            ContextMenuStrip = _menu,
             Visible = true,
         };
+
+        _icon.MouseUp += OnMouseUp;
 
         log.Info($"Tray icon shown ({Path.GetFileName(iconPath)}).");
     }
@@ -50,17 +42,24 @@ public sealed class TrayService : IDisposable
 
     public event EventHandler? ExitRequested;
 
-    public void SetLanguage(string settingsText, string exitText)
+    private void OnMouseUp(object? sender, MouseEventArgs e)
     {
-        _settingsItem.Text = settingsText;
-        _exitItem.Text = exitText;
+        if (e.Button is not (MouseButtons.Left or MouseButtons.Right)) return;
+        if (_popup is not null) { _popup.Close(); return; }
+        var popup = new TrayPopupWindow();
+        _popup = popup;
+        popup.Closed += (_, _) => _popup = null;
+        popup.SettingsRequested += (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty);
+        popup.ExitRequested += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
+        popup.ShowAtCursor();
     }
 
     public void Dispose()
     {
+        _popup?.Close();
+        _icon.MouseUp -= OnMouseUp;
         _icon.Visible = false;
         _icon.Dispose();
-        _menu.Dispose();
         _iconImage?.Dispose();
 
         if (_iconHandle != IntPtr.Zero) DestroyIcon(_iconHandle);

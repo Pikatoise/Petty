@@ -1,0 +1,9 @@
+# Session 08 — creator, settings and tray UI
+
+- Stage document: `docs/petty-v1/sessions/08-shell-ux.md`
+- Result: implemented; desktop visual/DPI and real notification-area interaction still need owner checks. Changes intentionally uncommitted at the owner's request.
+- Preserved the existing Cozy Home WPF UI styling, RU/EN resources and moving hover menu. Creator filters installed breeds by species, previews the selected default variant, and removes the obsolete Generate Coat control. Optional atlas `speciesId` is `cat` or `dog`; legacy metadata defaults to cat. Settings show species and breed read-only, keep rename and explicit replacement confirmation, and store an autostart preference independently of pet state. Actual Windows autostart integration remains session 11.
+- Replaced the native tray menu with a transient WPF Cozy Home popup; it closes on deactivation, selection, Escape and disposal. Missing or invalid saved appearance now offers a recovery choice; declining or canceling creation keeps the old save untouched.
+- Checks: Release build with zero warnings; 151 tests passed outside sandbox; asset verification passed. A Windows WPF harness checked cat/dog filtering, idle previews, invalid atlas handling, language switch, autostart persistence, tray popup open/toggle and taskbar flag. An isolated missing-asset startup declined recovery and exited with code 0, leaving the state file byte-identical. Harness was removed after use.
+- Owner checks: popup position, outside-click dismissal, keyboard behavior, text fit and focus at 100–200% DPI; creator/settings/replacement cancellation on the real desktop. Review missing-asset replacement path with a disposable save. Tray interaction over other windows and Explorer restart were not tested.
+- Ready for next stage? **yes**, with the manual checks and session 11 autostart hookup outstanding.

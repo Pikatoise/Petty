@@ -1,0 +1,42 @@
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using Forms = System.Windows.Forms;
+
+namespace Petty.App.Views;
+
+public partial class TrayPopupWindow : Window
+{
+    public TrayPopupWindow()
+    {
+        InitializeComponent();
+        Deactivated += OnDeactivated;
+        Closing += (_, _) => Deactivated -= OnDeactivated;
+        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
+    }
+
+    public event EventHandler? SettingsRequested;
+    public event EventHandler? ExitRequested;
+
+    public void ShowAtCursor()
+    {
+        var point = Forms.Cursor.Position;
+        var work = Forms.Screen.FromPoint(point).WorkingArea;
+        Left = -10000;
+        Top = -10000;
+        Show();
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var scaleX = dpi.DpiScaleX;
+        var scaleY = dpi.DpiScaleY;
+        var width = ActualWidth * scaleX;
+        var height = ActualHeight * scaleY;
+        Left = Math.Clamp(point.X - width, work.Left, Math.Max(work.Left, work.Right - width)) / scaleX;
+        Top = Math.Clamp(point.Y - height, work.Top, Math.Max(work.Top, work.Bottom - height)) / scaleY;
+        Activate();
+    }
+
+    private void OnDeactivated(object? sender, EventArgs e) => Close();
+
+    private void OnSettings(object sender, RoutedEventArgs e) { Close(); SettingsRequested?.Invoke(this, EventArgs.Empty); }
+    private void OnExit(object sender, RoutedEventArgs e) { Close(); ExitRequested?.Invoke(this, EventArgs.Empty); }
+}

@@ -8,7 +8,7 @@
     <sys:String x:Key="Close">Закрыть</sys:String>
     <sys:String x:Key="NameSaved">Имя сохранено.</sys:String>
     <sys:String x:Key="NameInvalid">Введите имя от 1 до 24 символов без управляющих знаков.</sys:String>
-    <sys:String x:Key="AppearanceFormat">Порода: {0}</sys:String>
+    <sys:String x:Key="AppearanceFormat">Вид: {0} · Порода: {1}</sys:String>
     <sys:String x:Key="ConfirmNew">Создать нового питомца? Текущий питомец и его сохранение будут заменены.</sys:String>
     <sys:String x:Key="ConfirmReplace">Заменить питомца</sys:String>
     <sys:String x:Key="PreferencesError">Не удалось сохранить настройки. Проверьте журнал и повторите попытку.</sys:String>
@@ -18,7 +18,10 @@
     <sys:String x:Key="WizardDescription">Маленький пиксельный питомец для рабочего стола.</sys:String>
     <sys:String x:Key="BreedLabel">Порода:</sys:String>
     <sys:String x:Key="BreedCat">Кошка</sys:String>
-    <sys:String x:Key="GenerateCoat">Создать окрас</sys:String>
+    <sys:String x:Key="SpeciesLabel">Вид</sys:String>
+    <sys:String x:Key="SpeciesCat">Кошка</sys:String>
+    <sys:String x:Key="SpeciesDog">Собака</sys:String>
+    <sys:String x:Key="Autostart">Запускать Petty вместе с Windows</sys:String>
     <sys:String x:Key="NameLabel">Имя</sys:String>
     <sys:String x:Key="Quit">Выйти</sys:String>
     <sys:String x:Key="Cancel">Отмена</sys:String>
@@ -36,4 +39,5 @@
     <sys:String x:Key="SavedAppearanceMissing">Не найдена сохранённая внешность «{0}». Восстановите файлы спрайтов и перезапустите Petty. Сохранение не изменено.</sys:String>
     <sys:String x:Key="AssetsMissing">Файлы спрайтов отсутствуют или повреждены. Восстановите их и перезапустите Petty. Сохранение не изменено.</sys:String>
     <sys:String x:Key="StateUnsupported">Сохранение создано неподдерживаемой версией. Обновите Petty; сохранение не изменено.</sys:String>
+    <sys:String x:Key="SavedAppearanceRecovery">Сохранённая внешность «{0}» отсутствует или повреждена. Восстановите файлы и перезапустите Petty либо нажмите «Да», чтобы создать нового питомца и заменить сохранение. «Нет» сохранит текущие данные.</sys:String>
 </ResourceDictionary>

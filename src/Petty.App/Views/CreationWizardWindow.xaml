@@ -32,17 +32,12 @@
                        Margin="0,2,0,12"
                        TextWrapping="Wrap" />
 
-            <StackPanel Orientation="Horizontal">
-				<TextBlock
-					Text="{DynamicResource BreedLabel}"
-					Width="68"
-					VerticalAlignment="Center"
-					FontWeight="SemiBold" />
-                <ComboBox x:Name="BreedSelector" Width="198" Style="{StaticResource CozySelection}" SelectionChanged="OnBreedChanged" DisplayMemberPath="Label"/>
-            </StackPanel>
-            <Button Content="{DynamicResource GenerateCoat}" Style="{StaticResource CozyButton}"
-                    Click="OnGenerateCoat" HorizontalAlignment="Left"
-                    Margin="68,4,0,0" Width="198" />
+            <TextBlock Text="{DynamicResource SpeciesLabel}" FontWeight="SemiBold" />
+            <ComboBox x:Name="SpeciesSelector" Style="{StaticResource CozySelection}" DisplayMemberPath="Label"
+                      SelectionChanged="OnSpeciesChanged" Margin="0,4,0,8" />
+            <TextBlock Text="{DynamicResource BreedLabel}" FontWeight="SemiBold" />
+            <ComboBox x:Name="BreedSelector" Style="{StaticResource CozySelection}" SelectionChanged="OnBreedChanged"
+                      DisplayMemberPath="Label" Margin="0,4,0,0" />
 
 			<TextBlock
 				Text="{DynamicResource NameLabel}"

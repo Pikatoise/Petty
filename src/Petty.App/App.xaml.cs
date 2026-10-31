@@ -67,7 +67,6 @@ public partial class App: Application
             _log = new FileAppLog(_paths.LogFile);
             var preferences = new PreferencesStore(Path.Combine(_paths.DataDirectory, "preferences.json"));
             _localization = new Localization(preferences, preferences.Load(message => _log.Warn(message)));
-            _localization.LanguageChanged += OnLanguageChanged;
         }
         catch (Exception ex)
         {
@@ -128,7 +127,6 @@ public partial class App: Application
         _bowlEmptyImage = null;
         _tray?.Dispose();
         _tray = null;
-        if (_localization is not null) _localization.LanguageChanged -= OnLanguageChanged;
         _singleInstance?.Dispose();
         _singleInstance = null;
         _log?.Info("Petty stopped.");
@@ -160,12 +158,34 @@ public partial class App: Application
 
         if (load.Snapshot is not null)
         {
-            var variant = _variants.FirstOrDefault(v => v.AssetId == load.Snapshot.AssetId)
-                ?? throw new StartupMessageException(string.Format(Localization.Text("SavedAppearanceMissing"), load.Snapshot.AssetId));
-            _sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
-            _stateWasPersisted = true;
-            runtime = PetRuntime.Restore(load.Snapshot, tuning, now);
-            _log.Info($"Restored '{runtime.Snapshot.PetName}' (satiety {runtime.Needs.Satiety:F0}, happiness {runtime.Needs.Happiness:F0}).");
+            try
+            {
+                var variant = _variants.FirstOrDefault(v => v.AssetId == load.Snapshot.AssetId)
+                    ?? throw new InvalidDataException($"Saved sprite '{load.Snapshot.AssetId}' was not found.");
+                _sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
+                _stateWasPersisted = true;
+                runtime = PetRuntime.Restore(load.Snapshot, tuning, now);
+                _log.Info($"Restored '{runtime.Snapshot.PetName}' (satiety {runtime.Needs.Satiety:F0}, happiness {runtime.Needs.Happiness:F0}).");
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or NotSupportedException)
+            {
+                _log.Error("The saved appearance is missing or invalid.", ex);
+                var choice = MessageBox.Show(string.Format(Localization.Text("SavedAppearanceRecovery"), load.Snapshot.AssetId),
+                    "Petty", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                if (choice != MessageBoxResult.Yes)
+                {
+                    Shutdown();
+                    return;
+                }
+                var wizard = new CreationWizardWindow(_variants, firstRun: false, PetNameRules.DefaultName, null);
+                if (wizard.ShowDialog() != true)
+                {
+                    Shutdown();
+                    return;
+                }
+                _sheet = wizard.SelectedSheet!;
+                runtime = CreatePet(wizard.ConfirmedName, tuning, wizard.SelectedVariant!);
+            }
         }
         else if (_options.CreateName is { } createName)
         {
@@ -298,13 +318,10 @@ public partial class App: Application
     private void CreateTray()
     {
         var iconPath = Path.Combine(_assetDirectory!, TrayService.TrayIconFileName);
-        _tray = new TrayService(iconPath, _log!, Localization.Text("TraySettings"), Localization.Text("TrayExit"));
+        _tray = new TrayService(iconPath, _log!);
         _tray.SettingsRequested += (_, _) => ShowSettings();
         _tray.ExitRequested += (_, _) => RequestExitFromTray();
     }
-
-    private void OnLanguageChanged(object? sender, EventArgs e) =>
-        _tray?.SetLanguage(Localization.Text("TraySettings"), Localization.Text("TrayExit"));
 
     internal void LogError(string message, Exception exception) => _log?.Error(message, exception);
 
@@ -318,7 +335,7 @@ public partial class App: Application
             return;
         }
 
-        _settings = new SettingsWindow(_runtime.Snapshot.PetName, _runtime.Snapshot.BreedId, _localization!, _log!);
+        _settings = new SettingsWindow(_runtime.Snapshot.PetName, _variants.FirstOrDefault(v => v.AssetId == _runtime.Snapshot.AssetId)?.SpeciesId ?? "cat", _runtime.Snapshot.BreedId, _localization!, _log!);
         _settings.RenameRequested += OnRenameRequested;
         _settings.NewPetRequested += OnNewPetRequested;
         _settings.Closed += (_, _) => _settings = null;

@@ -105,3 +105,5 @@ The generator re-decodes the written PNG and fails the run if any of these break
 
 Automated tests additionally verify the shipped metadata, the PNG header (real RGBA),
 and frame counts (`tests/Petty.Tests/SpriteAssetFileTests.cs`).
+
+Breed-pack metadata may specify `speciesId` as `cat` or `dog`; older metadata without it defaults to `cat`. Dog packs must declare `speciesId: "dog"` for the creator filter.

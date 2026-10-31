@@ -24,6 +24,15 @@ internal sealed class Localization
     public static string BreedName(string breedId) =>
         breedId.Equals("cat", StringComparison.OrdinalIgnoreCase) ? Text("BreedCat") : breedId.Replace('-', ' ');
 
+    public static string SpeciesName(string speciesId) => Text(speciesId == "dog" ? "SpeciesDog" : "SpeciesCat");
+
+    public void SetAutostart(bool enabled)
+    {
+        var updated = Preferences with { Autostart = enabled };
+        _store.Save(updated);
+        Preferences = updated;
+    }
+
     public void SetLanguage(string? language)
     {
         var updated = (Preferences with { Language = language }).Sanitized();
