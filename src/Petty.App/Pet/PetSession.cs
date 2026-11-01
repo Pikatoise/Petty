@@ -25,7 +25,7 @@ public sealed class PetSession: IDisposable
 {
     private static readonly TimeSpan MinFrameInterval = TimeSpan.FromMilliseconds(20);
     private static readonly TimeSpan MaxFrameDelta = TimeSpan.FromMilliseconds(250);
-    private static readonly TimeSpan ExitSafetyTimeout = TimeSpan.FromSeconds(20);
+    private TimeSpan _exitSafetyTimeout = TimeSpan.FromSeconds(20);
 
     private readonly PetRuntime _runtime;
     private readonly PetWindow _window;
@@ -160,7 +160,7 @@ public sealed class PetSession: IDisposable
         _runtime.Behavior.Transitioned += OnBehaviorTransition;
 
         _surface.Load();
-        ApplySurfaceChange(SurfaceChange.Display);
+        _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
 
         _menu = new InteractionMenuWindow(_log);
         _menu.ActionRequested += OnActionRequested;
@@ -206,6 +206,7 @@ public sealed class PetSession: IDisposable
         {
             _log.Warn("Exit was requested while the pet was already exiting.");
         }
+        _exitSafetyTimeout = TimeSpan.FromSeconds(Math.Max(20, Math.Abs(_motion.TargetX - _motion.X) / PetMotion.ExitSpeed + 5));
 
         return true;
     }
@@ -343,7 +344,7 @@ public sealed class PetSession: IDisposable
 
         if (!_exitRequested || _exitCompleted) return;
 
-        var timedOut = realElapsed - _exitStarted > ExitSafetyTimeout;
+        var timedOut = realElapsed - _exitStarted > _exitSafetyTimeout;
         var offScreen = _runtime.IsExitAnimationComplete && !_motion.IsMoving;
 
         if (!offScreen && !timedOut) return;
@@ -388,7 +389,7 @@ public sealed class PetSession: IDisposable
         switch (transition.To)
         {
             case PetActivity.Entering:
-                _motion.Enter(WalkArea, _window.PhysicalWidth);
+                _motion.Enter(WalkArea, _window.PhysicalWidth, _surface.PrimaryDisplay?.Bounds.X);
                 break;
 
             case PetActivity.Walking:
@@ -424,7 +425,7 @@ public sealed class PetSession: IDisposable
 
             case PetActivity.Exiting:
                 _props.HideBall();
-                _motion.Exit(WalkArea, _window.PhysicalWidth);
+                _motion.Exit(WalkArea, _window.PhysicalWidth, screenLeft: _surface.PrimaryDisplay?.Bounds.X, screenRight: _surface.PrimaryDisplay?.Bounds.Right);
                 break;
 
             default:
@@ -577,7 +578,15 @@ public sealed class PetSession: IDisposable
     private void ApplySurfaceChange(SurfaceChange change)
     {
         if (change is SurfaceChange.None) return;
-        _motion.KeepInside(WalkArea);
+        if (_runtime.Behavior.State is PetActivity.Exiting)
+        {
+            _motion.Exit(WalkArea, _window.PhysicalWidth, _motion.Facing, _surface.PrimaryDisplay?.Bounds.X, _surface.PrimaryDisplay?.Bounds.Right);
+            _exitSafetyTimeout = TimeSpan.FromSeconds(Math.Max(_exitSafetyTimeout.TotalSeconds,
+                (_clock.Read(Timestamp()) - _exitStarted).TotalSeconds + Math.Abs(_motion.TargetX - _motion.X) / PetMotion.ExitSpeed + 5));
+        }
+        else if (_runtime.Behavior.State is PetActivity.Entering)
+            _motion.MoveTo(Math.Clamp(_motion.TargetX, WalkArea.Left, WalkArea.Right), PetMotion.EnterSpeed);
+        else _motion.KeepInside(WalkArea);
         ApplyPosition();
         if (change is not SurfaceChange.Display) return;
         _runtime.Behavior.CancelInteraction();

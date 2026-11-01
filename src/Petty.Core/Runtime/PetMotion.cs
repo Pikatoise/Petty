@@ -57,9 +57,9 @@ public sealed class PetMotion
     }
 
     /// <summary>Walks in from the left edge and stops about a third into the area.</summary>
-    public void Enter(MotionArea area, double windowWidth)
+    public void Enter(MotionArea area, double windowWidth, double? screenLeft = null)
     {
-        X = area.Left;
+        X = (screenLeft ?? area.Left) - windowWidth;
         Facing = 1;
 
         var travel = Math.Clamp(area.Width * 0.3, 120, 360);
@@ -122,11 +122,12 @@ public sealed class PetMotion
     public void Seek(double targetX, double speed = WalkSpeed) => MoveTo(targetX, speed);
 
     /// <summary>Heads for the nearest (or the requested) screen edge.</summary>
-    public void Exit(MotionArea area, double windowWidth, int? direction = null)
+    public void Exit(MotionArea area, double windowWidth, int? direction = null, double? screenLeft = null, double? screenRight = null)
     {
-        var midpoint = area.Left + (area.Width / 2);
-        var sign = direction ?? (X + (windowWidth / 2) >= midpoint ? 1 : -1);
-        var target = sign > 0 ? area.Right : area.Left;
+        var left = screenLeft ?? area.Left;
+        var right = screenRight ?? area.Right + windowWidth;
+        var sign = direction ?? (X + (windowWidth / 2) >= (left + right) / 2 ? 1 : -1);
+        var target = sign > 0 ? right : left - windowWidth;
         MoveTo(target, ExitSpeed);
     }
 

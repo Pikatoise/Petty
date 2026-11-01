@@ -93,7 +93,7 @@ public sealed class PetBehaviorMachine
     /// </summary>
     public void NotifyArrived()
     {
-        if (State is PetActivity.Walking or PetActivity.Running)
+        if (State is PetActivity.Entering or PetActivity.Walking or PetActivity.Running)
             MoveTo(PetActivity.Idle, "arrived");
     }
 
@@ -118,7 +118,7 @@ public sealed class PetBehaviorMachine
         switch (State)
         {
             case PetActivity.Entering:
-                if (_stateElapsed >= _tuning.EnterDuration) MoveTo(PetActivity.Idle, "entered");
+                if (_stateElapsed >= TimeSpan.FromTicks(Math.Max(_tuning.EnterDuration.Ticks, TimeSpan.FromSeconds(20).Ticks))) MoveTo(PetActivity.Idle, "enter-timeout");
                 break;
 
             case PetActivity.Exiting:

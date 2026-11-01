@@ -47,7 +47,7 @@ public class PetBehaviorMachineTests
     }
 
     [Fact]
-    public void EnteringBecomesIdleAfterEnterDuration()
+    public void EnteringBecomesIdleOnArrival()
     {
         var machine = new PetBehaviorMachine(Tuning(), new Random(1));
         machine.StartEntering();
@@ -56,6 +56,8 @@ public class PetBehaviorMachineTests
         Assert.Equal(PetActivity.Entering, machine.State);
 
         machine.Update(TimeSpan.FromSeconds(1.5), Needs.Full, new Bowl(0, 100));
+        Assert.Equal(PetActivity.Entering, machine.State);
+        machine.NotifyArrived();
         Assert.Equal(PetActivity.Idle, machine.State);
     }
 

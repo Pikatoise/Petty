@@ -12,7 +12,7 @@ public class PetMotionTests
         var motion = new PetMotion();
         motion.Enter(Area, windowWidth: 192);
 
-        Assert.Equal(Area.Left, motion.X);
+        Assert.Equal(Area.Left - 192, motion.X);
         Assert.Equal(1, motion.Facing);
         Assert.True(motion.IsMoving);
     }
@@ -117,7 +117,7 @@ public class PetMotionTests
         Assert.Equal(1, motion.Facing);
         for (var i = 0; i < 100; i++) motion.Update(TimeSpan.FromMilliseconds(100));
 
-        Assert.Equal(Area.Right, motion.X);
+        Assert.Equal(Area.Right + 192, motion.X);
     }
 
     [Fact]
@@ -140,7 +140,20 @@ public class PetMotionTests
 
         for (var i = 0; i < 100; i++) motion.Update(TimeSpan.FromMilliseconds(100));
 
-        Assert.Equal(Area.Left, motion.X);
+        Assert.Equal(Area.Left - 192, motion.X);
+    }
+
+    [Fact]
+    public void EntryAndExitUsePhysicalScreenEdgesWhenWalkBandIsInset()
+    {
+        var area = new MotionArea(80, 920, 800);
+        var motion = new PetMotion();
+        motion.Enter(area, 192, screenLeft: 0);
+        Assert.Equal(-192, motion.X);
+        motion.Exit(area, 192, direction: 1, screenLeft: 0, screenRight: 1200);
+        Assert.Equal(1200, motion.TargetX);
+        motion.Exit(area, 192, direction: -1, screenLeft: 0, screenRight: 1200);
+        Assert.Equal(-192, motion.TargetX);
     }
 
     [Fact]
