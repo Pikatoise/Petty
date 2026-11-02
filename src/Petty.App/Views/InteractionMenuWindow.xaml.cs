@@ -32,6 +32,8 @@ public partial class InteractionMenuWindow: Window
     public event EventHandler? PointerChanged;
     public IntPtr Handle => _handle;
 
+    public void SetPlayEnabled(bool enabled) => PlayButton.IsEnabled = enabled;
+
     public void Attach(DesktopLayerMode mode, IntPtr petHandle)
     {
         if (mode != DesktopLayerMode.Disabled) DesktopWindowService.Attach(_handle, _log, mode);

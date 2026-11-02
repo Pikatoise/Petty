@@ -74,13 +74,13 @@ public class ActionSceneTests
         Assert.False(runtime.RequestPlay());
         runtime.Update(TimeSpan.FromSeconds(4), now);
         Assert.Equal(PetActivity.Idle, runtime.Behavior.State);
-        Assert.Equal(32, runtime.Needs.Happiness, 5);
+        Assert.Equal(30, runtime.Needs.Happiness, 5);
         runtime.Update(TimeSpan.FromSeconds(1), now);
-        Assert.Equal(32, runtime.Needs.Happiness, 5);
+        Assert.Equal(30, runtime.Needs.Happiness, 5);
         Assert.True(runtime.RequestPlay());
         runtime.Update(TimeSpan.FromSeconds(7), now);
-        Assert.Equal(62, runtime.Needs.Happiness, 5);
-        Assert.Equal(78, runtime.Needs.Satiety, 5);
+        Assert.Equal(55, runtime.Needs.Happiness, 5);
+        Assert.Equal(60, runtime.Needs.Satiety, 5);
     }
 
     [Fact]

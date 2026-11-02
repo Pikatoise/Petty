@@ -99,7 +99,8 @@
     <sys:String x:Key="DebugClipTired">Tired</sys:String>
     <sys:String x:Key="DebugClipExit">Exit</sys:String>
     <sys:String x:Key="DebugEatBiteSeconds">Eating interval, seconds</sys:String>
-    <sys:String x:Key="DebugSleepAfterSeconds">Idle before sleep, seconds</sys:String>
+    <sys:String x:Key="DebugAwakeMinSeconds">Minimum awake duration, seconds</sys:String>
+    <sys:String x:Key="DebugAwakeMaxSeconds">Maximum awake duration, seconds</sys:String>
     <sys:String x:Key="DebugSleepMinSeconds">Minimum sleep duration, seconds</sys:String>
     <sys:String x:Key="DebugSleepMaxSeconds">Maximum sleep duration, seconds</sys:String>
     <sys:String x:Key="DebugWanderMinSeconds">Minimum rest between walks, seconds</sys:String>

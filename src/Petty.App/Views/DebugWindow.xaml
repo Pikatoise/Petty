@@ -53,7 +53,8 @@
             <Expander Header="{DynamicResource DebugCategorySleep}" Style="{StaticResource Section}">
                 <Border Style="{StaticResource SectionBorder}"><StackPanel Style="{StaticResource SectionContent}">
                     <local:DebugParameterControl x:Name="SleepChanceControl" LabelKey="DebugSleepChance" Minimum="0" Maximum="100" Step="1" />
-                    <local:DebugParameterControl x:Name="SleepAfterControl" LabelKey="DebugSleepAfterSeconds" Minimum="1" Maximum="3600" Step="1" />
+                    <local:DebugParameterControl x:Name="AwakeMinControl" LabelKey="DebugAwakeMinSeconds" Minimum="1" Maximum="3600" Step="1" />
+                    <local:DebugParameterControl x:Name="AwakeMaxControl" LabelKey="DebugAwakeMaxSeconds" Minimum="1" Maximum="3600" Step="1" />
                     <local:DebugParameterControl x:Name="SleepMinControl" LabelKey="DebugSleepMinSeconds" Minimum="1" Maximum="3600" Step="1" />
                     <local:DebugParameterControl x:Name="SleepMaxControl" LabelKey="DebugSleepMaxSeconds" Minimum="1" Maximum="3600" Step="1" />
                     <WrapPanel>

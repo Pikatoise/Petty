@@ -26,7 +26,8 @@ public class PetRuntimeTests
         PlaySatietyCost = 5,
         WanderMinInterval = TimeSpan.FromHours(1),
         WanderMaxInterval = TimeSpan.FromHours(1),
-        SleepAfterIdle = TimeSpan.FromHours(1),
+        AwakeMinDuration = TimeSpan.FromHours(1),
+            AwakeMaxDuration = TimeSpan.FromHours(1),
         ExitDuration = TimeSpan.FromSeconds(2),
     };
 
@@ -166,7 +167,7 @@ public class PetRuntimeTests
     }
 
     [Fact]
-    public void UserInteractionWakesUpSleepingPet()
+    public void UserInteractionLeavesSleepingPetAsleep()
     {
         var tuning = Tuning();
         var runtime = CreateRuntime(satiety: 90, happiness: 90, tuning: tuning);
@@ -177,6 +178,6 @@ public class PetRuntimeTests
         Assert.Equal(PetActivity.Sleeping, runtime.Behavior.State);
 
         runtime.OnUserInteraction();
-        Assert.Equal(PetActivity.Idle, runtime.Behavior.State);
+        Assert.Equal(PetActivity.Sleeping, runtime.Behavior.State);
     }
 }

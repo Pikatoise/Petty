@@ -8,14 +8,14 @@ namespace Petty.Core.Domain;
 public sealed class PetTuning
 {
     // Needs decay.
-    public double SatietyDecayPerMinute { get; init; } = 4.0 / 60;
-    public double HappinessDecayPerMinute { get; init; } = 3.0 / 60;
+    public double SatietyDecayPerMinute { get; init; } = 15.0 / 60;
+    public double HappinessDecayPerMinute { get; init; } = 12.0 / 60;
     public TimeSpan MaxOfflineSpan { get; init; } = TimeSpan.FromDays(7);
 
     // Thresholds (0-100).
-    public double HungryThreshold { get; init; } = 30.0;
-    public double TiredThreshold { get; init; } = 20.0;
-    public double SatietyRecoveryThreshold { get; init; } = 45.0;
+    public double HungryThreshold { get; init; } = 65.0;
+    public double TiredThreshold { get; init; } = 35.0;
+    public double SatietyRecoveryThreshold { get; init; } = 75.0;
 
     // Bowl.
     public double BowlCapacity { get; init; } = 100.0;
@@ -29,18 +29,19 @@ public sealed class PetTuning
 
     // Playing.
     public TimeSpan PlayDuration { get; init; } = TimeSpan.FromSeconds(6);
-    public double PlayHappinessGain { get; init; } = 30.0;
-    public double PlaySatietyCost { get; init; } = 2.0;
+    public double PlayHappinessGain { get; init; } = 25.0;
+    public double PlaySatietyCost { get; init; } = 15.0;
 
     public TimeSpan PetDuration { get; init; } = TimeSpan.FromSeconds(3);
-    public double PetHappinessGain { get; init; } = 12.0;
-    public double PetSatietyCost { get; init; } = 0.0;
+    public double PetHappinessGain { get; init; } = 10.0;
+    public double PetSatietyCost { get; init; } = 5.0;
 
     // Behaviour pacing.
     public TimeSpan EnterDuration { get; init; } = TimeSpan.FromSeconds(3);
     public TimeSpan ExitDuration { get; init; } = TimeSpan.FromSeconds(3);
-    public TimeSpan SleepAfterIdle { get; init; } = TimeSpan.FromMinutes(2);
-    public TimeSpan SleepMinDuration { get; init; } = TimeSpan.FromSeconds(120);
+    public TimeSpan AwakeMinDuration { get; init; } = TimeSpan.FromMinutes(6);
+    public TimeSpan AwakeMaxDuration { get; init; } = TimeSpan.FromMinutes(10);
+    public TimeSpan SleepMinDuration { get; init; } = TimeSpan.FromMinutes(6);
     public TimeSpan SleepMaxDuration { get; init; } = TimeSpan.FromSeconds(600);
 
     /// <summary>
@@ -49,10 +50,10 @@ public sealed class PetTuning
     /// </summary>
     public TimeSpan WalkDuration { get; init; } = TimeSpan.FromSeconds(60);
     public TimeSpan RunDuration { get; init; } = TimeSpan.FromSeconds(60);
-    public TimeSpan WanderMinInterval { get; init; } = TimeSpan.FromSeconds(3);
-    public TimeSpan WanderMaxInterval { get; init; } = TimeSpan.FromSeconds(10);
+    public TimeSpan WanderMinInterval { get; init; } = TimeSpan.FromSeconds(1);
+    public TimeSpan WanderMaxInterval { get; init; } = TimeSpan.FromSeconds(3);
     public TimeSpan SeekTimeout { get; init; } = TimeSpan.FromSeconds(120);
-    public double RunChance { get; init; } = 0.2;
+    public double RunChance { get; init; } = 0.65;
     public double SleepChance { get; init; } = 1.0;
 
     // Runtime.
@@ -67,7 +68,9 @@ public sealed class PetTuning
         static double Clamp(double value, double min, double max) =>
             double.IsNaN(value) ? min : Math.Clamp(value, min, max);
 
-        var sleepMin = Positive(SleepMinDuration, TimeSpan.FromSeconds(120));
+        var awakeMin = Positive(AwakeMinDuration, Default.AwakeMinDuration);
+        var awakeMax = Positive(AwakeMaxDuration, Default.AwakeMaxDuration);
+        var sleepMin = Positive(SleepMinDuration, Default.SleepMinDuration);
         var sleepMax = Positive(SleepMaxDuration, TimeSpan.FromSeconds(600));
 
         return new PetTuning
@@ -92,7 +95,8 @@ public sealed class PetTuning
             PetSatietyCost = Math.Max(0, PetSatietyCost),
             EnterDuration = Positive(EnterDuration, TimeSpan.FromSeconds(3)),
             ExitDuration = Positive(ExitDuration, TimeSpan.FromSeconds(3)),
-            SleepAfterIdle = Positive(SleepAfterIdle, TimeSpan.FromMinutes(2)),
+            AwakeMinDuration = awakeMin,
+            AwakeMaxDuration = awakeMax < awakeMin ? awakeMin : awakeMax,
             SleepMinDuration = sleepMin,
             SleepMaxDuration = sleepMax < sleepMin ? sleepMin : sleepMax,
             WalkDuration = Positive(WalkDuration, TimeSpan.FromSeconds(60)),

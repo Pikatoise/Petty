@@ -12,8 +12,8 @@ public class DebugTuningTests
     public void BoundsNonFiniteValuesAndMaintainsThresholdOrder()
     {
         var value = new DebugTuning { SatietyDecayPerMinute = double.NaN, HappinessDecayPerMinute = double.PositiveInfinity, Hungry = 30, Tired = 90, Recovery = 5, PlaySeconds = -1, PetSeconds = 500 }.Sanitized();
-        Assert.Equal(4.0 / 60, value.SatietyDecayPerMinute);
-        Assert.Equal(3.0 / 60, value.HappinessDecayPerMinute);
+        Assert.Equal(15.0 / 60, value.SatietyDecayPerMinute);
+        Assert.Equal(12.0 / 60, value.HappinessDecayPerMinute);
         Assert.Equal(30, value.Tired);
         Assert.Equal(30, value.Recovery);
         Assert.Equal(0.5, value.PlaySeconds);
@@ -42,6 +42,8 @@ public class DebugTuningTests
     {
         var settings = new DebugTuning();
         var tuning = settings.ToPetTuning();
+        foreach (var property in typeof(PetTuning).GetProperties().Where(p => !p.GetMethod!.IsStatic))
+            Assert.Equal(property.GetValue(PetTuning.Default), property.GetValue(tuning));
         Assert.Equal(PetTuning.Default.PetDuration, tuning.PetDuration);
         Assert.Equal(PetTuning.Default.PlayDuration, tuning.PlayDuration);
         Assert.Equal(PetTuning.Default.EatBiteInterval, tuning.EatBiteInterval);
@@ -58,6 +60,8 @@ public class DebugTuningTests
         var range = (settings with { SleepMinSeconds = 700, SleepMaxSeconds = 200 }).Sanitized();
         Assert.Equal(700, range.SleepMinSeconds);
         Assert.Equal(700, range.SleepMaxSeconds);
+        var awake = (settings with { AwakeMinSeconds = 700, AwakeMaxSeconds = 200 }).Sanitized();
+        Assert.Equal(700, awake.AwakeMaxSeconds);
     }
 
     [Fact]
@@ -74,7 +78,7 @@ public class DebugTuningTests
         Assert.Equal(PetActivity.Playing, runtime.Behavior.State);
         runtime.Update(TimeSpan.FromSeconds(2), now);
         Assert.Equal(PetActivity.Idle, runtime.Behavior.State);
-        Assert.Equal(50, runtime.Needs.Happiness, 5);
+        Assert.Equal(45, runtime.Needs.Happiness, 5);
         Assert.True(runtime.RequestPlay());
         runtime.Update(TimeSpan.FromSeconds(2), now);
         Assert.Equal(PetActivity.Idle, runtime.Behavior.State);
@@ -87,6 +91,8 @@ public class DebugTuningTests
         var runtime = PetRuntime.CreateNew("Cat", new DebugTuning().ToPetTuning(), now);
         Assert.True(runtime.Behavior.RequestDebugActivity(PetActivity.Walking));
         Assert.True(runtime.Behavior.RequestDebugActivity(PetActivity.Sleeping));
+        Assert.False(runtime.RequestPlay());
+        Assert.True(runtime.Behavior.RequestDebugActivity(PetActivity.Idle));
         Assert.True(runtime.RequestPlay());
         Assert.False(runtime.Behavior.RequestDebugActivity(PetActivity.Running));
         runtime.Update(TimeSpan.FromSeconds(6), now);

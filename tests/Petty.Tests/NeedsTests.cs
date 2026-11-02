@@ -23,7 +23,7 @@ public class NeedsTests
         var after = Needs.Full.Advance(TimeSpan.FromMinutes(3), tuning);
         Assert.Equal(94, after.Satiety, 3);
         Assert.Equal(97, after.Happiness, 3);
-        Assert.Equal(96, Needs.Full.Advance(TimeSpan.FromMinutes(60), PetTuning.Default).Satiety, 3);
+        Assert.Equal(85, Needs.Full.Advance(TimeSpan.FromMinutes(60), PetTuning.Default).Satiety, 3);
     }
 
     [Fact]

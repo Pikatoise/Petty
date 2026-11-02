@@ -97,7 +97,8 @@
     <sys:String x:Key="DebugClipTired">Усталость</sys:String>
     <sys:String x:Key="DebugClipExit">Уход</sys:String>
     <sys:String x:Key="DebugEatBiteSeconds">Интервал еды, сек</sys:String>
-    <sys:String x:Key="DebugSleepAfterSeconds">Ожидание перед сном, сек</sys:String>
+    <sys:String x:Key="DebugAwakeMinSeconds">Минимальное бодрствование, сек</sys:String>
+    <sys:String x:Key="DebugAwakeMaxSeconds">Максимальное бодрствование, сек</sys:String>
     <sys:String x:Key="DebugSleepMinSeconds">Минимальная длительность сна, сек</sys:String>
     <sys:String x:Key="DebugSleepMaxSeconds">Максимальная длительность сна, сек</sys:String>
     <sys:String x:Key="DebugWanderMinSeconds">Минимальный отдых между прогулками, сек</sys:String>

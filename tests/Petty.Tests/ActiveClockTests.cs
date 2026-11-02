@@ -39,8 +39,8 @@ public class ActiveClockTests
             previous = elapsed;
         }
 
-        Assert.Equal(96, needs.Satiety, 6);
-        Assert.Equal(97, needs.Happiness, 6);
+        Assert.Equal(85, needs.Satiety, 6);
+        Assert.Equal(88, needs.Happiness, 6);
     }
 
     [Fact]
@@ -85,8 +85,8 @@ public class ActiveClockTests
         var previous = clock.ReadScaled(TimeSpan.Zero);
         var current = clock.ReadScaled(TimeSpan.FromSeconds(0.3));
         runtime.Update(current - previous, DateTimeOffset.UtcNow);
-        Assert.Equal(79.95, runtime.Needs.Satiety, 4);
-        Assert.Equal(62, runtime.Needs.Happiness, 4);
+        Assert.Equal(74.95, runtime.Needs.Satiety, 4);
+        Assert.Equal(60, runtime.Needs.Happiness, 4);
         Assert.Equal(Petty.Core.Behavior.PetActivity.Idle, runtime.Behavior.State);
     }
 #endif

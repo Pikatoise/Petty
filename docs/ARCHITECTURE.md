@@ -82,13 +82,42 @@ and an unexplained gap over five seconds is discarded. All timers are stopped on
 `PetBehaviorMachine` states: `Entering`, `Idle`, `Walking`, `Running`, `SeekingFood`,
 `Eating`, `Sleeping`, `Playing`, `Petting`, `Tired`, `Exiting`. Priority is exit > eligible user action > eating >
 hunger > sleep > idle; every transition carries a short reason that is logged and tested.
-Eating requires food in the bowl; waking from sleep still accepts user interaction.
+Eating requires food in the bowl. Play is unavailable while sleeping, both in the
+action menu and in Core. Petting pauses the remaining sleep duration and returns
+to that same sleep when finished or cancelled; passive clicks/hover do not wake the pet.
+At satiety <=65, available food wakes a sleeper to seek the bowl, whether food was
+already present or just added. Eating ends that sleep and starts a fresh awake period.
+
+Awake and sleep periods are independently sampled once per period, both 6–10
+minutes by default. Awake time includes movement and actions; sleep is deferred
+until an ongoing interaction or food seeking/eating finishes. Eating starts a new
+awake period. Sleep can interrupt a walk/run. Needs continue decaying at their
+normal rates during pet sleep, but freeze while the app is closed or Windows is
+sleeping/hibernating. Cycle timers are session-local; they restart when the app starts.
 
 Needs are two independent 0–100 values (satiety, happiness) that decay at
-`PetTuning` rates. Below the hungry threshold the cat looks tired and, with food available,
-walks to the bowl; play and petting raise happiness. At zero happiness or very low satiety,
+`PetTuning` rates. At the hungry threshold the pet seeks an available bowl; the
+strong-hunger threshold controls its tired appearance. Play and petting raise happiness.
+At zero happiness or very low satiety,
 wandering stops in favor of tired/sleep behavior; interactions remain available. No numbers are shown on
 the desktop.
+
+Owner-approved defaults (2026-11-02):
+
+| Parameter | Value |
+| --- | --- |
+| Satiety / happiness decay | 15 / 12 points per running hour, including pet sleep |
+| Food seeking / strong hunger / seek recovery | <=65 / <=35 / >75 |
+| Play | 6 seconds, +25 happiness, -15 satiety |
+| Petting | 3 seconds, +10 happiness, -5 satiety |
+| Wander pause / run probability | 1–3 seconds / 65% |
+| Far-edge target probability during a run | 50% |
+| Walk / run speed | 26 / 72 screen pixels per second |
+| Bowl capacity / refill per click | 100 / 25 food units |
+
+Interaction gains/costs accrue proportionally to action time; interrupted actions
+apply only the completed portion. Debug overrides remain separate from pet state;
+the developer panel exposes minimum/maximum awake and sleep durations.
 
 ## Desktop integration
 

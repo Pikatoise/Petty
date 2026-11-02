@@ -71,7 +71,7 @@ public sealed class PetMotion
     /// Random targets alone cluster near the middle, so the pet would never be seen
     /// patrolling the whole desktop width.
     /// </summary>
-    public const double EdgeTargetShare = 0.35;
+    public const double EdgeTargetShare = 0.5;
 
     /// <summary>Longest stroll as a share of the walkable width (playful runs still cross the screen).</summary>
     public const double MaxStrollShare = 0.3;

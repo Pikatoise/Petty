@@ -379,6 +379,7 @@ public sealed class PetSession: IDisposable
         _log.Info($"Behaviour {transition.From} -> {transition.To} ({transition.Reason}).");
 
         _animation.Play(PetAnimationMap.ClipFor(transition.To));
+        _menu?.SetPlayEnabled(_runtime.Behavior.CanPlay);
         if (transition.To is PetActivity.Playing or PetActivity.Petting or PetActivity.Eating or PetActivity.Exiting)
         {
             HideInteractionMenu();
@@ -476,6 +477,7 @@ public sealed class PetSession: IDisposable
             HideInteractionMenu();
             return;
         }
+        _menu.SetPlayEnabled(_runtime.Behavior.CanPlay);
         var petRect = _window.PlacementRect;
         var insidePetBox = point.X >= petRect.Left && point.X < petRect.Left + petRect.Width &&
                            point.Y >= petRect.Top && point.Y < petRect.Top + petRect.Height;

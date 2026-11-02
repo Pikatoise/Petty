@@ -19,8 +19,8 @@ internal sealed partial class DebugWindow: Window
     private readonly Action<DebugTuning> _apply;
     private readonly Func<bool> _savePet;
     private readonly DebugTuningStore _store;
-    private readonly Slider[] _values = new Slider[16];
-    private readonly TextBox[] _numbers = new TextBox[16];
+    private readonly Slider[] _values = new Slider[17];
+    private readonly TextBox[] _numbers = new TextBox[17];
     private readonly Slider[] _needs = new Slider[2];
     private readonly TextBox[] _needNumbers = new TextBox[2];
     private TextBox? _editingInput;
@@ -40,9 +40,9 @@ internal sealed partial class DebugWindow: Window
         DebugParameterControl[] controls =
         [
             SatietyDecayControl, HappinessDecayControl, HungryControl, TiredControl, RecoveryControl,
-            PlayDurationControl, PetDurationControl, EatIntervalControl, SleepAfterControl,
+            PlayDurationControl, PetDurationControl, EatIntervalControl, AwakeMinControl,
             SleepMinControl, SleepMaxControl, WanderMinControl, WanderMaxControl,
-            RunChanceControl, SleepChanceControl, TimeScaleControl,
+            RunChanceControl, SleepChanceControl, TimeScaleControl, AwakeMaxControl,
         ];
         for (var i = 0; i < controls.Length; i++)
         {
@@ -122,7 +122,7 @@ internal sealed partial class DebugWindow: Window
             PlaySeconds = _values[5].Value,
             PetSeconds = _values[6].Value,
             EatBiteSeconds = _values[7].Value,
-            SleepAfterSeconds = _values[8].Value,
+            AwakeMinSeconds = _values[8].Value,
             SleepMinSeconds = _values[9].Value,
             SleepMaxSeconds = _values[10].Value,
             WanderMinSeconds = _values[11].Value,
@@ -130,6 +130,7 @@ internal sealed partial class DebugWindow: Window
             RunChancePercent = _values[13].Value,
             SleepChancePercent = _values[14].Value,
             TimeScale = _values[15].Value,
+            AwakeMaxSeconds = _values[16].Value,
         });
     }
 
@@ -148,7 +149,7 @@ internal sealed partial class DebugWindow: Window
 
     private void ShowTuning(DebugTuning value)
     {
-        double[] numbers = [value.SatietyDecayPerMinute, value.HappinessDecayPerMinute, value.Hungry, value.Tired, value.Recovery, value.PlaySeconds, value.PetSeconds, value.EatBiteSeconds, value.SleepAfterSeconds, value.SleepMinSeconds, value.SleepMaxSeconds, value.WanderMinSeconds, value.WanderMaxSeconds, value.RunChancePercent, value.SleepChancePercent, value.TimeScale];
+        double[] numbers = [value.SatietyDecayPerMinute, value.HappinessDecayPerMinute, value.Hungry, value.Tired, value.Recovery, value.PlaySeconds, value.PetSeconds, value.EatBiteSeconds, value.AwakeMinSeconds, value.SleepMinSeconds, value.SleepMaxSeconds, value.WanderMinSeconds, value.WanderMaxSeconds, value.RunChancePercent, value.SleepChancePercent, value.TimeScale, value.AwakeMaxSeconds];
         _updating = true;
         try
         {

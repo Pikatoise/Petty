@@ -10,7 +10,8 @@ public class PetBehaviorMachineTests
         EnterDuration = TimeSpan.FromSeconds(3),
         ExitDuration = TimeSpan.FromSeconds(3),
         PlayDuration = TimeSpan.FromSeconds(10),
-        SleepAfterIdle = TimeSpan.FromSeconds(60),
+        AwakeMinDuration = TimeSpan.FromSeconds(60),
+            AwakeMaxDuration = TimeSpan.FromSeconds(60),
         SleepMinDuration = TimeSpan.FromMinutes(10),
         SleepMaxDuration = TimeSpan.FromMinutes(10),
         WalkDuration = TimeSpan.FromSeconds(2),
@@ -29,7 +30,8 @@ public class PetBehaviorMachineTests
         {
             WanderMinInterval = TimeSpan.FromSeconds(1),
             WanderMaxInterval = TimeSpan.FromSeconds(1),
-            SleepAfterIdle = TimeSpan.FromHours(1),
+            AwakeMinDuration = TimeSpan.FromHours(1),
+            AwakeMaxDuration = TimeSpan.FromHours(1),
             RunChance = 0
         }, new Random(1));
         var bowl = new Bowl(0, 100);
@@ -137,7 +139,7 @@ public class PetBehaviorMachineTests
     }
 
     [Fact]
-    public void SleepsAfterIdlePeriodAndWakesUpOnInteraction()
+    public void SleepsAfterAwakePeriodAndIgnoresPassiveInteraction()
     {
         var machine = new PetBehaviorMachine(Tuning(), new Random(1));
 
@@ -145,7 +147,7 @@ public class PetBehaviorMachineTests
         Assert.Equal(PetActivity.Sleeping, machine.State);
 
         machine.OnUserInteraction();
-        Assert.Equal(PetActivity.Idle, machine.State);
+        Assert.Equal(PetActivity.Sleeping, machine.State);
     }
 
     [Fact]
@@ -153,7 +155,8 @@ public class PetBehaviorMachineTests
     {
         var tuning = new PetTuning
         {
-            SleepAfterIdle = TimeSpan.FromSeconds(2),
+            AwakeMinDuration = TimeSpan.FromSeconds(2),
+            AwakeMaxDuration = TimeSpan.FromSeconds(2),
             SleepChance = 1,
             WanderMinInterval = TimeSpan.FromHours(1),
             WanderMaxInterval = TimeSpan.FromHours(1)
@@ -168,7 +171,8 @@ public class PetBehaviorMachineTests
     {
         var tuning = new PetTuning
         {
-            SleepAfterIdle = TimeSpan.FromSeconds(2),
+            AwakeMinDuration = TimeSpan.FromSeconds(2),
+            AwakeMaxDuration = TimeSpan.FromSeconds(2),
             SleepChance = 1,
             WanderMinInterval = TimeSpan.FromHours(1),
             WanderMaxInterval = TimeSpan.FromHours(1)
@@ -184,11 +188,12 @@ public class PetBehaviorMachineTests
     }
 
     [Fact]
-    public void SleepProbabilityIsCheckedOncePerIdleInterval()
+    public void SleepProbabilityIsCheckedOncePerAwakeInterval()
     {
         var tuning = new PetTuning
         {
-            SleepAfterIdle = TimeSpan.FromSeconds(2),
+            AwakeMinDuration = TimeSpan.FromSeconds(2),
+            AwakeMaxDuration = TimeSpan.FromSeconds(2),
             SleepChance = 0.5,
             WanderMinInterval = TimeSpan.FromHours(1),
             WanderMaxInterval = TimeSpan.FromHours(1)
@@ -204,11 +209,12 @@ public class PetBehaviorMachineTests
     }
 
     [Fact]
-    public void IdleTimeAccumulatesAcrossWalksAndZeroChanceNeverSleeps()
+    public void AwakeTimeAccumulatesAcrossWalksAndZeroChanceNeverSleeps()
     {
         var tuning = new PetTuning
         {
-            SleepAfterIdle = TimeSpan.FromSeconds(5),
+            AwakeMinDuration = TimeSpan.FromSeconds(5),
+            AwakeMaxDuration = TimeSpan.FromSeconds(5),
             SleepChance = 1,
             WanderMinInterval = TimeSpan.FromSeconds(2),
             WanderMaxInterval = TimeSpan.FromSeconds(2),
@@ -225,7 +231,8 @@ public class PetBehaviorMachineTests
         Assert.Equal(PetActivity.Sleeping, machine.State);
         var noSleep = new PetBehaviorMachine(new PetTuning
         {
-            SleepAfterIdle = TimeSpan.FromSeconds(1),
+            AwakeMinDuration = TimeSpan.FromSeconds(1),
+            AwakeMaxDuration = TimeSpan.FromSeconds(1),
             SleepChance = 0,
             WanderMinInterval = TimeSpan.FromHours(1),
             WanderMaxInterval = TimeSpan.FromHours(1)
@@ -245,7 +252,8 @@ public class PetBehaviorMachineTests
     {
         var tuning = new PetTuning
         {
-            SleepAfterIdle = TimeSpan.FromSeconds(1),
+            AwakeMinDuration = TimeSpan.FromSeconds(1),
+            AwakeMaxDuration = TimeSpan.FromSeconds(1),
             SleepChance = 1,
             SleepMinDuration = TimeSpan.FromSeconds(100),
             SleepMaxDuration = TimeSpan.FromSeconds(200),
