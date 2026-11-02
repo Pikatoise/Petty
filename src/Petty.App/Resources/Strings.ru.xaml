@@ -1,5 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <sys:String x:Key="SettingsTitle">Настройки Petty</sys:String>
+    <sys:String x:Key="PetSettings">Настройки питомца</sys:String>
+    <sys:String x:Key="ProgramSettings">Настройки программы</sys:String>
     <sys:String x:Key="PetName">Имя питомца</sys:String>
     <sys:String x:Key="Language">Язык</sys:String>
     <sys:String x:Key="LanguageSystem">Как в системе</sys:String>
