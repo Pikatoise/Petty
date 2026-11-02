@@ -10,12 +10,18 @@ $releaseRoot = Join-Path $repo ('artifacts/portable/' + (Get-Date -Format 'yyyyM
 $folder = Join-Path $releaseRoot $releaseName
 New-Item -ItemType Directory -Path $folder -Force | Out-Null
 
-dotnet publish (Join-Path $repo 'src/Petty.App/Petty.App.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -m:1 -o $folder
+# Framework-dependent single-file output; the .NET SDK only supports bundle
+# compression for self-contained apps. Compress the distribution ZIP instead.
+dotnet publish (Join-Path $repo 'src/Petty.App/Petty.App.csproj') -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -m:1 -o $folder
 if ($LASTEXITCODE -ne 0) { throw 'Portable publish failed.' }
 
-foreach ($file in @('Petty.exe', 'coreclr.dll', 'PresentationFramework.dll', 'Assets/Sprites/ball.png')) {
+foreach ($file in @('Petty.exe', 'Assets/Sprites/ball.png')) {
     if (!(Test-Path -LiteralPath (Join-Path $folder $file))) { throw "Missing portable file: $file" }
 }
+$looseLibraries = Get-ChildItem -LiteralPath $folder -Recurse -File | Where-Object {
+    $_.Extension -in @('.dll', '.pdb') -or $_.Name -match '\.(deps|runtimeconfig)\.json$'
+}
+if ($looseLibraries) { throw 'Framework-dependent single-file output contains loose libraries, runtime files or symbols.' }
 $packs = Join-Path $folder 'Assets/Sprites/packs'
 if (@(Get-ChildItem -LiteralPath $packs -Recurse -Filter '*.png').Count -ne 40 -or
     @(Get-ChildItem -LiteralPath $packs -Recurse -Filter '*.json').Count -ne 40) {
