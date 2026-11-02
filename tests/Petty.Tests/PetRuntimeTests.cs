@@ -27,7 +27,7 @@ public class PetRuntimeTests
         WanderMinInterval = TimeSpan.FromHours(1),
         WanderMaxInterval = TimeSpan.FromHours(1),
         AwakeMinDuration = TimeSpan.FromHours(1),
-            AwakeMaxDuration = TimeSpan.FromHours(1),
+        AwakeMaxDuration = TimeSpan.FromHours(1),
         ExitDuration = TimeSpan.FromSeconds(2),
     };
 
@@ -61,7 +61,7 @@ public class PetRuntimeTests
     [Fact]
     public void EatingConsumesBowlAndRaisesSatiety()
     {
-        var runtime = CreateRuntime(bowlFood: 20);
+        PetRuntime runtime = CreateRuntime(bowlFood: 20);
 
         runtime.Update(TimeSpan.FromMilliseconds(200), Now);
         Assert.Equal(PetActivity.SeekingFood, runtime.Behavior.State);
@@ -77,12 +77,14 @@ public class PetRuntimeTests
     [Fact]
     public void EatingStopsWhenBowlIsEmpty()
     {
-        var runtime = CreateRuntime(bowlFood: 10);
+        PetRuntime runtime = CreateRuntime(bowlFood: 10);
         runtime.Update(TimeSpan.FromMilliseconds(200), Now);
         runtime.NotifyArrived();
 
-        for (var i = 0; i < 10 && runtime.Bowl.HasFood; i++)
+        for (int i = 0; i < 10 && runtime.Bowl.HasFood; i++)
+        {
             runtime.Update(TimeSpan.FromSeconds(1), Now);
+        }
 
         Assert.Equal(0, runtime.Bowl.Food, 3);
         Assert.Equal(PetActivity.Idle, runtime.Behavior.State);
@@ -92,7 +94,7 @@ public class PetRuntimeTests
     [Fact]
     public void PlayingRaisesHappinessOverTime()
     {
-        var runtime = CreateRuntime(satiety: 80, happiness: 20);
+        PetRuntime runtime = CreateRuntime(satiety: 80, happiness: 20);
 
         Assert.True(runtime.RequestPlay());
         runtime.Update(TimeSpan.FromSeconds(5), Now);
@@ -100,23 +102,15 @@ public class PetRuntimeTests
         Assert.Equal(35, runtime.Needs.Happiness, 3);
         Assert.Equal(77.5, runtime.Needs.Satiety, 3);
         Assert.Equal(PetActivity.Playing, runtime.Behavior.State);
-    }
-
-    [Fact]
-    public void PlayFinishesAndRestoresIdle()
-    {
-        var runtime = CreateRuntime(satiety: 80, happiness: 20);
-        runtime.RequestPlay();
-
-        runtime.Update(TimeSpan.FromSeconds(11), Now);
-
+        runtime.Update(TimeSpan.FromSeconds(6), Now);
         Assert.Equal(PetActivity.Idle, runtime.Behavior.State);
+        Assert.Equal(50, runtime.Needs.Happiness, 3);
     }
 
     [Fact]
     public void RefillBowlAddsAFixedPortionAndRespectsCapacity()
     {
-        var runtime = CreateRuntime();
+        PetRuntime runtime = CreateRuntime();
 
         Assert.Equal(25, runtime.RefillBowl());
         Assert.Equal(25, runtime.RefillBowl());
@@ -129,7 +123,7 @@ public class PetRuntimeTests
     [Fact]
     public void ExitIsReportedCompleteOnlyAfterAnimationDuration()
     {
-        var runtime = CreateRuntime();
+        PetRuntime runtime = CreateRuntime();
         Assert.True(runtime.RequestExit());
         Assert.False(runtime.IsExitAnimationComplete);
 
@@ -140,11 +134,11 @@ public class PetRuntimeTests
     [Fact]
     public void SnapshotCarriesLiveValuesAndPlacement()
     {
-        var runtime = CreateRuntime(bowlFood: 40);
+        PetRuntime runtime = CreateRuntime(bowlFood: 40);
         runtime.Update(TimeSpan.FromMinutes(1), Now);
         runtime.UpdateBowlPlacement(new BowlPlacementState(0.4, 90, "DISPLAY1"));
 
-        var snapshot = runtime.ToSnapshot();
+        PetSnapshot snapshot = runtime.ToSnapshot();
 
         Assert.Equal(runtime.Needs.Satiety, snapshot.Satiety, 3);
         Assert.Equal(runtime.Needs.Happiness, snapshot.Happiness, 3);
@@ -159,7 +153,7 @@ public class PetRuntimeTests
     public void OneHourActiveUpdateDecaysNeeds()
     {
         var tuning = new PetTuning { SatietyDecayPerMinute = 1, HappinessDecayPerMinute = 0 };
-        var runtime = CreateRuntime(satiety: 100, happiness: 100, tuning: tuning);
+        PetRuntime runtime = CreateRuntime(satiety: 100, happiness: 100, tuning: tuning);
 
         runtime.Update(TimeSpan.FromHours(1), Now);
 
@@ -169,11 +163,13 @@ public class PetRuntimeTests
     [Fact]
     public void UserInteractionLeavesSleepingPetAsleep()
     {
-        var tuning = Tuning();
-        var runtime = CreateRuntime(satiety: 90, happiness: 90, tuning: tuning);
+        PetTuning tuning = Tuning();
+        PetRuntime runtime = CreateRuntime(satiety: 90, happiness: 90, tuning: tuning);
 
-        for (var i = 0; i < 12; i++)
+        for (int i = 0; i < 12; i++)
+        {
             runtime.Update(TimeSpan.FromMinutes(5), Now);
+        }
 
         Assert.Equal(PetActivity.Sleeping, runtime.Behavior.State);
 

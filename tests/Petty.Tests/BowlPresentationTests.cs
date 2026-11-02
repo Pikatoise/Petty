@@ -23,7 +23,7 @@ public class BowlPresentationTests
     {
         var bowl = new Bowl(0, 100);
         var display = new BowlPresentation();
-        for (var i = 1; i <= 4; i++)
+        for (int i = 1; i <= 4; i++)
         {
             Assert.True(display.TryStart(bowl.Food, bowl.Capacity));
             Assert.Equal(25, bowl.Fill(25));

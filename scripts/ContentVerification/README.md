@@ -12,8 +12,9 @@ both species, all breed previews, coat cycling/wraparound and existing-coat recr
 in RU/EN, and compares regenerated PNG bytes
 against the repository assets after WPF DPI initialization.
 
-Creator windows are rendered offscreen at 200% into `artifacts/session10/creator-*.png`.
-`artifacts/session10/play/` contains a contact sheet and standalone animated preview
+Creator windows are rendered offscreen at 200% into `artifacts/verification/content/creator-*.png`.
+`artifacts/verification/content/play/` contains a contact sheet and standalone animated preview
 sampled by the real Core scene implementation, with the runtime WPF frame controller.
 This does not modify pet data, registry settings, preferences or the running pet.
 Real desktop interaction, animation quality and native display/DPI changes remain manual.
+Verification output is disposable and can be deleted after inspection.

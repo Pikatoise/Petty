@@ -46,15 +46,17 @@ public static class WalkSurface
     {
         ArgumentNullException.ThrowIfNull(display);
 
-        var monitor = display.Bounds.HasArea ? display.Bounds : display.UsableArea;
-        var work = display.UsableArea;
+        ScreenRect monitor = display.Bounds.HasArea ? display.Bounds : display.UsableArea;
+        ScreenRect work = display.UsableArea;
 
         if (!monitor.HasArea)
+        {
             return new MotionArea(0, 0, 0);
+        }
 
-        var left = monitor.X;
-        var right = monitor.Right;
-        var floor = monitor.Bottom;
+        double left = monitor.X;
+        double right = monitor.Right;
+        double floor = monitor.Bottom;
 
         // The work area trims a permanently docked bar; honour it when it is sane.
         if (work.HasArea)
@@ -66,7 +68,7 @@ public static class WalkSurface
 
         if (visibleBar is { } bar && bar.HasArea)
         {
-            var clipped = Intersect(monitor, bar);
+            ScreenRect clipped = Intersect(monitor, bar);
 
             if (clipped.HasArea)
             {
@@ -94,10 +96,13 @@ public static class WalkSurface
             }
         }
 
-        if (right < left) right = left;
+        if (right < left)
+        {
+            right = left;
+        }
 
-        var maxLeft = Math.Max(left, right - Math.Max(0, windowWidth));
-        var walkedFloor = Math.Clamp(floor, monitor.Y, monitor.Bottom);
+        double maxLeft = Math.Max(left, right - Math.Max(0, windowWidth));
+        double walkedFloor = Math.Clamp(floor, monitor.Y, monitor.Bottom);
 
         return new MotionArea(left, maxLeft, walkedFloor);
     }
@@ -105,30 +110,57 @@ public static class WalkSurface
     /// <summary>Which monitor edge the (already clipped) bar is attached to.</summary>
     public static ShellBarEdge EdgeOf(ScreenRect monitor, ScreenRect bar)
     {
-        if (!monitor.HasArea || !bar.HasArea) return ShellBarEdge.None;
+        if (!monitor.HasArea || !bar.HasArea)
+        {
+            return ShellBarEdge.None;
+        }
 
         // A taskbar is a long thin strip: compare its sides to tell a horizontal bar
         // from a vertical one, then look at which edge it is flush with.
         if (bar.Width >= bar.Height)
         {
-            if (bar.Height < MinBarThickness) return ShellBarEdge.None;
-            if (bar.Bottom >= monitor.Bottom - EdgeTolerance) return ShellBarEdge.Bottom;
-            if (bar.Y <= monitor.Y + EdgeTolerance) return ShellBarEdge.Top;
+            if (bar.Height < MinBarThickness)
+            {
+                return ShellBarEdge.None;
+            }
+
+            if (bar.Bottom >= monitor.Bottom - EdgeTolerance)
+            {
+                return ShellBarEdge.Bottom;
+            }
+
+            if (bar.Y <= monitor.Y + EdgeTolerance)
+            {
+                return ShellBarEdge.Top;
+            }
+
             return ShellBarEdge.None;
         }
 
-        if (bar.Width < MinBarThickness) return ShellBarEdge.None;
-        if (bar.X <= monitor.X + EdgeTolerance) return ShellBarEdge.Left;
-        if (bar.Right >= monitor.Right - EdgeTolerance) return ShellBarEdge.Right;
+        if (bar.Width < MinBarThickness)
+        {
+            return ShellBarEdge.None;
+        }
+
+        if (bar.X <= monitor.X + EdgeTolerance)
+        {
+            return ShellBarEdge.Left;
+        }
+
+        if (bar.Right >= monitor.Right - EdgeTolerance)
+        {
+            return ShellBarEdge.Right;
+        }
+
         return ShellBarEdge.None;
     }
 
     public static ScreenRect Intersect(ScreenRect a, ScreenRect b)
     {
-        var left = Math.Max(a.X, b.X);
-        var top = Math.Max(a.Y, b.Y);
-        var right = Math.Min(a.Right, b.Right);
-        var bottom = Math.Min(a.Bottom, b.Bottom);
+        double left = Math.Max(a.X, b.X);
+        double top = Math.Max(a.Y, b.Y);
+        double right = Math.Min(a.Right, b.Right);
+        double bottom = Math.Min(a.Bottom, b.Bottom);
 
         return new ScreenRect(left, top, Math.Max(0, right - left), Math.Max(0, bottom - top));
     }

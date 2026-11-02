@@ -14,7 +14,11 @@ public static class PetCatalog
     /// <summary>Call only after the replacement atlas has successfully loaded.</summary>
     public static bool MigrateLegacyAppearance(PetSnapshot snapshot)
     {
-        if (snapshot.AssetId != LegacyAssetId) return false;
+        if (snapshot.AssetId != LegacyAssetId)
+        {
+            return false;
+        }
+
         snapshot.AssetId = DefaultAssetId;
         snapshot.BreedId = DefaultBreedId;
         snapshot.CoatId = DefaultCoatId;

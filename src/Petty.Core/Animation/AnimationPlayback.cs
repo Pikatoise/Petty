@@ -15,9 +15,15 @@ public sealed class AnimationPlayback
 
     public AnimationClipMetadata? Clip => _clip;
 
-    public int FrameIndex { get; private set; }
+    public int FrameIndex
+    {
+        get; private set;
+    }
 
-    public bool IsFinished { get; private set; }
+    public bool IsFinished
+    {
+        get; private set;
+    }
 
     public double FramesPerSecond => _clip?.FramesPerSecond ?? 0;
 
@@ -31,14 +37,20 @@ public sealed class AnimationPlayback
     public bool Play(AnimationClipMetadata clip, bool restart = false, bool? loop = null)
     {
         ArgumentNullException.ThrowIfNull(clip);
-        if (clip.FrameCount <= 0) throw new ArgumentException("Clip has no frames.", nameof(clip));
+        if (clip.FrameCount <= 0)
+        {
+            throw new ArgumentException("Clip has no frames.", nameof(clip));
+        }
 
-        var sameClip = _clip is not null &&
+        bool sameClip = _clip is not null &&
                        string.Equals(_clip.Name, clip.Name, StringComparison.OrdinalIgnoreCase);
 
         _loopOverride = loop;
 
-        if (sameClip && !restart) return false;
+        if (sameClip && !restart)
+        {
+            return false;
+        }
 
         _clip = clip;
         _elapsedSeconds = 0;
@@ -50,13 +62,20 @@ public sealed class AnimationPlayback
     /// <summary>Advances the frame cursor. Returns true when the displayed frame changed.</summary>
     public bool Advance(TimeSpan delta)
     {
-        if (_clip is null || delta <= TimeSpan.Zero) return false;
-        if (IsFinished) return false;
+        if (_clip is null || delta <= TimeSpan.Zero)
+        {
+            return false;
+        }
+
+        if (IsFinished)
+        {
+            return false;
+        }
 
         _elapsedSeconds += delta.TotalSeconds;
 
-        var fps = Math.Max(0.001, _clip.FramesPerSecond);
-        var rawFrame = (int)Math.Floor(_elapsedSeconds * fps);
+        double fps = Math.Max(0.001, _clip.FramesPerSecond);
+        int rawFrame = (int)Math.Floor(_elapsedSeconds * fps);
 
         int next;
         if (IsLooping)
@@ -66,10 +85,16 @@ public sealed class AnimationPlayback
         else
         {
             next = Math.Min(_clip.FrameCount - 1, rawFrame);
-            if (rawFrame >= _clip.FrameCount) IsFinished = true;
+            if (rawFrame >= _clip.FrameCount)
+            {
+                IsFinished = true;
+            }
         }
 
-        if (next == FrameIndex) return false;
+        if (next == FrameIndex)
+        {
+            return false;
+        }
 
         FrameIndex = next;
         return true;

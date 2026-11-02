@@ -1,5 +1,5 @@
-using Petty.Core.Assets;
 using System.Text.Json;
+using Petty.Core.Assets;
 
 namespace Petty.Assets;
 
@@ -27,8 +27,12 @@ public static class AssetValidator
         var errors = new List<string>();
         var notes = new List<string>();
 
-        if (!SpriteMetadataValidator.IsValidId(id)) return new ValidationReport(false, ["Invalid asset ID."], notes);
-        var metadataPath = Path.Combine(directory, id + ".json");
+        if (!SpriteMetadataValidator.IsValidId(id))
+        {
+            return new ValidationReport(false, ["Invalid asset ID."], notes);
+        }
+
+        string metadataPath = Path.Combine(directory, id + ".json");
         if (!File.Exists(metadataPath))
         {
             errors.Add($"Missing metadata file: {metadataPath}");
@@ -54,10 +58,16 @@ public static class AssetValidator
 
         errors.AddRange(SpriteMetadataValidator.Validate(metadata, requirePet: true));
         if (metadata.Character != id || metadata.Image != id + ".png")
+        {
             errors.Add("Metadata character or image does not match the variant ID.");
-        if (errors.Count > 0) return new ValidationReport(false, errors, notes);
+        }
 
-        var imagePath = Path.Combine(directory, metadata.Image);
+        if (errors.Count > 0)
+        {
+            return new ValidationReport(false, errors, notes);
+        }
+
+        string imagePath = Path.Combine(directory, metadata.Image);
         if (!File.Exists(imagePath))
         {
             errors.Add($"Missing atlas image: {imagePath}");
@@ -67,9 +77,12 @@ public static class AssetValidator
         PixelCanvas atlas;
         try
         {
-            using var stream = File.OpenRead(imagePath);
+            using FileStream stream = File.OpenRead(imagePath);
             if (!SpritePixels.HasRgbaPngHeader(stream))
+            {
                 return new ValidationReport(false, ["Atlas must be an 8-bit RGBA PNG."], notes);
+            }
+
             atlas = PixelCanvas.LoadPng(imagePath);
         }
         catch (Exception ex) when (ex is IOException or ArgumentException or OutOfMemoryException)
@@ -78,8 +91,8 @@ public static class AssetValidator
             return new ValidationReport(false, errors, notes);
         }
 
-        var expectedWidth = metadata.Columns * metadata.FrameWidth;
-        var expectedHeight = metadata.Rows * metadata.FrameHeight;
+        int expectedWidth = metadata.Columns * metadata.FrameWidth;
+        int expectedHeight = metadata.Rows * metadata.FrameHeight;
 
         if (atlas.Width != expectedWidth || atlas.Height != expectedHeight)
         {
@@ -87,42 +100,57 @@ public static class AssetValidator
             return new ValidationReport(false, errors, notes);
         }
 
-        var semiTransparent = 0;
+        int semiTransparent = 0;
         var unknownColors = new HashSet<uint>();
-        var colors = palette?.ToHashSet();
+        HashSet<uint>? colors = palette?.ToHashSet();
 
-        for (var y = 0; y < atlas.Height; y++)
+        for (int y = 0; y < atlas.Height; y++)
         {
-            for (var x = 0; x < atlas.Width; x++)
+            for (int x = 0; x < atlas.Width; x++)
             {
-                var color = atlas[x, y];
-                var alpha = (color >> 24) & 0xFF;
+                uint color = atlas[x, y];
+                uint alpha = (color >> 24) & 0xFF;
 
-                if (alpha == 0) continue;
-                if (alpha != 255) semiTransparent++;
-                if (colors is not null && !colors.Contains(color)) unknownColors.Add(color);
+                if (alpha == 0)
+                {
+                    continue;
+                }
+
+                if (alpha != 255)
+                {
+                    semiTransparent++;
+                }
+
+                if (colors is not null && !colors.Contains(color))
+                {
+                    unknownColors.Add(color);
+                }
             }
         }
 
         if (semiTransparent > 0)
+        {
             errors.Add($"{semiTransparent} pixels are not fully opaque or fully transparent (anti-aliasing).");
+        }
 
         if (unknownColors.Count > 0)
+        {
             errors.Add($"{unknownColors.Count} colours are outside the palette: {string.Join(", ", unknownColors.Take(5).Select(c => $"#{c & 0xFFFFFF:X6}"))}");
+        }
 
         var occupiedCells = new HashSet<int>();
         var maxRowByClip = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var clip in metadata.Animations)
+        foreach (AnimationClipMetadata clip in metadata.Animations)
         {
-            for (var i = 0; i < clip.FrameCount; i++)
+            for (int i = 0; i < clip.FrameCount; i++)
             {
-                var cellIndex = clip.StartIndex + i;
+                int cellIndex = clip.StartIndex + i;
                 occupiedCells.Add(cellIndex);
 
-                var (column, row) = SpriteMetadataValidator.CellPosition(metadata, cellIndex);
-                var frame = CropFrame(atlas, metadata, column, row);
-                var bounds = Measure(frame);
+                (int column, int row) = SpriteMetadataValidator.CellPosition(metadata, cellIndex);
+                PixelCanvas frame = CropFrame(atlas, metadata, column, row);
+                FrameBounds bounds = Measure(frame);
 
                 if (bounds.OpaqueCount == 0)
                 {
@@ -137,23 +165,32 @@ public static class AssetValidator
                     errors.Add($"Clip '{clip.Name}' frame {i} touches the cell edge ({bounds}).");
                 }
 
-                maxRowByClip[clip.Name] = maxRowByClip.TryGetValue(clip.Name, out var previous)
+                maxRowByClip[clip.Name] = maxRowByClip.TryGetValue(clip.Name, out int previous)
                     ? Math.Max(previous, bounds.MaxY)
                     : bounds.MaxY;
             }
         }
 
-        foreach (var clip in metadata.Animations)
+        foreach (AnimationClipMetadata clip in metadata.Animations)
         {
-            if (!maxRowByClip.TryGetValue(clip.Name, out var maxRow)) continue;
+            if (!maxRowByClip.TryGetValue(clip.Name, out int maxRow))
+            {
+                continue;
+            }
 
             if (StandingClips.Contains(clip.Name) && maxRow != metadata.GroundRow)
+            {
                 errors.Add($"Clip '{clip.Name}' baseline is row {maxRow}, expected {metadata.GroundRow}.");
+            }
         }
 
-        foreach (var cell in Enumerable.Range(0, metadata.CellCount).Except(occupiedCells))
+        foreach (int cell in Enumerable.Range(0, metadata.CellCount).Except(occupiedCells))
+        {
             if (Measure(CropFrame(atlas, metadata, cell)).OpaqueCount > 0)
+            {
                 errors.Add($"Unused atlas cell {cell} is not transparent.");
+            }
+        }
 
         CheckWalkLoop(atlas, metadata, errors, notes);
         notes.Add($"atlas {atlas.Width}x{atlas.Height}, {metadata.Animations.Count} clips, {occupiedCells.Count} frames");
@@ -174,10 +211,16 @@ public static class AssetValidator
         CheckSmallSprite(directory, errors, notes,
             PropSpriteBuilder.BallName, PropSpriteBuilder.BallSize, PropSpriteBuilder.BallSize, "ball", keepMargin: true);
 
-        foreach (var level in new[] { 25, 50, 75 })
+        foreach (int level in new[] { 25, 50, 75 })
+        {
             CheckSmallSprite(directory, errors, notes, $"bowl-{level}.png", PropSpriteBuilder.BowlWidth, PropSpriteBuilder.BowlHeight, $"bowl {level}", keepMargin: false);
-        for (var frame = 0; frame < 6; frame++)
+        }
+
+        for (int frame = 0; frame < 6; frame++)
+        {
             CheckSmallSprite(directory, errors, notes, $"pour-{frame}.png", 24, 32, $"pour {frame}", keepMargin: false);
+        }
+
         CheckBowlFrames(directory, errors);
         CheckSmallSprite(directory, errors, notes, "hand.png", 16, 16, "petting hand", keepMargin: false);
 
@@ -198,7 +241,7 @@ public static class AssetValidator
         string label,
         bool keepMargin)
     {
-        var path = Path.Combine(directory, fileName);
+        string path = Path.Combine(directory, fileName);
 
         if (!File.Exists(path))
         {
@@ -214,8 +257,11 @@ public static class AssetValidator
             return;
         }
 
-        var bounds = Measure(sprite);
-        if (bounds.OpaqueCount == 0) errors.Add($"The {label} is empty.");
+        FrameBounds bounds = Measure(sprite);
+        if (bounds.OpaqueCount == 0)
+        {
+            errors.Add($"The {label} is empty.");
+        }
 
         if (keepMargin && (bounds.MinX < 1 || bounds.MinY < 1 ||
                            bounds.MaxX >= sprite.Width - 1 || bounds.MaxY >= sprite.Height - 1))
@@ -223,16 +269,22 @@ public static class AssetValidator
             errors.Add($"The {label} touches its edge ({bounds}).");
         }
 
-        for (var y = 0; y < sprite.Height; y++)
+        for (int y = 0; y < sprite.Height; y++)
         {
-            for (var x = 0; x < sprite.Width; x++)
+            for (int x = 0; x < sprite.Width; x++)
             {
-                var color = sprite[x, y];
-                var alpha = (color >> 24) & 0xFF;
+                uint color = sprite[x, y];
+                uint alpha = (color >> 24) & 0xFF;
 
-                if (alpha != 0 && alpha != 255) errors.Add($"The {label} has semi-transparent pixels.");
+                if (alpha != 0 && alpha != 255)
+                {
+                    errors.Add($"The {label} has semi-transparent pixels.");
+                }
+
                 if (alpha == 255 && !Palette.Set.Contains(color))
+                {
                     errors.Add($"The {label} uses a colour outside the palette: #{color & 0xFFFFFF:X6}.");
+                }
             }
         }
 
@@ -241,17 +293,33 @@ public static class AssetValidator
 
     private static void CheckBowlFrames(string directory, List<string> errors)
     {
-        var names = new[] { PropSpriteBuilder.BowlEmptyName, "bowl-25.png", "bowl-50.png", "bowl-75.png", PropSpriteBuilder.BowlFullName };
-        var previousTop = int.MaxValue;
-        foreach (var name in names)
+        string[] names = new[] { PropSpriteBuilder.BowlEmptyName, "bowl-25.png", "bowl-50.png", "bowl-75.png", PropSpriteBuilder.BowlFullName };
+        int previousTop = int.MaxValue;
+        foreach (string? name in names)
         {
-            var path = Path.Combine(directory, name);
-            if (!File.Exists(path)) continue;
+            string path = Path.Combine(directory, name);
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
             var sprite = PixelCanvas.LoadPng(path);
-            if (sprite.Width != PropSpriteBuilder.BowlWidth || sprite.Height != PropSpriteBuilder.BowlHeight) continue;
-            var bounds = Measure(sprite);
-            if (bounds.MinY > previousTop) errors.Add($"Food mound gets lower in {name}.");
-            if (bounds.MaxY != 22) errors.Add($"Bowl baseline differs in {name}.");
+            if (sprite.Width != PropSpriteBuilder.BowlWidth || sprite.Height != PropSpriteBuilder.BowlHeight)
+            {
+                continue;
+            }
+
+            FrameBounds bounds = Measure(sprite);
+            if (bounds.MinY > previousTop)
+            {
+                errors.Add($"Food mound gets lower in {name}.");
+            }
+
+            if (bounds.MaxY != 22)
+            {
+                errors.Add($"Bowl baseline differs in {name}.");
+            }
+
             previousTop = bounds.MinY;
         }
     }
@@ -262,32 +330,40 @@ public static class AssetValidator
         List<string> errors,
         List<string> notes)
     {
-        var walk = metadata.Animations.FirstOrDefault(a => a.Name.Equals("walk", StringComparison.OrdinalIgnoreCase));
-        if (walk is null || walk.FrameCount < 2) return;
+        AnimationClipMetadata? walk = metadata.Animations.FirstOrDefault(a => a.Name.Equals("walk", StringComparison.OrdinalIgnoreCase));
+        if (walk is null || walk.FrameCount < 2)
+        {
+            return;
+        }
 
-        var first = CropFrame(atlas, metadata, walk.StartIndex);
-        var second = CropFrame(atlas, metadata, walk.StartIndex + 1);
-        var last = CropFrame(atlas, metadata, walk.StartIndex + walk.FrameCount - 1);
+        PixelCanvas first = CropFrame(atlas, metadata, walk.StartIndex);
+        PixelCanvas second = CropFrame(atlas, metadata, walk.StartIndex + 1);
+        PixelCanvas last = CropFrame(atlas, metadata, walk.StartIndex + walk.FrameCount - 1);
 
-        var loopDifference = Difference(first, last);
-        var stepDifference = Math.Max(1, Difference(first, second));
-        var ratio = loopDifference / (double)Math.Max(1, stepDifference);
+        int loopDifference = Difference(first, last);
+        int stepDifference = Math.Max(1, Difference(first, second));
+        double ratio = loopDifference / (double)Math.Max(1, stepDifference);
 
         notes.Add($"walk loop step ratio: {ratio:F2} (loop diff {loopDifference}, normal step {stepDifference})");
 
         if (ratio > 2.5)
+        {
             errors.Add($"Walk cycle jumps between the last and first frame ({ratio:F2}x a normal step).");
+        }
     }
 
     private static int Difference(PixelCanvas a, PixelCanvas b)
     {
-        var different = 0;
+        int different = 0;
 
-        for (var y = 0; y < a.Height; y++)
+        for (int y = 0; y < a.Height; y++)
         {
-            for (var x = 0; x < a.Width; x++)
+            for (int x = 0; x < a.Width; x++)
             {
-                if (a[x, y] != b[x, y]) different++;
+                if (a[x, y] != b[x, y])
+                {
+                    different++;
+                }
             }
         }
 
@@ -296,7 +372,7 @@ public static class AssetValidator
 
     private static PixelCanvas CropFrame(PixelCanvas atlas, SpriteSheetMetadata metadata, int cellIndex)
     {
-        var (column, row) = SpriteMetadataValidator.CellPosition(metadata, cellIndex);
+        (int column, int row) = SpriteMetadataValidator.CellPosition(metadata, cellIndex);
         return CropFrame(atlas, metadata, column, row);
     }
 
@@ -304,9 +380,9 @@ public static class AssetValidator
     {
         var frame = new PixelCanvas(metadata.FrameWidth, metadata.FrameHeight);
 
-        for (var y = 0; y < metadata.FrameHeight; y++)
+        for (int y = 0; y < metadata.FrameHeight; y++)
         {
-            for (var x = 0; x < metadata.FrameWidth; x++)
+            for (int x = 0; x < metadata.FrameWidth; x++)
             {
                 frame[x, y] = atlas[(column * metadata.FrameWidth) + x, (row * metadata.FrameHeight) + y];
             }
@@ -319,17 +395,20 @@ public static class AssetValidator
 
     private static FrameBounds Measure(PixelCanvas frame)
     {
-        var minX = int.MaxValue;
-        var minY = int.MaxValue;
-        var maxX = -1;
-        var maxY = -1;
-        var count = 0;
+        int minX = int.MaxValue;
+        int minY = int.MaxValue;
+        int maxX = -1;
+        int maxY = -1;
+        int count = 0;
 
-        for (var y = 0; y < frame.Height; y++)
+        for (int y = 0; y < frame.Height; y++)
         {
-            for (var x = 0; x < frame.Width; x++)
+            for (int x = 0; x < frame.Width; x++)
             {
-                if (!frame.IsOpaque(x, y)) continue;
+                if (!frame.IsOpaque(x, y))
+                {
+                    continue;
+                }
 
                 count++;
                 minX = Math.Min(minX, x);
@@ -346,9 +425,16 @@ public static class AssetValidator
     {
         var colors = new HashSet<uint>();
 
-        for (var y = 0; y < canvas.Height; y++)
-            for (var x = 0; x < canvas.Width; x++)
-                if (canvas.IsOpaque(x, y)) colors.Add(canvas[x, y]);
+        for (int y = 0; y < canvas.Height; y++)
+        {
+            for (int x = 0; x < canvas.Width; x++)
+            {
+                if (canvas.IsOpaque(x, y))
+                {
+                    colors.Add(canvas[x, y]);
+                }
+            }
+        }
 
         return colors.Count;
     }

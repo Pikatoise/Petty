@@ -9,9 +9,12 @@ public class LocalizationResourcesTests
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Petty.slnx")))
+        {
             directory = directory.Parent;
+        }
+
         Assert.NotNull(directory);
-        var resources = Path.Combine(directory!.FullName, "src", "Petty.App", "Resources");
+        string resources = Path.Combine(directory!.FullName, "src", "Petty.App", "Resources");
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
         static string[] Keys(string path, XNamespace ns) => XDocument.Load(path).Root!.Elements()
             .Select(element => (string?)element.Attribute(ns + "Key"))

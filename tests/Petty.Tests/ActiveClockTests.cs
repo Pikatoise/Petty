@@ -8,7 +8,7 @@ public class ActiveClockTests
     [Fact]
     public void RestoreKeepsNeedsFromOldSave()
     {
-        var now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var snapshot = new PetSnapshot
         {
             PetName = "Muffin",
@@ -30,11 +30,11 @@ public class ActiveClockTests
     public void AwakeTimeAccumulatesForOneHour()
     {
         var clock = new ActiveClock(TimeSpan.Zero);
-        var previous = TimeSpan.Zero;
-        var needs = Needs.Full;
-        for (var second = 1; second <= 3600; second++)
+        TimeSpan previous = TimeSpan.Zero;
+        Needs needs = Needs.Full;
+        for (int second = 1; second <= 3600; second++)
         {
-            var elapsed = clock.Read(TimeSpan.FromSeconds(second));
+            TimeSpan elapsed = clock.Read(TimeSpan.FromSeconds(second));
             needs = needs.Advance(elapsed - previous, PetTuning.Default);
             previous = elapsed;
         }
@@ -82,8 +82,8 @@ public class ActiveClockTests
         var runtime = PetRuntime.CreateNew("Cat", settings.ToPetTuning(), DateTimeOffset.UtcNow);
         runtime.SetNeeds(80, 50);
         Assert.True(runtime.RequestPet());
-        var previous = clock.ReadScaled(TimeSpan.Zero);
-        var current = clock.ReadScaled(TimeSpan.FromSeconds(0.3));
+        TimeSpan previous = clock.ReadScaled(TimeSpan.Zero);
+        TimeSpan current = clock.ReadScaled(TimeSpan.FromSeconds(0.3));
         runtime.Update(current - previous, DateTimeOffset.UtcNow);
         Assert.Equal(74.95, runtime.Needs.Satiety, 4);
         Assert.Equal(60, runtime.Needs.Happiness, 4);

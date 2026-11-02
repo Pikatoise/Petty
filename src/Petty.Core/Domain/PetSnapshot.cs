@@ -21,17 +21,29 @@ public sealed class PetSnapshot
 
     public double Happiness { get; set; } = Needs.Maximum;
 
-    public double BowlFood { get; set; }
+    public double BowlFood
+    {
+        get; set;
+    }
 
     public double BowlRelativeX { get; set; } = 0.65;
 
     public double BowlBottomOffset { get; set; } = 120;
 
-    public string? DisplayDeviceName { get; set; }
+    public string? DisplayDeviceName
+    {
+        get; set;
+    }
 
-    public DateTimeOffset CreatedUtc { get; set; }
+    public DateTimeOffset CreatedUtc
+    {
+        get; set;
+    }
 
-    public DateTimeOffset LastUpdatedUtc { get; set; }
+    public DateTimeOffset LastUpdatedUtc
+    {
+        get; set;
+    }
 
     [JsonIgnore]
     public Needs Needs => Domain.Needs.FromValues(Satiety, Happiness);
@@ -42,7 +54,7 @@ public sealed class PetSnapshot
     /// <summary>Repairs values that would otherwise break rendering or save the pet in an invalid state.</summary>
     public PetSnapshot Normalized(PetTuning tuning)
     {
-        var petName = PetNameRules.TryNormalize(PetName, out var name, out _)
+        string petName = PetNameRules.TryNormalize(PetName, out string? name, out _)
             ? name
             : PetNameRules.DefaultName;
 

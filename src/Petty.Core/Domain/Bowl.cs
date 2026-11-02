@@ -11,16 +11,24 @@ public sealed class Bowl
     public Bowl(double food, double capacity)
     {
         if (capacity <= 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(capacity));
+        }
 
         Capacity = capacity;
 
         Food = ClampFood(food);
     }
 
-    public double Capacity { get; }
+    public double Capacity
+    {
+        get;
+    }
 
-    public double Food { get; private set; }
+    public double Food
+    {
+        get; private set;
+    }
 
     public bool HasFood => Food > EmptyEpsilon;
 
@@ -30,9 +38,11 @@ public sealed class Bowl
     public double Fill(double amount)
     {
         if (amount <= 0 || double.IsNaN(amount))
+        {
             return 0;
+        }
 
-        var addedAmount = Math.Min(amount, Capacity - Food);
+        double addedAmount = Math.Min(amount, Capacity - Food);
 
         Food += addedAmount;
 
@@ -45,13 +55,18 @@ public sealed class Bowl
     public double Consume(double amount)
     {
         if (amount <= 0 || double.IsNaN(amount))
+        {
             return 0;
-        var consumed = Math.Min(amount, Food);
+        }
+
+        double consumed = Math.Min(amount, Food);
 
         Food -= consumed;
 
         if (Food <= EmptyEpsilon)
+        {
             Food = 0;
+        }
 
         return consumed;
     }

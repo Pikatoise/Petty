@@ -1,24 +1,23 @@
-﻿using Petty.Core.Domain;
+using Petty.Core.Domain;
 
-namespace Petty.Tests
+namespace Petty.Tests;
+
+public class PetTests
 {
-    public class PetTests
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("This name is definitely far too long for a cat")]
+    public void InvalidNamesAreRejected(string input)
     {
-        [Theory]
-        [InlineData("")]
-        [InlineData("   ")]
-        [InlineData("This name is definitely far too long for a cat")]
-        public void InvalidNamesAreRejected(string input)
-        {
-            Assert.False(PetNameRules.TryNormalize(input, out _, out var error));
-            Assert.False(string.IsNullOrWhiteSpace(error));
-        }
+        Assert.False(PetNameRules.TryNormalize(input, out _, out string? error));
+        Assert.False(string.IsNullOrWhiteSpace(error));
+    }
 
-        [Fact]
-        public void ValidNamesAreTrimmed()
-        {
-            Assert.True(PetNameRules.TryNormalize("  Muffin  ", out var name, out _));
-            Assert.Equal("Muffin", name);
-        }
+    [Fact]
+    public void ValidNamesAreTrimmed()
+    {
+        Assert.True(PetNameRules.TryNormalize("  Muffin  ", out string? name, out _));
+        Assert.Equal("Muffin", name);
     }
 }

@@ -16,9 +16,11 @@ public readonly record struct Needs(double Satiety, double Happiness)
     public Needs Advance(TimeSpan elapsed, PetTuning tuning)
     {
         if (elapsed <= TimeSpan.Zero)
+        {
             return this;
+        }
 
-        var minutes = elapsed.TotalMinutes;
+        double minutes = elapsed.TotalMinutes;
 
         return FromValues(
             Satiety - (tuning.SatietyDecayPerMinute * minutes),

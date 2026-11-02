@@ -1,6 +1,6 @@
-using Petty.Core.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using Petty.Core.Diagnostics;
 
 namespace Petty.App.Desktop;
 
@@ -93,11 +93,11 @@ public static class DesktopWindowService
     /// </summary>
     public static void VerifyPetWindowStyles(IntPtr hwnd, IAppLog log)
     {
-        var exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
-        var layered = (exStyle & NativeMethods.WsExLayered) != 0;
-        var toolWindow = (exStyle & NativeMethods.WsExToolWindow) != 0;
-        var noActivate = (exStyle & NativeMethods.WsExNoActivate) != 0;
-        var owner = NativeMethods.GetWindow(hwnd, NativeMethods.GwOwner);
+        long exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
+        bool layered = (exStyle & NativeMethods.WsExLayered) != 0;
+        bool toolWindow = (exStyle & NativeMethods.WsExToolWindow) != 0;
+        bool noActivate = (exStyle & NativeMethods.WsExNoActivate) != 0;
+        nint owner = NativeMethods.GetWindow(hwnd, NativeMethods.GwOwner);
 
         if (!layered)
         {
@@ -122,15 +122,18 @@ public static class DesktopWindowService
     /// </summary>
     public static void MarkAsToolWindow(IntPtr hwnd, IAppLog log)
     {
-        var before = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
-        if ((before & NativeMethods.WsExToolWindow) != 0) return;
+        long before = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
+        if ((before & NativeMethods.WsExToolWindow) != 0)
+        {
+            return;
+        }
 
         NativeMethods.SetWindowLongPtr(
             hwnd,
             NativeMethods.GwlExStyle,
             new IntPtr(before | NativeMethods.WsExToolWindow));
 
-        var after = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
+        long after = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
         log.Info(
             $"Window 0x{hwnd.ToInt64():X} hidden from Alt+Tab (ex-style 0x{before:X} -> 0x{after:X}, " +
             $"layered={((after & NativeMethods.WsExLayered) != 0)}).");
@@ -141,15 +144,20 @@ public static class DesktopWindowService
         ArgumentNullException.ThrowIfNull(log);
 
         if (hwnd == IntPtr.Zero)
+        {
             throw new ArgumentException("A valid window handle is required.", nameof(hwnd));
+        }
 
-        var progman = NativeMethods.FindWindow("Progman", null);
+        nint progman = NativeMethods.FindWindow("Progman", null);
         log.Info($"Desktop integration: Progman 0x{progman.ToInt64():X}; requested mode {requested}.");
 
         if (requested == DesktopLayerMode.WorkerW)
         {
-            var attachment = TryAttachToWallpaper(hwnd, progman, log);
-            if (attachment is not null) return attachment;
+            DesktopAttachment? attachment = TryAttachToWallpaper(hwnd, progman, log);
+            if (attachment is not null)
+            {
+                return attachment;
+            }
 
             log.Warn("Desktop integration: falling back to the above-desktop placement.");
         }
@@ -159,11 +167,11 @@ public static class DesktopWindowService
         // is then invisible but still exists), so the pet normally stays top-level and
         // is placed immediately above the desktop in the z-order. That keeps it
         // visible on an exposed desktop and below every ordinary window.
-        var aboveDesktop = progman == IntPtr.Zero
+        nint aboveDesktop = progman == IntPtr.Zero
             ? IntPtr.Zero
             : NativeMethods.GetWindow(progman, NativeMethods.GwHwndPrev);
 
-        var placed = NativeMethods.SetWindowPos(
+        bool placed = NativeMethods.SetWindowPos(
             hwnd,
             aboveDesktop,
             0,
@@ -186,7 +194,7 @@ public static class DesktopWindowService
     /// <summary>Reparents the pet into the wallpaper window. Returns null when that is not possible.</summary>
     private static DesktopAttachment? TryAttachToWallpaper(IntPtr hwnd, IntPtr progman, IAppLog log)
     {
-        var host = FindWallpaperHost(progman, log);
+        nint host = FindWallpaperHost(progman, log);
 
         if (host == IntPtr.Zero)
         {
@@ -194,19 +202,19 @@ public static class DesktopWindowService
             return null;
         }
 
-        var previous = ShellParent(hwnd);
+        nint previous = ShellParent(hwnd);
 
         Marshal.SetLastPInvokeError(0);
         NativeMethods.SetParent(hwnd, host);
-        var error = Marshal.GetLastPInvokeError();
-        var parent = ShellParent(hwnd);
+        int error = Marshal.GetLastPInvokeError();
+        nint parent = ShellParent(hwnd);
 
         // GetParent() returns the *owner* for popup-style windows and therefore
         // reports 0 even after a successful reparent, so the ancestor chain is used
         // to decide whether the window really moved into the shell window.
         if (parent == host)
         {
-            var className = ClassName(host);
+            string className = ClassName(host);
             log.Info(
                 $"Desktop integration: pet 0x{hwnd.ToInt64():X} reparented from 0x{previous.ToInt64():X} " +
                 $"to {className} 0x{host.ToInt64():X}.");
@@ -234,10 +242,12 @@ public static class DesktopWindowService
     public static void PlaceAt(IntPtr hwnd, int screenX, int screenY, int width, int height)
     {
         var point = new NativeMethods.Point { X = screenX, Y = screenY };
-        var parent = ShellParent(hwnd);
+        nint parent = ShellParent(hwnd);
 
         if (parent != IntPtr.Zero)
+        {
             NativeMethods.MapWindowPoints(IntPtr.Zero, parent, ref point, 1);
+        }
 
         NativeMethods.SetWindowPos(
             hwnd,
@@ -256,8 +266,11 @@ public static class DesktopWindowService
     /// </summary>
     private static IntPtr ShellParent(IntPtr hwnd)
     {
-        var root = NativeMethods.GetAncestor(hwnd, NativeMethods.GaRoot);
-        if (root == hwnd) return IntPtr.Zero;
+        nint root = NativeMethods.GetAncestor(hwnd, NativeMethods.GaRoot);
+        if (root == hwnd)
+        {
+            return IntPtr.Zero;
+        }
 
         return NativeMethods.GetAncestor(hwnd, NativeMethods.GaParent);
     }
@@ -265,7 +278,7 @@ public static class DesktopWindowService
     /// <summary>Screen rectangle of the window, even when it is parented to a shell window.</summary>
     internal static NativeMethods.Rect GetScreenRect(IntPtr hwnd)
     {
-        NativeMethods.GetWindowRect(hwnd, out var rect);
+        NativeMethods.GetWindowRect(hwnd, out NativeMethods.Rect rect);
         return rect;
     }
 
@@ -279,11 +292,11 @@ public static class DesktopWindowService
     {
         var samples = new List<HitTestSample>();
 
-        foreach (var (x, y) in screenPoints)
+        foreach ((int x, int y) in screenPoints)
         {
-            var lParam = new IntPtr(unchecked((y << 16) | (x & 0xFFFF)));
-            var result = NativeMethods.SendMessage(hwnd, NativeMethods.WmNcHitTest, IntPtr.Zero, lParam).ToInt64();
-            var meaning = result switch
+            nint lParam = new IntPtr(unchecked((y << 16) | (x & 0xFFFF)));
+            long result = NativeMethods.SendMessage(hwnd, NativeMethods.WmNcHitTest, IntPtr.Zero, lParam).ToInt64();
+            string meaning = result switch
             {
                 NativeMethods.HtTransparent => "transparent (click-through)",
                 NativeMethods.HtClient => "client (interactive)",
@@ -298,11 +311,11 @@ public static class DesktopWindowService
 
     public static WindowDiagnostics Describe(IntPtr hwnd)
     {
-        var parent = NativeMethods.GetParent(hwnd);
-        var ancestor = NativeMethods.GetAncestor(hwnd, NativeMethods.GaParent);
-        var rect = GetScreenRect(hwnd);
-        var style = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlStyle).ToInt64();
-        var exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
+        nint parent = NativeMethods.GetParent(hwnd);
+        nint ancestor = NativeMethods.GetAncestor(hwnd, NativeMethods.GaParent);
+        NativeMethods.Rect rect = GetScreenRect(hwnd);
+        long style = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlStyle).ToInt64();
+        long exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GwlExStyle).ToInt64();
 
         return new WindowDiagnostics(
             hwnd.ToInt64(),
@@ -326,19 +339,26 @@ public static class DesktopWindowService
 
     public static string ClassName(IntPtr hwnd)
     {
-        if (hwnd == IntPtr.Zero) return string.Empty;
+        if (hwnd == IntPtr.Zero)
+        {
+            return string.Empty;
+        }
 
         var buffer = new StringBuilder(MaxClassName);
-        var length = NativeMethods.GetClassName(hwnd, buffer, buffer.Capacity);
+        int length = NativeMethods.GetClassName(hwnd, buffer, buffer.Capacity);
         return length > 0 ? buffer.ToString(0, length) : string.Empty;
     }
 
     /// <summary>True for the shell desktop and its icon-view children, never ordinary windows.</summary>
     internal static bool IsDesktopSurface(IntPtr hwnd)
     {
-        if (hwnd == IntPtr.Zero) return false;
-        var root = NativeMethods.GetAncestor(hwnd, NativeMethods.GaRoot);
-        var name = ClassName(root);
+        if (hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        nint root = NativeMethods.GetAncestor(hwnd, NativeMethods.GaRoot);
+        string name = ClassName(root);
         return name is "Progman" or "WorkerW";
     }
 
@@ -372,12 +392,15 @@ public static class DesktopWindowService
                 out _);
         }
 
-        var defViewHost = IntPtr.Zero;
+        nint defViewHost = IntPtr.Zero;
 
         NativeMethods.EnumWindows((hwnd, _) =>
         {
-            var defView = NativeMethods.FindWindowEx(hwnd, IntPtr.Zero, "SHELLDLL_DefView", null);
-            if (defView == IntPtr.Zero) return true;
+            nint defView = NativeMethods.FindWindowEx(hwnd, IntPtr.Zero, "SHELLDLL_DefView", null);
+            if (defView == IntPtr.Zero)
+            {
+                return true;
+            }
 
             defViewHost = hwnd;
             log.Info(
@@ -388,45 +411,56 @@ public static class DesktopWindowService
         var candidates = new List<(IntPtr Handle, string Source)>();
 
         // 1. Current Windows 11: the wallpaper window is a child of Progman.
-        var progmanChild = progman == IntPtr.Zero
+        nint progmanChild = progman == IntPtr.Zero
             ? IntPtr.Zero
             : NativeMethods.FindWindowEx(progman, IntPtr.Zero, "WorkerW", null);
 
-        if (progmanChild != IntPtr.Zero) candidates.Add((progmanChild, "Progman child"));
+        if (progmanChild != IntPtr.Zero)
+        {
+            candidates.Add((progmanChild, "Progman child"));
+        }
 
         // 2. Classic layout: a top-level WorkerW follows the window that owns the icons.
         if (defViewHost != IntPtr.Zero)
         {
-            var sibling = NativeMethods.FindWindowEx(IntPtr.Zero, defViewHost, "WorkerW", null);
-            if (sibling != IntPtr.Zero) candidates.Add((sibling, "sibling of SHELLDLL_DefView host"));
+            nint sibling = NativeMethods.FindWindowEx(IntPtr.Zero, defViewHost, "WorkerW", null);
+            if (sibling != IntPtr.Zero)
+            {
+                candidates.Add((sibling, "sibling of SHELLDLL_DefView host"));
+            }
         }
 
         // 3. Any top-level WorkerW that actually covers the screen.
         NativeMethods.EnumWindows((hwnd, _) =>
         {
-            if (!ClassName(hwnd).Equals("WorkerW", StringComparison.OrdinalIgnoreCase)) return true;
+            if (!ClassName(hwnd).Equals("WorkerW", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
 
             if (candidates.All(c => c.Handle != hwnd))
+            {
                 candidates.Add((hwnd, "top-level WorkerW"));
+            }
 
             return true;
         }, IntPtr.Zero);
 
         var recorded = new List<HostCandidate>(candidates.Count);
-        var chosen = IntPtr.Zero;
+        nint chosen = IntPtr.Zero;
 
-        foreach (var (handle, source) in candidates)
+        foreach ((nint handle, string? source) in candidates)
         {
-            NativeMethods.GetWindowRect(handle, out var rect);
-            var className = ClassName(handle);
-            var visible = NativeMethods.IsWindowVisible(handle);
-            var exStyle = NativeMethods.GetWindowLongPtr(handle, NativeMethods.GwlExStyle).ToInt64();
-            var coversScreen = CoversScreen(rect);
-            var isParent = NativeMethods.GetParent(handle) == progman;
+            NativeMethods.GetWindowRect(handle, out NativeMethods.Rect rect);
+            string className = ClassName(handle);
+            bool visible = NativeMethods.IsWindowVisible(handle);
+            long exStyle = NativeMethods.GetWindowLongPtr(handle, NativeMethods.GwlExStyle).ToInt64();
+            bool coversScreen = CoversScreen(rect);
+            bool isParent = NativeMethods.GetParent(handle) == progman;
 
             // The wallpaper host is either a Progman child that covers the screen or a
             // large top-level window; everything else is a shell helper window.
-            var accepted = chosen == IntPtr.Zero && coversScreen && (visible || isParent);
+            bool accepted = chosen == IntPtr.Zero && coversScreen && (visible || isParent);
 
             recorded.Add(new HostCandidate(
                 className,
@@ -439,12 +473,15 @@ public static class DesktopWindowService
                 !coversScreen ? $"{source}; rejected (does not cover the screen)" :
                 $"{source}; rejected (not visible)"));
 
-            if (accepted) chosen = handle;
+            if (accepted)
+            {
+                chosen = handle;
+            }
         }
 
         LastCandidates = recorded;
 
-        foreach (var candidate in recorded)
+        foreach (HostCandidate candidate in recorded)
         {
             log.Info(
                 $"Desktop candidate {candidate.Class} 0x{candidate.Handle:X} rect={candidate.Rect} " +
@@ -456,10 +493,13 @@ public static class DesktopWindowService
 
     private static bool CoversScreen(NativeMethods.Rect rect)
     {
-        var width = NativeMethods.GetSystemMetrics(NativeMethods.SmCxVirtualScreen);
-        var height = NativeMethods.GetSystemMetrics(NativeMethods.SmCyVirtualScreen);
+        int width = NativeMethods.GetSystemMetrics(NativeMethods.SmCxVirtualScreen);
+        int height = NativeMethods.GetSystemMetrics(NativeMethods.SmCyVirtualScreen);
 
-        if (width <= 0 || height <= 0) return rect.Width > 0 && rect.Height > 0;
+        if (width <= 0 || height <= 0)
+        {
+            return rect.Width > 0 && rect.Height > 0;
+        }
 
         return rect.Width >= width * MinCoverage && rect.Height >= height * MinCoverage;
     }

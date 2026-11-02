@@ -1,5 +1,5 @@
-using Microsoft.Win32;
 using System.IO;
+using Microsoft.Win32;
 
 namespace Petty.App.Desktop;
 
@@ -10,7 +10,7 @@ internal static class AutostartService
 
     public static void Apply(bool enabled)
     {
-        using var key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true);
+        using RegistryKey key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true);
         Apply(key, enabled, Environment.ProcessPath ?? throw new IOException("Cannot locate the Petty executable."));
     }
 
@@ -24,11 +24,19 @@ internal static class AutostartService
 
         if (!Path.IsPathFullyQualified(executablePath) || !File.Exists(executablePath) ||
             !Path.GetFileName(executablePath).Equals("Petty.exe", StringComparison.OrdinalIgnoreCase))
+        {
             throw new IOException("Autostart requires an existing absolute Petty.exe path.");
+        }
 
-        var command = $"\"{Path.GetFullPath(executablePath)}\"";
-        if (command.Length > 260) throw new IOException("The Petty path exceeds the Windows Run key command length limit (260 characters).");
+        string command = $"\"{Path.GetFullPath(executablePath)}\"";
+        if (command.Length > 260)
+        {
+            throw new IOException("The Petty path exceeds the Windows Run key command length limit (260 characters).");
+        }
+
         if (key.GetValue(ValueName) as string != command || key.GetValueKind(ValueName) != RegistryValueKind.String)
+        {
             key.SetValue(ValueName, command, RegistryValueKind.String);
+        }
     }
 }

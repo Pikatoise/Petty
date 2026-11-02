@@ -37,15 +37,30 @@ public sealed class PetRuntime
     }
 #endif
 
-    public PetSnapshot Snapshot { get; }
+    public PetSnapshot Snapshot
+    {
+        get;
+    }
 
-    public Needs Needs { get; private set; }
+    public Needs Needs
+    {
+        get; private set;
+    }
 
-    public Bowl Bowl { get; }
+    public Bowl Bowl
+    {
+        get;
+    }
 
-    public PetBehaviorMachine Behavior { get; }
+    public PetBehaviorMachine Behavior
+    {
+        get;
+    }
 
-    public DateTimeOffset LastUpdatedUtc { get; private set; }
+    public DateTimeOffset LastUpdatedUtc
+    {
+        get; private set;
+    }
 
     public bool IsExitAnimationComplete =>
         Behavior.State is PetActivity.Exiting && Behavior.StateElapsed >= _tuning.ExitDuration;
@@ -63,8 +78,10 @@ public sealed class PetRuntime
 
     public static PetRuntime CreateNew(string petName, PetTuning tuning, DateTimeOffset nowUtc, Random? random = null)
     {
-        if (!PetNameRules.TryNormalize(petName, out var name, out var error))
+        if (!PetNameRules.TryNormalize(petName, out string? name, out string? error))
+        {
             throw new ArgumentException(error, nameof(petName));
+        }
 
         var snapshot = new PetSnapshot
         {
@@ -84,23 +101,30 @@ public sealed class PetRuntime
 
     public void Update(TimeSpan delta, DateTimeOffset nowUtc)
     {
-        if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
-        if (delta > _tuning.MaxOfflineSpan) delta = _tuning.MaxOfflineSpan;
+        if (delta < TimeSpan.Zero)
+        {
+            delta = TimeSpan.Zero;
+        }
+
+        if (delta > _tuning.MaxOfflineSpan)
+        {
+            delta = _tuning.MaxOfflineSpan;
+        }
 
         Needs = Needs.Advance(delta, _tuning);
-        var previous = Behavior.State;
-        var remaining = previous switch
+        PetActivity previous = Behavior.State;
+        TimeSpan remaining = previous switch
         {
             PetActivity.Playing or PetActivity.Petting => Behavior.InteractionDuration - Behavior.StateElapsed,
             _ => TimeSpan.Zero,
         };
-        var actionSeconds = Math.Max(0, Math.Min(delta.TotalSeconds, remaining.TotalSeconds));
+        double actionSeconds = Math.Max(0, Math.Min(delta.TotalSeconds, remaining.TotalSeconds));
         if (previous is PetActivity.Playing or PetActivity.Petting)
         {
-            var duration = Behavior.InteractionDuration;
-            var happiness = previous is PetActivity.Playing ? _tuning.PlayHappinessGain : _tuning.PetHappinessGain;
-            var satiety = previous is PetActivity.Playing ? _tuning.PlaySatietyCost : _tuning.PetSatietyCost;
-            var fraction = actionSeconds / Math.Max(0.001, duration.TotalSeconds);
+            TimeSpan duration = Behavior.InteractionDuration;
+            double happiness = previous is PetActivity.Playing ? _tuning.PlayHappinessGain : _tuning.PetHappinessGain;
+            double satiety = previous is PetActivity.Playing ? _tuning.PlaySatietyCost : _tuning.PetSatietyCost;
+            double fraction = actionSeconds / Math.Max(0.001, duration.TotalSeconds);
             Needs = Needs.AddHappiness(happiness * fraction).AddSatiety(-satiety * fraction);
         }
         Behavior.Update(delta, Needs, Bowl);
@@ -112,13 +136,21 @@ public sealed class PetRuntime
                 while (_biteTimer >= _tuning.EatBiteInterval && Bowl.HasFood)
                 {
                     _biteTimer -= _tuning.EatBiteInterval;
-                    var consumed = Bowl.Consume(_tuning.EatFoodPerBite);
-                    if (consumed <= 0) break;
-                    var share = Math.Min(1, consumed / _tuning.EatFoodPerBite);
+                    double consumed = Bowl.Consume(_tuning.EatFoodPerBite);
+                    if (consumed <= 0)
+                    {
+                        break;
+                    }
+
+                    double share = Math.Min(1, consumed / _tuning.EatFoodPerBite);
                     Needs = Needs.AddSatiety(_tuning.EatSatietyPerBite * share);
                 }
 
-                if (!Bowl.HasFood) Behavior.BowlEmptied();
+                if (!Bowl.HasFood)
+                {
+                    Behavior.BowlEmptied();
+                }
+
                 break;
 
             default:
@@ -141,9 +173,13 @@ public sealed class PetRuntime
     public void NotifyArrived()
     {
         if (Behavior.State is PetActivity.SeekingFood)
+        {
             Behavior.ArriveAtBowl(Bowl);
+        }
         else
+        {
             Behavior.NotifyArrived();
+        }
     }
 
     /// <summary>Adds one portion to the bowl; returns the amount that actually fitted.</summary>

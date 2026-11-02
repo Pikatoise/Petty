@@ -1,21 +1,29 @@
-using Petty.App.Desktop;
 using System.Globalization;
+using Petty.App.Desktop;
 
 namespace Petty.App;
 
 /// <summary>
-/// Command-line switches used by the prototype for diagnostics and automated
-/// verification. Normal users never need them; the tray icon drives the app
-/// (stage 4).
+/// Command-line switches for diagnostics and automated verification.
+/// Normal users control the app through the tray icon.
 /// </summary>
 internal sealed class AppOptions
 {
-    public string? DataDirectory { get; private init; }
+    public string? DataDirectory
+    {
+        get; private init;
+    }
 
-    public TimeSpan? ExitAfter { get; private init; }
+    public TimeSpan? ExitAfter
+    {
+        get; private init;
+    }
 
     /// <summary>Diagnostic switch: create this pet instead of showing the first-run wizard.</summary>
-    public string? CreateName { get; private init; }
+    public string? CreateName
+    {
+        get; private init;
+    }
 
     /// <summary>How the pet window is placed relative to the desktop.</summary>
     public DesktopLayerMode DesktopLayer { get; private init; } = DesktopLayerMode.AboveDesktop;
@@ -25,14 +33,14 @@ internal sealed class AppOptions
         string? dataDirectory = null;
         TimeSpan? exitAfter = null;
         string? createName = null;
-        var desktopLayer = DesktopLayerMode.AboveDesktop;
+        DesktopLayerMode desktopLayer = DesktopLayerMode.AboveDesktop;
 
-        for (var i = 0; i < args.Count; i++)
+        for (int i = 0; i < args.Count; i++)
         {
-            var argument = args[i];
-            var separator = argument.IndexOf('=');
-            var name = separator < 0 ? argument : argument[..separator];
-            var inlineValue = separator < 0 ? null : argument[(separator + 1)..];
+            string argument = args[i];
+            int separator = argument.IndexOf('=');
+            string name = separator < 0 ? argument : argument[..separator];
+            string? inlineValue = separator < 0 ? null : argument[(separator + 1)..];
 
             switch (name)
             {
@@ -54,7 +62,10 @@ internal sealed class AppOptions
 
                 case "--no-desktop-layer":
                     if (inlineValue is not null)
+                    {
                         throw new ArgumentException("'--no-desktop-layer' does not take a value.");
+                    }
+
                     desktopLayer = DesktopLayerMode.Disabled;
                     break;
 
@@ -87,14 +98,16 @@ internal sealed class AppOptions
     private static string TakeValue(IReadOnlyList<string> args, ref int index, string name)
     {
         if (index + 1 >= args.Count)
+        {
             throw new ArgumentException($"'{name}' requires a value.");
+        }
 
         return args[++index];
     }
 
     private static TimeSpan ParseDuration(string value)
     {
-        if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) ||
+        if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double seconds) ||
             seconds <= 0 ||
             seconds > 3600)
         {

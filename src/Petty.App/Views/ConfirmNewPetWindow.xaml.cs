@@ -2,7 +2,7 @@ using System.Windows;
 
 namespace Petty.App.Views;
 
-public partial class ConfirmNewPetWindow: Window
+public partial class ConfirmNewPetWindow : Window
 {
     public ConfirmNewPetWindow() => InitializeComponent();
 

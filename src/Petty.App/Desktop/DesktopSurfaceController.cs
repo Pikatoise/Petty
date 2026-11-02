@@ -4,7 +4,10 @@ using Petty.Core.Runtime;
 
 namespace Petty.App.Desktop;
 
-internal enum SurfaceChange { None, Range, Display }
+internal enum SurfaceChange
+{
+    None, Range, Display
+}
 
 /// <summary>Tracks the primary display, taskbar and eased walking floor.</summary>
 internal sealed class DesktopSurfaceController
@@ -25,12 +28,21 @@ internal sealed class DesktopSurfaceController
         _log = log;
     }
 
-    public MotionArea WalkArea { get; private set; }
+    public MotionArea WalkArea
+    {
+        get; private set;
+    }
     public double FloorY => _floor.Current;
     public bool IsFloorMoving => WalkArea.FloorY > 0 && !_floor.IsAt(WalkArea.FloorY);
-    public DisplayInfo? PrimaryDisplay { get; private set; }
+    public DisplayInfo? PrimaryDisplay
+    {
+        get; private set;
+    }
     public IReadOnlyList<DisplayInfo> Displays => _layout;
-    public ShellBarSnapshot? ShellBar { get; private set; }
+    public ShellBarSnapshot? ShellBar
+    {
+        get; private set;
+    }
 
     public void Load()
     {
@@ -46,7 +58,7 @@ internal sealed class DesktopSurfaceController
             _reloadTicks = DisplayReloadTickCount;
             try
             {
-                var displays = _displays.GetDisplays();
+                IReadOnlyList<DisplayInfo> displays = _displays.GetDisplays();
                 if (!_layout.SequenceEqual(displays))
                 {
                     _layout = displays;
@@ -67,22 +79,33 @@ internal sealed class DesktopSurfaceController
 
     public bool AdvanceFloor(TimeSpan delta)
     {
-        if (WalkArea.FloorY <= 0) return false;
-        var before = _floor.Current;
+        if (WalkArea.FloorY <= 0)
+        {
+            return false;
+        }
+
+        double before = _floor.Current;
         _floor.Advance(WalkArea.FloorY, delta);
         return Math.Abs(_floor.Current - before) > 0.01;
     }
 
     private SurfaceChange Refresh(bool force)
     {
-        var display = PrimaryDisplay;
-        if (display is null) return SurfaceChange.None;
-        ShellBar = _shellBars.Read(display);
-        var visibleBar = ShellBar is { Revealed: true } bar ? bar.Rect : (ScreenRect?)null;
-        var area = WalkSurface.Compute(display, visibleBar, _windowWidth);
-        if (!force && area == WalkArea) return SurfaceChange.None;
+        DisplayInfo? display = PrimaryDisplay;
+        if (display is null)
+        {
+            return SurfaceChange.None;
+        }
 
-        var previous = WalkArea;
+        ShellBar = _shellBars.Read(display);
+        ScreenRect? visibleBar = ShellBar is { Revealed: true } bar ? bar.Rect : (ScreenRect?)null;
+        MotionArea area = WalkSurface.Compute(display, visibleBar, _windowWidth);
+        if (!force && area == WalkArea)
+        {
+            return SurfaceChange.None;
+        }
+
+        MotionArea previous = WalkArea;
         WalkArea = area;
         if (force)
         {
@@ -93,9 +116,12 @@ internal sealed class DesktopSurfaceController
             return SurfaceChange.Display;
         }
         if (Math.Abs(area.FloorY - previous.FloorY) > 0.5)
+        {
             _log.Info(area.FloorY < previous.FloorY
                 ? $"Taskbar shown: the pet steps up to floor {area.FloorY:F0}."
                 : $"Taskbar hidden: the pet returns to floor {area.FloorY:F0}.");
+        }
+
         if (area.Left != previous.Left || area.Right != previous.Right)
         {
             _log.Info($"Walk range changed to x {area.Left:F0}..{area.Right:F0}.");

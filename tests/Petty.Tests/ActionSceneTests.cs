@@ -13,18 +13,18 @@ public class ActionSceneTests
     public void BallTrajectoryDoesNotSnapVelocityAtPhaseBoundaries(double boundary)
     {
         const double step = 0.00001;
-        var at = ActionScene.Sample(PetActivity.Playing, boundary).PropOffset;
-        var before = (at - ActionScene.Sample(PetActivity.Playing, boundary - step).PropOffset) / step;
-        var after = (ActionScene.Sample(PetActivity.Playing, boundary + step).PropOffset - at) / step;
+        double at = ActionScene.Sample(PetActivity.Playing, boundary).PropOffset;
+        double before = (at - ActionScene.Sample(PetActivity.Playing, boundary - step).PropOffset) / step;
+        double after = (ActionScene.Sample(PetActivity.Playing, boundary + step).PropOffset - at) / step;
         Assert.True(Math.Abs(after - before) < 5, $"Ball velocity snapped from {before:F1} to {after:F1} at {boundary}.");
     }
 
     [Fact]
     public void BallContactsMatchExtendedPawFramesAndBreedContactHeight()
     {
-        for (var hit = 0; hit <= 6; hit++)
+        for (int hit = 0; hit <= 6; hit++)
         {
-            var pose = ActionScene.SamplePlay(0.3 + hit * 0.6, 6, 12, 10, contactLift: 12);
+            PlayScenePose pose = ActionScene.SamplePlay(0.3 + hit * 0.6, 6, 12, 10, contactLift: 12);
             Assert.Equal(hit % 2 == 0 ? 3 : 9, pose.FrameIndex);
             Assert.Equal(0, pose.PropOffset, 6);
             Assert.Equal(-12, pose.PropHeight, 6);
@@ -34,10 +34,10 @@ public class ActionSceneTests
     [Fact]
     public void BallStaysCloseAndMovesSmoothlyBetweenPawContacts()
     {
-        var previous = ActionScene.SamplePlay(0.3, 6, 12, 10, contactLift: 15);
-        for (var tick = 1; tick < 180; tick++)
+        PlayScenePose previous = ActionScene.SamplePlay(0.3, 6, 12, 10, contactLift: 15);
+        for (int tick = 1; tick < 180; tick++)
         {
-            var pose = ActionScene.SamplePlay(0.3 + tick * 0.02, 6, 12, 10, contactLift: 15);
+            PlayScenePose pose = ActionScene.SamplePlay(0.3 + tick * 0.02, 6, 12, 10, contactLift: 15);
             Assert.InRange(pose.PropOffset, 0, 36.001);
             Assert.InRange(pose.PropHeight, -20, 0);
             Assert.InRange(Math.Abs(pose.PropOffset - previous.PropOffset), 0, 4);
@@ -54,11 +54,11 @@ public class ActionSceneTests
     [InlineData(20)]
     public void FinalRollLeavesDisplayAndStopsFurtherPawStrikes(double duration)
     {
-        var end = ActionScene.SamplePlay(duration, duration, 12, 10, 1800, 12);
+        PlayScenePose end = ActionScene.SamplePlay(duration, duration, 12, 10, 1800, 12);
         Assert.Equal(1800, end.PropOffset, 5);
         Assert.Equal(0, end.PropHeight, 5);
         Assert.Equal(end, ActionScene.SamplePlay(duration + 5, duration, 12, 10, 1800, 12));
-        var before = ActionScene.SamplePlay(duration * 0.98, duration, 12, 10, 1800, 12);
+        PlayScenePose before = ActionScene.SamplePlay(duration * 0.98, duration, 12, 10, 1800, 12);
         Assert.Equal(end.FrameIndex, before.FrameIndex);
         Assert.True(end.PropOffset > before.PropOffset);
     }
@@ -67,7 +67,7 @@ public class ActionSceneTests
     public void InteractionsRejectOverlapAndApplyFullEffectOnce()
     {
         var tuning = new PetTuning { SatietyDecayPerMinute = 0, HappinessDecayPerMinute = 0 };
-        var now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var runtime = PetRuntime.Restore(new PetSnapshot { PetName = "Cat", Satiety = 80, Happiness = 20 }, tuning, now);
         Assert.True(runtime.RequestPet());
         Assert.False(runtime.RequestPet());

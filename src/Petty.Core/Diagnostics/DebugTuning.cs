@@ -28,10 +28,10 @@ public sealed record DebugTuning
     {
         static double Bound(double value, double min, double max, double fallback) =>
             double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
-        var hungry = Bound(Hungry, 1, 100, 65);
-        var wanderMin = Bound(WanderMinSeconds, 0.5, 600, 1);
-        var awakeMin = Bound(AwakeMinSeconds, 1, 3600, 360);
-        var sleepMin = Bound(SleepMinSeconds, 1, 3600, 360);
+        double hungry = Bound(Hungry, 1, 100, 65);
+        double wanderMin = Bound(WanderMinSeconds, 0.5, 600, 1);
+        double awakeMin = Bound(AwakeMinSeconds, 1, 3600, 360);
+        double sleepMin = Bound(SleepMinSeconds, 1, 3600, 360);
         return this with
         {
             SatietyDecayPerMinute = Bound(SatietyDecayPerMinute, 0, 10000.0 / 60, 15.0 / 60),
@@ -56,7 +56,7 @@ public sealed record DebugTuning
 
     public PetTuning ToPetTuning()
     {
-        var value = Sanitized();
+        DebugTuning value = Sanitized();
         return new PetTuning
         {
             SatietyDecayPerMinute = value.SatietyDecayPerMinute,

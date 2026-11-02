@@ -68,10 +68,10 @@ public sealed class PetTuning
         static double Clamp(double value, double min, double max) =>
             double.IsNaN(value) ? min : Math.Clamp(value, min, max);
 
-        var awakeMin = Positive(AwakeMinDuration, Default.AwakeMinDuration);
-        var awakeMax = Positive(AwakeMaxDuration, Default.AwakeMaxDuration);
-        var sleepMin = Positive(SleepMinDuration, Default.SleepMinDuration);
-        var sleepMax = Positive(SleepMaxDuration, TimeSpan.FromSeconds(600));
+        TimeSpan awakeMin = Positive(AwakeMinDuration, Default.AwakeMinDuration);
+        TimeSpan awakeMax = Positive(AwakeMaxDuration, Default.AwakeMaxDuration);
+        TimeSpan sleepMin = Positive(SleepMinDuration, Default.SleepMinDuration);
+        TimeSpan sleepMax = Positive(SleepMaxDuration, TimeSpan.FromSeconds(600));
 
         return new PetTuning
         {

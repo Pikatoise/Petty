@@ -6,7 +6,7 @@ using System.Windows.Threading;
 namespace Petty.App.Desktop;
 
 /// <summary>Hidden top-level HWND receives shell broadcasts, including while the pet is hidden.</summary>
-internal sealed class ShellRestartWatcher: IDisposable
+internal sealed class ShellRestartWatcher : IDisposable
 {
     private readonly HwndSource _source;
     private readonly uint _message = RegisterWindowMessage("TaskbarCreated");
@@ -15,7 +15,11 @@ internal sealed class ShellRestartWatcher: IDisposable
 
     public ShellRestartWatcher(Action restore)
     {
-        if (_message == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
+        if (_message == 0)
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+
         _source = new HwndSource(new HwndSourceParameters("Petty.ShellNotifications") { WindowStyle = 0, Width = 0, Height = 0 });
         _source.AddHook(OnMessage);
 
@@ -27,7 +31,10 @@ internal sealed class ShellRestartWatcher: IDisposable
                 _source.Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
                 {
                     _pending = false;
-                    if (!_disposed) restore();
+                    if (!_disposed)
+                    {
+                        restore();
+                    }
                 });
             }
             return IntPtr.Zero;
@@ -36,7 +43,11 @@ internal sealed class ShellRestartWatcher: IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
+
         _disposed = true;
         _source.Dispose();
     }

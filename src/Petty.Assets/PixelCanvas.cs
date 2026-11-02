@@ -14,15 +14,25 @@ public sealed class PixelCanvas
 
     public PixelCanvas(int width, int height)
     {
-        if (width <= 0 || height <= 0) throw new ArgumentOutOfRangeException(nameof(width));
+        if (width <= 0 || height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width));
+        }
+
         Width = width;
         Height = height;
         _pixels = new uint[width * height];
     }
 
-    public int Width { get; }
+    public int Width
+    {
+        get;
+    }
 
-    public int Height { get; }
+    public int Height
+    {
+        get;
+    }
 
     public ReadOnlySpan<uint> Pixels => _pixels;
 
@@ -31,7 +41,10 @@ public sealed class PixelCanvas
         get => InBounds(x, y) ? _pixels[(y * Width) + x] : Transparent;
         set
         {
-            if (InBounds(x, y)) _pixels[(y * Width) + x] = value;
+            if (InBounds(x, y))
+            {
+                _pixels[(y * Width) + x] = value;
+            }
         }
     }
 
@@ -43,28 +56,41 @@ public sealed class PixelCanvas
 
     public void FillRect(int x, int y, int width, int height, uint color)
     {
-        for (var yy = y; yy < y + height; yy++)
-            for (var xx = x; xx < x + width; xx++)
+        for (int yy = y; yy < y + height; yy++)
+        {
+            for (int xx = x; xx < x + width; xx++)
+            {
                 this[xx, yy] = color;
+            }
+        }
     }
 
     public void FillEllipse(double cx, double cy, double rx, double ry, uint color)
     {
-        if (rx <= 0 || ry <= 0) return;
-
-        var minY = Math.Max(0, (int)Math.Floor(cy - ry));
-        var maxY = Math.Min(Height - 1, (int)Math.Ceiling(cy + ry));
-
-        for (var y = minY; y <= maxY; y++)
+        if (rx <= 0 || ry <= 0)
         {
-            var dy = (y + 0.5 - cy) / ry;
-            if (Math.Abs(dy) > 1) continue;
+            return;
+        }
 
-            var half = rx * Math.Sqrt(1 - (dy * dy));
-            var minX = Math.Max(0, (int)Math.Ceiling(cx - half - 0.5));
-            var maxX = Math.Min(Width - 1, (int)Math.Floor(cx + half - 0.5));
+        int minY = Math.Max(0, (int)Math.Floor(cy - ry));
+        int maxY = Math.Min(Height - 1, (int)Math.Ceiling(cy + ry));
 
-            for (var x = minX; x <= maxX; x++) _pixels[(y * Width) + x] = color;
+        for (int y = minY; y <= maxY; y++)
+        {
+            double dy = (y + 0.5 - cy) / ry;
+            if (Math.Abs(dy) > 1)
+            {
+                continue;
+            }
+
+            double half = rx * Math.Sqrt(1 - (dy * dy));
+            int minX = Math.Max(0, (int)Math.Ceiling(cx - half - 0.5));
+            int maxX = Math.Min(Width - 1, (int)Math.Floor(cx + half - 0.5));
+
+            for (int x = minX; x <= maxX; x++)
+            {
+                _pixels[(y * Width) + x] = color;
+            }
         }
     }
 
@@ -74,93 +100,115 @@ public sealed class PixelCanvas
         double cx, double cy,
         uint color)
     {
-        var minX = Math.Max(0, (int)Math.Floor(Math.Min(ax, Math.Min(bx, cx))));
-        var maxX = Math.Min(Width - 1, (int)Math.Ceiling(Math.Max(ax, Math.Max(bx, cx))));
-        var minY = Math.Max(0, (int)Math.Floor(Math.Min(ay, Math.Min(by, cy))));
-        var maxY = Math.Min(Height - 1, (int)Math.Ceiling(Math.Max(ay, Math.Max(by, cy))));
+        int minX = Math.Max(0, (int)Math.Floor(Math.Min(ax, Math.Min(bx, cx))));
+        int maxX = Math.Min(Width - 1, (int)Math.Ceiling(Math.Max(ax, Math.Max(bx, cx))));
+        int minY = Math.Max(0, (int)Math.Floor(Math.Min(ay, Math.Min(by, cy))));
+        int maxY = Math.Min(Height - 1, (int)Math.Ceiling(Math.Max(ay, Math.Max(by, cy))));
 
-        for (var y = minY; y <= maxY; y++)
+        for (int y = minY; y <= maxY; y++)
         {
-            for (var x = minX; x <= maxX; x++)
+            for (int x = minX; x <= maxX; x++)
             {
-                var px = x + 0.5;
-                var py = y + 0.5;
+                double px = x + 0.5;
+                double py = y + 0.5;
 
-                var d1 = Edge(px, py, ax, ay, bx, by);
-                var d2 = Edge(px, py, bx, by, cx, cy);
-                var d3 = Edge(px, py, cx, cy, ax, ay);
+                double d1 = Edge(px, py, ax, ay, bx, by);
+                double d2 = Edge(px, py, bx, by, cx, cy);
+                double d3 = Edge(px, py, cx, cy, ax, ay);
 
-                var hasNegative = d1 < 0 || d2 < 0 || d3 < 0;
-                var hasPositive = d1 > 0 || d2 > 0 || d3 > 0;
+                bool hasNegative = d1 < 0 || d2 < 0 || d3 < 0;
+                bool hasPositive = d1 > 0 || d2 > 0 || d3 > 0;
 
-                if (!(hasNegative && hasPositive)) _pixels[(y * Width) + x] = color;
+                if (!(hasNegative && hasPositive))
+                {
+                    _pixels[(y * Width) + x] = color;
+                }
             }
         }
     }
 
     public void StrokeLine(double x0, double y0, double x1, double y1, double thickness, uint color)
     {
-        var radius = Math.Max(0.5, thickness / 2.0);
-        var minX = Math.Max(0, (int)Math.Floor(Math.Min(x0, x1) - radius));
-        var maxX = Math.Min(Width - 1, (int)Math.Ceiling(Math.Max(x0, x1) + radius));
-        var minY = Math.Max(0, (int)Math.Floor(Math.Min(y0, y1) - radius));
-        var maxY = Math.Min(Height - 1, (int)Math.Ceiling(Math.Max(y0, y1) + radius));
+        double radius = Math.Max(0.5, thickness / 2.0);
+        int minX = Math.Max(0, (int)Math.Floor(Math.Min(x0, x1) - radius));
+        int maxX = Math.Min(Width - 1, (int)Math.Ceiling(Math.Max(x0, x1) + radius));
+        int minY = Math.Max(0, (int)Math.Floor(Math.Min(y0, y1) - radius));
+        int maxY = Math.Min(Height - 1, (int)Math.Ceiling(Math.Max(y0, y1) + radius));
 
-        var dx = x1 - x0;
-        var dy = y1 - y0;
-        var lengthSquared = (dx * dx) + (dy * dy);
+        double dx = x1 - x0;
+        double dy = y1 - y0;
+        double lengthSquared = (dx * dx) + (dy * dy);
 
-        for (var y = minY; y <= maxY; y++)
+        for (int y = minY; y <= maxY; y++)
         {
-            for (var x = minX; x <= maxX; x++)
+            for (int x = minX; x <= maxX; x++)
             {
-                var px = x + 0.5;
-                var py = y + 0.5;
+                double px = x + 0.5;
+                double py = y + 0.5;
 
                 double t = lengthSquared <= 0 ? 0 : (((px - x0) * dx) + ((py - y0) * dy)) / lengthSquared;
                 t = Math.Clamp(t, 0, 1);
 
-                var nearestX = x0 + (t * dx);
-                var nearestY = y0 + (t * dy);
-                var distX = px - nearestX;
-                var distY = py - nearestY;
+                double nearestX = x0 + (t * dx);
+                double nearestY = y0 + (t * dy);
+                double distX = px - nearestX;
+                double distY = py - nearestY;
 
                 if ((distX * distX) + (distY * distY) <= radius * radius)
+                {
                     _pixels[(y * Width) + x] = color;
+                }
             }
         }
     }
 
     public void Outline(uint color)
     {
-        var snapshot = (uint[])_pixels.Clone();
+        uint[] snapshot = (uint[])_pixels.Clone();
 
-        for (var y = 0; y < Height; y++)
+        for (int y = 0; y < Height; y++)
         {
-            for (var x = 0; x < Width; x++)
+            for (int x = 0; x < Width; x++)
             {
-                var index = (y * Width) + x;
-                if ((snapshot[index] & 0xFF000000) != 0) continue;
-                if (HasOpaqueNeighbour(snapshot, x, y)) _pixels[index] = color;
+                int index = (y * Width) + x;
+                if ((snapshot[index] & 0xFF000000) != 0)
+                {
+                    continue;
+                }
+
+                if (HasOpaqueNeighbour(snapshot, x, y))
+                {
+                    _pixels[index] = color;
+                }
             }
         }
     }
 
     public PixelCanvas Upscale(int factor)
     {
-        if (factor <= 0) throw new ArgumentOutOfRangeException(nameof(factor));
+        if (factor <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(factor));
+        }
 
         var result = new PixelCanvas(Width * factor, Height * factor);
-        for (var y = 0; y < Height; y++)
+        for (int y = 0; y < Height; y++)
         {
-            for (var x = 0; x < Width; x++)
+            for (int x = 0; x < Width; x++)
             {
-                var color = this[x, y];
-                if (color == 0) continue;
+                uint color = this[x, y];
+                if (color == 0)
+                {
+                    continue;
+                }
 
-                for (var oy = 0; oy < factor; oy++)
-                    for (var ox = 0; ox < factor; ox++)
+                for (int oy = 0; oy < factor; oy++)
+                {
+                    for (int ox = 0; ox < factor; ox++)
+                    {
                         result[(x * factor) + ox, (y * factor) + oy] = color;
+                    }
+                }
             }
         }
 
@@ -170,13 +218,16 @@ public sealed class PixelCanvas
     /// <summary>Alpha-composites this canvas onto an opaque target (used for preview sheets).</summary>
     public void DrawOnto(PixelCanvas target, int offsetX, int offsetY)
     {
-        for (var y = 0; y < Height; y++)
+        for (int y = 0; y < Height; y++)
         {
-            for (var x = 0; x < Width; x++)
+            for (int x = 0; x < Width; x++)
             {
-                var color = this[x, y];
-                var alpha = (color >> 24) & 0xFF;
-                if (alpha == 0) continue;
+                uint color = this[x, y];
+                uint alpha = (color >> 24) & 0xFF;
+                if (alpha == 0)
+                {
+                    continue;
+                }
 
                 if (alpha == 255)
                 {
@@ -184,11 +235,11 @@ public sealed class PixelCanvas
                     continue;
                 }
 
-                var dst = target[offsetX + x, offsetY + y];
-                var a = alpha / 255.0;
-                var r = (byte)(((color >> 16) & 0xFF) * a + ((dst >> 16) & 0xFF) * (1 - a));
-                var g = (byte)(((color >> 8) & 0xFF) * a + ((dst >> 8) & 0xFF) * (1 - a));
-                var b = (byte)((color & 0xFF) * a + (dst & 0xFF) * (1 - a));
+                uint dst = target[offsetX + x, offsetY + y];
+                double a = alpha / 255.0;
+                byte r = (byte)(((color >> 16) & 0xFF) * a + ((dst >> 16) & 0xFF) * (1 - a));
+                byte g = (byte)(((color >> 8) & 0xFF) * a + ((dst >> 8) & 0xFF) * (1 - a));
+                byte b = (byte)((color & 0xFF) * a + (dst & 0xFF) * (1 - a));
                 target[offsetX + x, offsetY + y] = 0xFF000000u | ((uint)r << 16) | ((uint)g << 8) | b;
             }
         }
@@ -198,8 +249,11 @@ public sealed class PixelCanvas
 
     public void SavePng(string path)
     {
-        var directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        string? directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
 
         File.WriteAllBytes(path, ToPngBytes());
     }
@@ -210,12 +264,12 @@ public sealed class PixelCanvas
         // WPF and console hosts may have different DPI contexts. Pin PNG metadata
         // so identical pixels also produce identical asset bytes in either host.
         bitmap.SetResolution(96, 96);
-        var data = bitmap.LockBits(
+        BitmapData data = bitmap.LockBits(
             new Rectangle(0, 0, Width, Height),
             ImageLockMode.WriteOnly,
             PixelFormat.Format32bppArgb);
 
-        var buffer = new int[_pixels.Length];
+        int[] buffer = new int[_pixels.Length];
         Buffer.BlockCopy(_pixels, 0, buffer, 0, _pixels.Length * 4);
         Marshal.Copy(buffer, 0, data.Scan0, buffer.Length);
         bitmap.UnlockBits(data);
@@ -229,12 +283,12 @@ public sealed class PixelCanvas
     {
         using var bitmap = new Bitmap(path);
         var canvas = new PixelCanvas(bitmap.Width, bitmap.Height);
-        var data = bitmap.LockBits(
+        BitmapData data = bitmap.LockBits(
             new Rectangle(0, 0, bitmap.Width, bitmap.Height),
             ImageLockMode.ReadOnly,
             PixelFormat.Format32bppArgb);
 
-        var buffer = new int[bitmap.Width * bitmap.Height];
+        int[] buffer = new int[bitmap.Width * bitmap.Height];
         Marshal.Copy(data.Scan0, buffer, 0, buffer.Length);
         bitmap.UnlockBits(data);
 
@@ -244,16 +298,26 @@ public sealed class PixelCanvas
 
     private bool HasOpaqueNeighbour(uint[] pixels, int x, int y)
     {
-        for (var oy = -1; oy <= 1; oy++)
+        for (int oy = -1; oy <= 1; oy++)
         {
-            for (var ox = -1; ox <= 1; ox++)
+            for (int ox = -1; ox <= 1; ox++)
             {
-                if (ox == 0 && oy == 0) continue;
+                if (ox == 0 && oy == 0)
+                {
+                    continue;
+                }
 
-                var nx = x + ox;
-                var ny = y + oy;
-                if (nx < 0 || ny < 0 || nx >= Width || ny >= Height) continue;
-                if ((pixels[(ny * Width) + nx] & 0xFF000000) != 0) return true;
+                int nx = x + ox;
+                int ny = y + oy;
+                if (nx < 0 || ny < 0 || nx >= Width || ny >= Height)
+                {
+                    continue;
+                }
+
+                if ((pixels[(ny * Width) + nx] & 0xFF000000) != 0)
+                {
+                    return true;
+                }
             }
         }
 

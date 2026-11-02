@@ -1,8 +1,8 @@
+using System.Windows;
+using System.Windows.Interop;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
 using Petty.Core.Diagnostics;
-using System.Windows;
-using System.Windows.Interop;
 
 namespace Petty.App.Views;
 
@@ -11,7 +11,7 @@ namespace Petty.App.Views;
 /// the taskbar and hit-tests the sprite's alpha channel so only the cat itself takes
 /// mouse input. Window placement is delegated to <see cref="DesktopWindowService"/>.
 /// </summary>
-public partial class PetWindow: Window
+public partial class PetWindow : Window
 {
     /// <summary>Sprite pixels are drawn at 3x, i.e. one 64x64 frame becomes 192x192 screen pixels.</summary>
     public const int ScreenPixelsPerSpritePixel = 3;
@@ -77,17 +77,25 @@ public partial class PetWindow: Window
     public double DpiScale => _dpiScale;
 
     /// <summary>Floor row used by the last <see cref="MoveTo"/> call, for diagnostics.</summary>
-    public double PlacementFloorY { get; private set; }
+    public double PlacementFloorY
+    {
+        get; private set;
+    }
 
     /// <summary>Window top that <see cref="MoveTo"/> computed for the last placement.</summary>
-    public double ExpectedTop { get; private set; }
+    public double ExpectedTop
+    {
+        get; private set;
+    }
 
     public DesktopAttachment Attachment { get; private set; } = DesktopAttachment.Disabled();
 
     public void AttachToDesktop(DesktopLayerMode mode, IAppLog log)
     {
         if (_handle == IntPtr.Zero)
+        {
             throw new InvalidOperationException("The window has not been initialised yet.");
+        }
 
         Attachment = mode == DesktopLayerMode.Disabled
             ? DesktopAttachment.Disabled()
@@ -102,7 +110,10 @@ public partial class PetWindow: Window
 
     public void SetFacing(bool faceLeft)
     {
-        if (_faceLeft == faceLeft) return;
+        if (_faceLeft == faceLeft)
+        {
+            return;
+        }
 
         _faceLeft = faceLeft;
         FlipTransform.ScaleX = faceLeft ? -1 : 1;
@@ -111,12 +122,15 @@ public partial class PetWindow: Window
     /// <summary>Places the paws on <paramref name="floorY"/> and the window at <paramref name="screenX"/>.</summary>
     public void MoveTo(double screenX, double floorY)
     {
-        if (_handle == IntPtr.Zero) return;
+        if (_handle == IntPtr.Zero)
+        {
+            return;
+        }
 
-        var scale = _physicalWidth / (double)_sheet.FrameWidth;
-        var top = floorY - ((_sheet.GroundRow + 1) * scale);
-        var left = (int)Math.Round(screenX);
-        var topPixels = (int)Math.Round(top);
+        double scale = _physicalWidth / (double)_sheet.FrameWidth;
+        double top = floorY - ((_sheet.GroundRow + 1) * scale);
+        int left = (int)Math.Round(screenX);
+        int topPixels = (int)Math.Round(top);
 
         PlacementFloorY = floorY;
         ExpectedTop = topPixels;
@@ -131,7 +145,7 @@ public partial class PetWindow: Window
             {
                 _placementLogged = true;
 
-                var actual = DesktopWindowService.GetScreenRect(_handle);
+                NativeMethods.Rect actual = DesktopWindowService.GetScreenRect(_handle);
                 _log.Info(
                     $"Placement: requested {left},{topPixels} {_physicalWidth}x{_physicalHeight}; " +
                     $"actual {actual.Left},{actual.Top} {actual.Width}x{actual.Height} " +
@@ -156,7 +170,7 @@ public partial class PetWindow: Window
     {
         get
         {
-            var rect = DesktopWindowService.GetScreenRect(_handle);
+            NativeMethods.Rect rect = DesktopWindowService.GetScreenRect(_handle);
             return (rect.Left, rect.Top, rect.Width, rect.Height);
         }
     }
@@ -170,7 +184,7 @@ public partial class PetWindow: Window
         _source = HwndSource.FromHwnd(_handle);
         _source?.AddHook(WndProc);
 
-        var dpi = NativeMethods.GetDpiForWindow(_handle);
+        uint dpi = NativeMethods.GetDpiForWindow(_handle);
         _dpiScale = dpi > 0 ? dpi / 96.0 : 1;
         ApplyDpiSize();
 
@@ -188,17 +202,23 @@ public partial class PetWindow: Window
     /// <summary>Logs moves that did not come from <see cref="MoveTo"/> (e.g. WPF layout).</summary>
     private void OnLocationChanged(object? sender, EventArgs e)
     {
-        if (_applyingPlacement || !_placementLogged || _closing) return;
+        if (_applyingPlacement || !_placementLogged || _closing)
+        {
+            return;
+        }
 
-        var rect = DesktopWindowService.GetScreenRect(_handle);
+        NativeMethods.Rect rect = DesktopWindowService.GetScreenRect(_handle);
         _log.Warn($"The window moved outside the placement path to {rect.Left},{rect.Top}.");
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (_applyingPlacement) return;
+        if (_applyingPlacement)
+        {
+            return;
+        }
 
-        var rect = DesktopWindowService.GetScreenRect(_handle);
+        NativeMethods.Rect rect = DesktopWindowService.GetScreenRect(_handle);
         _log.Info(
             $"Window size changed to {e.NewSize.Width:F1}x{e.NewSize.Height:F1} DIP " +
             $"({rect.Width}x{rect.Height} px at {_dpiScale:F2}).");
@@ -242,44 +262,70 @@ public partial class PetWindow: Window
     public bool TryGetMenuAnchor(int relativeX, out int x, out int y)
     {
         x = y = 0;
-        if (_frame is null) return false;
-        var rect = DesktopWindowService.GetScreenRect(_handle);
-        var column = Math.Clamp((int)(relativeX / PixelScale), 0, _sheet.FrameWidth - 1);
-        for (var distance = 0; distance < _sheet.FrameWidth; distance++)
-            for (var side = 0; side < 2; side++)
+        if (_frame is null)
+        {
+            return false;
+        }
+
+        NativeMethods.Rect rect = DesktopWindowService.GetScreenRect(_handle);
+        int column = Math.Clamp((int)(relativeX / PixelScale), 0, _sheet.FrameWidth - 1);
+        for (int distance = 0; distance < _sheet.FrameWidth; distance++)
+        {
+            for (int side = 0; side < 2; side++)
             {
-                var candidate = side == 0 ? column - distance : column + distance;
-                if (candidate < 0 || candidate >= _sheet.FrameWidth) continue;
-                for (var row = 0; row < _sheet.FrameHeight; row++)
+                int candidate = side == 0 ? column - distance : column + distance;
+                if (candidate < 0 || candidate >= _sheet.FrameWidth)
+                {
+                    continue;
+                }
+
+                for (int row = 0; row < _sheet.FrameHeight; row++)
+                {
                     if (IsOpaqueAtClient((int)((candidate + 0.5) * PixelScale), (int)((row + 0.5) * PixelScale)))
                     {
                         x = rect.Left + (int)((candidate + 0.5) * PixelScale);
                         y = rect.Top + (int)(row * PixelScale);
                         return true;
                     }
+                }
             }
+        }
+
         return false;
     }
 
     private bool IsOverOpaqueScreenPixel(IntPtr lParam)
     {
         var point = new NativeMethods.Point { X = LoWord(lParam), Y = HiWord(lParam) };
-        if (!NativeMethods.ScreenToClient(_handle, ref point)) return false;
+        if (!NativeMethods.ScreenToClient(_handle, ref point))
+        {
+            return false;
+        }
+
         return IsOpaqueAtClient(point.X, point.Y);
     }
 
     private bool IsOpaqueAtClient(int clientX, int clientY)
     {
-        var frame = _frame;
-        if (frame is null) return false;
+        SpriteFrame? frame = _frame;
+        if (frame is null)
+        {
+            return false;
+        }
 
-        var scale = PixelScale;
-        if (scale <= 0) return false;
+        double scale = PixelScale;
+        if (scale <= 0)
+        {
+            return false;
+        }
 
-        var spriteX = (int)Math.Floor(clientX / scale);
-        var spriteY = (int)Math.Floor(clientY / scale);
+        int spriteX = (int)Math.Floor(clientX / scale);
+        int spriteY = (int)Math.Floor(clientY / scale);
 
-        if (_faceLeft) spriteX = _sheet.FrameWidth - 1 - spriteX;
+        if (_faceLeft)
+        {
+            spriteX = _sheet.FrameWidth - 1 - spriteX;
+        }
 
         return _sheet.IsOpaque(frame.CellIndex, spriteX, spriteY);
     }

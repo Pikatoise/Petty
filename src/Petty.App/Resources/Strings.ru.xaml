@@ -1,4 +1,7 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+﻿<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <sys:String x:Key="SettingsTitle">Настройки Petty</sys:String>
     <sys:String x:Key="PetSettings">Настройки питомца</sys:String>
     <sys:String x:Key="ProgramSettings">Настройки программы</sys:String>
@@ -45,7 +48,7 @@
     <sys:String x:Key="AppearanceLoadError">Не удалось загрузить внешность. Проверьте журнал и восстановите файлы спрайтов.</sys:String>
     <sys:String x:Key="CorruptState">Сохранение питомца не удалось прочитать. Создание нового питомца заменит повреждённое сохранение.</sys:String>
     <sys:String x:Key="TraySettings">Настройки</sys:String>
-	<sys:String x:Key="TrayExit">Завершить работу</sys:String>
+    <sys:String x:Key="TrayExit">Завершить работу</sys:String>
     <sys:String x:Key="Play">Играть</sys:String>
     <sys:String x:Key="PetAction">Погладить</sys:String>
     <sys:String x:Key="StartError">Не удалось запустить Petty. Проверьте файлы и настройки приложения.</sys:String>

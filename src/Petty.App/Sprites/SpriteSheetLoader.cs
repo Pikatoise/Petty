@@ -1,9 +1,9 @@
-using Petty.Core.Assets;
-using Petty.Core.Domain;
 using System.IO;
 using System.Text.Json;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Petty.Core.Assets;
+using Petty.Core.Domain;
 
 namespace Petty.App.Sprites;
 
@@ -18,33 +18,46 @@ public sealed record SpriteVariant(string AssetId, string BreedId, string CoatId
 
 public static class SpriteAssetLocator
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     /// <summary>Discover metadata in the optional user directory and bundled sprite directory.
     /// User assets take precedence when IDs match; atlas images are decoded only on selection.</summary>
     public static IReadOnlyList<SpriteVariant> Discover(string? customDirectory = null, Action<string>? reportProblem = null)
     {
         var variants = new Dictionary<string, SpriteVariant>(StringComparer.OrdinalIgnoreCase);
-        var directories = customDirectory is null ? Candidates() : new[] { customDirectory }.Concat(Candidates());
-        foreach (var directory in directories.Distinct(StringComparer.OrdinalIgnoreCase))
+        IEnumerable<string> directories = customDirectory is null ? Candidates() : new[] { customDirectory }.Concat(Candidates());
+        foreach (string? directory in directories.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            if (!Directory.Exists(directory)) continue;
-            var packRoot = Path.Combine(directory, "packs");
-            var packDirectories = Directory.Exists(packRoot)
+            if (!Directory.Exists(directory))
+            {
+                continue;
+            }
+
+            string packRoot = Path.Combine(directory, "packs");
+            IEnumerable<string> packDirectories = Directory.Exists(packRoot)
                 ? Directory.EnumerateDirectories(packRoot).Where(p => SpriteMetadataValidator.IsValidId(Path.GetFileName(p)))
                 : Enumerable.Empty<string>();
-            var paths = new[] { directory }.Concat(packDirectories)
+            string[] paths = new[] { directory }.Concat(packDirectories)
                 .SelectMany(d => Directory.EnumerateFiles(d, "*.json"))
                 .OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
             var duplicates = paths.GroupBy(Path.GetFileNameWithoutExtension, StringComparer.OrdinalIgnoreCase)
                 .Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (var id in duplicates) reportProblem?.Invoke($"Duplicate sprite ID '{id}' in {directory}.");
-            foreach (var path in paths)
+            foreach (string? id in duplicates)
             {
-                var id = Path.GetFileNameWithoutExtension(path);
-                if (id.Equals("catalog", StringComparison.OrdinalIgnoreCase) || id == PetCatalog.LegacyAssetId || !IsValidId(id) || duplicates.Contains(id) || variants.ContainsKey(id)) continue;
+                reportProblem?.Invoke($"Duplicate sprite ID '{id}' in {directory}.");
+            }
+
+            foreach (string? path in paths)
+            {
+                string id = Path.GetFileNameWithoutExtension(path);
+                if (id.Equals("catalog", StringComparison.OrdinalIgnoreCase) || id == PetCatalog.LegacyAssetId || !SpriteMetadataValidator.IsValidId(id) || duplicates.Contains(id) || variants.ContainsKey(id))
+                {
+                    continue;
+                }
+
                 try
                 {
-                    var metadata = JsonSerializer.Deserialize<SpriteSheetMetadata>(File.ReadAllText(path),
-                        new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    SpriteSheetMetadata? metadata = JsonSerializer.Deserialize<SpriteSheetMetadata>(File.ReadAllText(path), JsonOptions);
                     if (metadata is null || metadata.Character != id ||
                         SpriteMetadataValidator.Validate(metadata).Count != 0 ||
                         Path.GetFileName(metadata.Image) != metadata.Image ||
@@ -53,8 +66,8 @@ public static class SpriteAssetLocator
                         reportProblem?.Invoke($"Invalid sprite definition: {path}");
                         continue;
                     }
-                    var breed = metadata.BreedId ?? "cat";
-                    var coat = metadata.CoatId ?? (id == PetCatalog.DefaultAssetId ? PetCatalog.DefaultCoatId : id);
+                    string breed = metadata.BreedId ?? "cat";
+                    string coat = metadata.CoatId ?? (id == PetCatalog.DefaultAssetId ? PetCatalog.DefaultCoatId : id);
                     variants.Add(id, new SpriteVariant(id, breed, coat, string.IsNullOrWhiteSpace(metadata.DisplayName) ? id.Replace('-', ' ') : metadata.DisplayName, Path.GetDirectoryName(path)!, metadata.SpeciesId ?? "cat", metadata.IsDefault));
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
@@ -66,13 +79,13 @@ public static class SpriteAssetLocator
         return variants.Values.OrderBy(v => v.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToArray();
     }
 
-    private static bool IsValidId(string id) =>
-        !string.IsNullOrEmpty(id) && id.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
-
     public static string? FindDirectory(string assetId)
     {
-        if (string.IsNullOrEmpty(assetId) || assetId.Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '-')))
+        if (!SpriteMetadataValidator.IsValidId(assetId))
+        {
             throw new InvalidDataException("Invalid sprite asset ID.");
+        }
+
         return Discover().FirstOrDefault(v => v.AssetId == assetId)?.Directory;
     }
 
@@ -81,7 +94,7 @@ public static class SpriteAssetLocator
 
     private static IEnumerable<string> Candidates()
     {
-        var baseDirectory = AppContext.BaseDirectory;
+        string baseDirectory = AppContext.BaseDirectory;
         yield return Path.Combine(baseDirectory, "Assets", "Sprites");
 
         var directory = new DirectoryInfo(baseDirectory);
@@ -103,15 +116,21 @@ public static class SpriteSheetLoader
 
     public static SpriteSheet Load(string directory, string assetId)
     {
-        if (string.IsNullOrEmpty(assetId) || assetId.Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '-')))
+        if (!SpriteMetadataValidator.IsValidId(assetId))
+        {
             throw new InvalidDataException("Invalid sprite asset ID.");
-        var metadataPath = Path.Combine(directory, assetId + ".json");
-        var metadata = JsonSerializer.Deserialize<SpriteSheetMetadata>(File.ReadAllText(metadataPath), JsonOptions)
+        }
+
+        string metadataPath = Path.Combine(directory, assetId + ".json");
+        SpriteSheetMetadata metadata = JsonSerializer.Deserialize<SpriteSheetMetadata>(File.ReadAllText(metadataPath), JsonOptions)
                        ?? throw new InvalidDataException($"Sprite metadata '{metadataPath}' is empty.");
 
-        var errors = SpriteMetadataValidator.Validate(metadata);
+        IReadOnlyList<string> errors = SpriteMetadataValidator.Validate(metadata);
         if (metadata.Character != assetId || Path.GetFileName(metadata.Image) != metadata.Image)
+        {
             throw new InvalidDataException("Sprite metadata has an invalid character or image path.");
+        }
+
         if (errors.Count > 0)
         {
             throw new InvalidDataException(
@@ -119,16 +138,21 @@ public static class SpriteSheetLoader
                 string.Join(Environment.NewLine, errors.Select(e => "  - " + e)));
         }
 
-        var imagePath = Path.Combine(directory, metadata.Image);
+        string imagePath = Path.Combine(directory, metadata.Image);
         if (!File.Exists(imagePath))
+        {
             throw new FileNotFoundException($"Sprite atlas image '{imagePath}' is missing.", imagePath);
+        }
 
         BitmapSource atlas;
         try
         {
-            using var stream = File.OpenRead(imagePath);
+            using FileStream stream = File.OpenRead(imagePath);
             if (!SpritePixels.HasRgbaPngHeader(stream))
+            {
                 throw new InvalidDataException("Sprite atlas must be an 8-bit RGBA PNG.");
+            }
+
             stream.Position = 0;
             var decoder = BitmapDecoder.Create(
                 stream,
@@ -136,7 +160,9 @@ public static class SpriteSheetLoader
                 BitmapCacheOption.OnLoad);
 
             if (decoder.Frames.Count == 0)
+            {
                 throw new InvalidDataException("The sprite atlas contains no bitmap frames.");
+            }
 
             var converted = new FormatConvertedBitmap(decoder.Frames[0], PixelFormats.Bgra32, null, 0);
             converted.Freeze();
@@ -147,8 +173,8 @@ public static class SpriteSheetLoader
             throw new InvalidDataException($"Sprite atlas '{imagePath}' could not be decoded: {ex.Message}", ex);
         }
 
-        var expectedWidth = metadata.Columns * metadata.FrameWidth;
-        var expectedHeight = metadata.Rows * metadata.FrameHeight;
+        int expectedWidth = metadata.Columns * metadata.FrameWidth;
+        int expectedHeight = metadata.Rows * metadata.FrameHeight;
 
         if (atlas.PixelWidth != expectedWidth || atlas.PixelHeight != expectedHeight)
         {
@@ -157,22 +183,24 @@ public static class SpriteSheetLoader
                 $"but metadata describes a {expectedWidth}x{expectedHeight} grid.");
         }
 
-        var alpha = ExtractAlpha(atlas);
-        var pixelBytes = new byte[atlas.PixelWidth * atlas.PixelHeight * 4];
+        byte[] pixelBytes = new byte[atlas.PixelWidth * atlas.PixelHeight * 4];
         atlas.CopyPixels(pixelBytes, atlas.PixelWidth * 4, 0);
-        var pixelErrors = SpritePixels.Validate(metadata, pixelBytes);
+        IReadOnlyList<string> pixelErrors = SpritePixels.Validate(metadata, pixelBytes);
         if (pixelErrors.Count > 0)
+        {
             throw new InvalidDataException("Sprite atlas is invalid: " + string.Join("; ", pixelErrors));
+        }
 
+        byte[] alpha = ExtractAlpha(pixelBytes);
         var clips = new Dictionary<string, SpriteClip>(StringComparer.OrdinalIgnoreCase);
-        foreach (var clipMetadata in metadata.Animations)
+        foreach (AnimationClipMetadata clipMetadata in metadata.Animations)
         {
             var frames = new List<SpriteFrame>(clipMetadata.FrameCount);
 
-            for (var i = 0; i < clipMetadata.FrameCount; i++)
+            for (int i = 0; i < clipMetadata.FrameCount; i++)
             {
-                var cellIndex = clipMetadata.StartIndex + i;
-                var (column, row) = SpriteMetadataValidator.CellPosition(metadata, cellIndex);
+                int cellIndex = clipMetadata.StartIndex + i;
+                (int column, int row) = SpriteMetadataValidator.CellPosition(metadata, cellIndex);
 
                 var cropped = new CroppedBitmap(
                     atlas,
@@ -192,14 +220,14 @@ public static class SpriteSheetLoader
         return new SpriteSheet(metadata, atlas.PixelWidth, alpha, clips);
     }
 
-    private static byte[] ExtractAlpha(BitmapSource atlas)
+    private static byte[] ExtractAlpha(byte[] pixels)
     {
-        var stride = atlas.PixelWidth * 4;
-        var pixels = new byte[stride * atlas.PixelHeight];
-        atlas.CopyPixels(pixels, stride, 0);
+        byte[] alpha = new byte[pixels.Length / 4];
+        for (int i = 0; i < alpha.Length; i++)
+        {
+            alpha[i] = pixels[(i * 4) + 3];
+        }
 
-        var alpha = new byte[atlas.PixelWidth * atlas.PixelHeight];
-        for (var i = 0; i < alpha.Length; i++) alpha[i] = pixels[(i * 4) + 3];
         return alpha;
     }
 }

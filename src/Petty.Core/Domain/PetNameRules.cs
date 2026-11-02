@@ -24,7 +24,7 @@ public static class PetNameRules
             return false;
         }
 
-        foreach (var ch in name)
+        foreach (char ch in name)
         {
             if (char.IsControl(ch))
             {

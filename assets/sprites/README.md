@@ -8,7 +8,8 @@ arrows below the preview to cycle coats. Runtime restores the selected stable as
 ## Files and format
 
 `packs/<breed-id>/<breed-id>-<coat-id>.png` and its matching JSON form one variant.
-Each pack also includes `PACK_NOTES.md` describing provenance and visual limitations.
+All sprite pixels are original C# artwork from Petty.Assets; no third-party pixels
+or AI-generated art are bundled. Breed/coat descriptions live in breed-designs.json.
 All atlases are 512×512: eight columns and eight rows of 64×64 cells. Frames are
 row-major and clips occupy contiguous ranges; they need not start on a row boundary.
 Artwork uses a 32×32 logical grid expanded exactly 2×, binary alpha and ground row 53.
@@ -43,7 +44,7 @@ Run from the repository root on Windows with .NET 10:
 dotnet run --project src/Petty.Assets -c Release -- --regenerate
 dotnet run --project src/Petty.Assets -c Release -- --verify
 dotnet run --project src/Petty.Assets -c Release -- --verify --pack assets/sprites/packs/siamese
-dotnet run --project src/Petty.Assets -c Release -- --preview artifacts/session10
+dotnet run --project src/Petty.Assets -c Release -- --preview artifacts/verification/preview
 dotnet run --project scripts/ContentVerification -c Release
 ```
 
@@ -54,7 +55,7 @@ three-coat pack format as well as the current five-coat format. New repository p
 covered by tests enforcing exactly eight breeds and forty variants.
 
 `--preview` writes a coat overview and standalone animated HTML with embedded images.
-Open `artifacts/session10/preview.html` in a local browser to inspect clips and frames.
+Open `artifacts/verification/preview/preview.html` in a local browser to inspect clips and frames.
 PNG DPI metadata is fixed at 96 for repeatability across console/WPF rendering contexts.
 
 ## Runtime and compatibility

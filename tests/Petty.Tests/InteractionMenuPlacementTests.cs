@@ -24,7 +24,7 @@ public class InteractionMenuPlacementTests
     public void MenuStaysVisibleAndTouchesAnchor(double x, double y)
     {
         var area = new ScreenRect(0, 0, 1000, 700);
-        var menu = InteractionMenuPlacement.Place(area, x, y, 220, 60);
+        ScreenRect menu = InteractionMenuPlacement.Place(area, x, y, 220, 60);
         Assert.InRange(menu.X, area.X, area.Right - menu.Width);
         Assert.InRange(menu.Y, area.Y, area.Bottom - menu.Height);
         Assert.InRange(x, menu.X - 1, menu.Right + 1);

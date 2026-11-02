@@ -1,10 +1,17 @@
-<UserControl x:Class="Petty.App.Views.DebugParameterControl"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+﻿<UserControl
+    x:Class="Petty.App.Views.DebugParameterControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel>
         <DockPanel Margin="0,5,0,0">
-            <TextBox x:Name="ValueInput" DockPanel.Dock="Right" Width="82" MinWidth="82"
-                     TextAlignment="Right" VerticalContentAlignment="Center" Padding="3,1" />
+            <TextBox
+                x:Name="ValueInput"
+                DockPanel.Dock="Right"
+                Width="82"
+                MinWidth="82"
+                TextAlignment="Right"
+                VerticalContentAlignment="Center"
+                Padding="3,1" />
             <TextBlock x:Name="LabelText" />
         </DockPanel>
         <Slider x:Name="ValueSlider" IsSnapToTickEnabled="True" />

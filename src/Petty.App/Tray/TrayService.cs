@@ -1,9 +1,9 @@
-using Petty.App.Views;
-using Petty.Core.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using Petty.App.Views;
+using Petty.Core.Diagnostics;
 
 namespace Petty.App.Tray;
 
@@ -11,7 +11,7 @@ namespace Petty.App.Tray;
 /// Notification-area icon. Exactly two commands (settings, exit); no double-click
 /// action. The icon handle is created from the generated PNG and destroyed on dispose.
 /// </summary>
-public sealed class TrayService: IDisposable
+public sealed class TrayService : IDisposable
 {
     public const string TrayIconFileName = "tray-cat.png";
 
@@ -48,8 +48,16 @@ public sealed class TrayService: IDisposable
 
     private void OnMouseUp(object? sender, MouseEventArgs e)
     {
-        if (e.Button != MouseButtons.Right) return;
-        if (_popup is not null) { _popup.Close(); return; }
+        if (e.Button != MouseButtons.Right)
+        {
+            return;
+        }
+
+        if (_popup is not null)
+        {
+            _popup.Close();
+            return;
+        }
         var popup = new TrayPopupWindow();
         _popup = popup;
         popup.Closed += (_, _) => _popup = null;
@@ -66,7 +74,11 @@ public sealed class TrayService: IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
+
         _disposed = true;
         _popup?.Close();
         _icon.MouseUp -= OnMouseUp;
@@ -74,7 +86,10 @@ public sealed class TrayService: IDisposable
         _icon.Dispose();
         _iconImage?.Dispose();
 
-        if (_iconHandle != IntPtr.Zero) DestroyIcon(_iconHandle);
+        if (_iconHandle != IntPtr.Zero)
+        {
+            DestroyIcon(_iconHandle);
+        }
     }
 
     [DllImport("user32.dll", SetLastError = true)]

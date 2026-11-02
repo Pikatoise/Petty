@@ -26,10 +26,8 @@ $unwanted = Get-ChildItem -LiteralPath $folder -Recurse -File | Where-Object {
     $_.Extension -in @('.bak', '.log')
 }
 if ($unwanted) { throw 'Portable output contains user data or retired content.' }
-Copy-Item -LiteralPath (Join-Path $repo 'docs/PORTABLE_README.md') -Destination (Join-Path $folder 'README.md')
-foreach ($document in @('WINDOWS_RELEASE.md', 'RELEASE_CHECKLIST.md')) {
-    Copy-Item -LiteralPath (Join-Path $repo "docs/$document") -Destination (Join-Path $folder $document)
-}
+Copy-Item -LiteralPath (Join-Path $repo 'README.md') -Destination (Join-Path $folder 'README.md')
+Copy-Item -LiteralPath (Join-Path $repo 'LICENSE.txt') -Destination (Join-Path $folder 'LICENSE.txt')
 $archive = Join-Path $releaseRoot "$releaseName.zip"
 Compress-Archive -Path (Join-Path $folder '*') -DestinationPath $archive -CompressionLevel Optimal
 Get-Item -LiteralPath $archive | Select-Object FullName, Length

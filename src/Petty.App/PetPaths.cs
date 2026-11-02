@@ -13,15 +13,19 @@ internal sealed record PetPaths(string DataDirectory, string StateFile, string L
 
     public static PetPaths Resolve(string? overrideDirectory = null)
     {
-        var directory = overrideDirectory;
+        string? directory = overrideDirectory;
 
         if (string.IsNullOrWhiteSpace(directory))
+        {
             directory = Environment.GetEnvironmentVariable(DataDirectoryVariable);
+        }
 
         if (string.IsNullOrWhiteSpace(directory))
+        {
             directory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Petty");
+        }
 
         directory = Path.GetFullPath(Environment.ExpandEnvironmentVariables(directory));
         Directory.CreateDirectory(directory);

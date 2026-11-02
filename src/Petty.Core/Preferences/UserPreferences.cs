@@ -19,7 +19,11 @@ public sealed class PreferencesStore(string path)
 
     public UserPreferences Load(Action<string>? reportError = null)
     {
-        if (!File.Exists(path)) return new();
+        if (!File.Exists(path))
+        {
+            return new();
+        }
+
         try
         {
             return (JsonSerializer.Deserialize<UserPreferences>(File.ReadAllText(path), Options) ?? new()).Sanitized();
@@ -33,9 +37,9 @@ public sealed class PreferencesStore(string path)
 
     public void Save(UserPreferences preferences)
     {
-        var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        string directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
         Directory.CreateDirectory(directory);
-        var temporary = path + ".tmp";
+        string temporary = path + ".tmp";
         try
         {
             using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -47,7 +51,10 @@ public sealed class PreferencesStore(string path)
         }
         finally
         {
-            if (File.Exists(temporary)) File.Delete(temporary);
+            if (File.Exists(temporary))
+            {
+                File.Delete(temporary);
+            }
         }
     }
 }

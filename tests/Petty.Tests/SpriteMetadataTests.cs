@@ -26,17 +26,14 @@ public class SpriteMetadataTests
     };
 
     [Fact]
-    public void ValidMetadataHasNoErrors()
-    {
-        Assert.Empty(SpriteMetadataValidator.Validate(Valid()));
-    }
+    public void ValidMetadataHasNoErrors() => Assert.Empty(SpriteMetadataValidator.Validate(Valid()));
 
     [Theory]
     [InlineData(64, 45)]
     [InlineData(58, 0)]
     public void PlayContactOutsideSpriteIsRejected(int x, int y)
     {
-        var metadata = Valid();
+        SpriteSheetMetadata metadata = Valid();
         metadata.PlayContactX = x;
         metadata.PlayContactY = y;
         Assert.Contains(SpriteMetadataValidator.Validate(metadata), error => error.Contains("Play paw contact"));
@@ -45,7 +42,7 @@ public class SpriteMetadataTests
     [Fact]
     public void SpeciesIsOptionalForLegacyAndLimitedToCatsOrDogs()
     {
-        var metadata = Valid();
+        SpriteSheetMetadata metadata = Valid();
         Assert.Empty(SpriteMetadataValidator.Validate(metadata));
         metadata.SpeciesId = "dog";
         Assert.Empty(SpriteMetadataValidator.Validate(metadata));
@@ -56,10 +53,10 @@ public class SpriteMetadataTests
     [Fact]
     public void MissingRequiredClipIsReported()
     {
-        var metadata = Valid();
+        SpriteSheetMetadata metadata = Valid();
         metadata.Animations.RemoveAll(a => a.Name == "sleep");
 
-        var errors = SpriteMetadataValidator.Validate(metadata);
+        IReadOnlyList<string> errors = SpriteMetadataValidator.Validate(metadata);
 
         Assert.Contains(errors, e => e.Contains("sleep"));
     }
@@ -67,10 +64,10 @@ public class SpriteMetadataTests
     [Fact]
     public void FramesOutsideTheGridAreReported()
     {
-        var metadata = Valid();
+        SpriteSheetMetadata metadata = Valid();
         metadata.Animations[^1].StartIndex = 60;
 
-        var errors = SpriteMetadataValidator.Validate(metadata);
+        IReadOnlyList<string> errors = SpriteMetadataValidator.Validate(metadata);
 
         Assert.Contains(errors, e => e.Contains("past the atlas"));
     }
@@ -78,10 +75,10 @@ public class SpriteMetadataTests
     [Fact]
     public void DuplicateClipNamesAndBadFrameRateAreReported()
     {
-        var metadata = Valid();
+        SpriteSheetMetadata metadata = Valid();
         metadata.Animations.Add(new AnimationClipMetadata { Name = "IDLE", StartIndex = 50, FrameCount = 1, FramesPerSecond = 0 });
 
-        var errors = SpriteMetadataValidator.Validate(metadata);
+        IReadOnlyList<string> errors = SpriteMetadataValidator.Validate(metadata);
 
         Assert.Contains(errors, e => e.Contains("Duplicate"));
         Assert.Contains(errors, e => e.Contains("frame rate"));
@@ -90,7 +87,7 @@ public class SpriteMetadataTests
     [Fact]
     public void InvalidFrameSizeIsReported()
     {
-        var metadata = Valid();
+        SpriteSheetMetadata metadata = Valid();
         metadata.FrameWidth = 2;
 
         Assert.Contains(SpriteMetadataValidator.Validate(metadata), e => e.Contains("FrameWidth"));
@@ -99,24 +96,21 @@ public class SpriteMetadataTests
     [Fact]
     public void CellPositionIsRowMajor()
     {
-        var metadata = Valid();
+        SpriteSheetMetadata metadata = Valid();
         Assert.Equal((0, 0), SpriteMetadataValidator.CellPosition(metadata, 0));
         Assert.Equal((7, 0), SpriteMetadataValidator.CellPosition(metadata, 7));
         Assert.Equal((0, 1), SpriteMetadataValidator.CellPosition(metadata, 8));
     }
 
     [Fact]
-    public void NullMetadataIsReported()
-    {
-        Assert.NotEmpty(SpriteMetadataValidator.Validate(null));
-    }
+    public void NullMetadataIsReported() => Assert.NotEmpty(SpriteMetadataValidator.Validate(null));
 
     [Theory]
     [InlineData("../other.png")]
     [InlineData("other.png")]
     public void RejectsMismatchedOrEscapingImageNames(string image)
     {
-        var metadata = Valid();
+        SpriteSheetMetadata metadata = Valid();
         metadata.Image = image;
         Assert.NotEmpty(SpriteMetadataValidator.Validate(metadata));
     }
@@ -124,7 +118,7 @@ public class SpriteMetadataTests
     [Fact]
     public void RejectsOverflowingFrameRanges()
     {
-        var metadata = Valid();
+        SpriteSheetMetadata metadata = Valid();
         metadata.Animations[0].StartIndex = int.MaxValue;
         Assert.Contains(SpriteMetadataValidator.Validate(metadata), error => error.Contains("past the atlas"));
     }
@@ -132,17 +126,20 @@ public class SpriteMetadataTests
     [Fact]
     public void ValidatesFramePixelsAndUnusedCells()
     {
-        var metadata = Valid();
-        var width = metadata.Columns * metadata.FrameWidth;
-        var pixels = new byte[width * metadata.Rows * metadata.FrameHeight * 4];
-        foreach (var clip in metadata.Animations)
-            for (var i = 0; i < clip.FrameCount; i++)
+        SpriteSheetMetadata metadata = Valid();
+        int width = metadata.Columns * metadata.FrameWidth;
+        byte[] pixels = new byte[width * metadata.Rows * metadata.FrameHeight * 4];
+        foreach (AnimationClipMetadata clip in metadata.Animations)
+        {
+            for (int i = 0; i < clip.FrameCount; i++)
             {
-                var cell = clip.StartIndex + i;
-                var x = cell % metadata.Columns * 64 + 10;
-                var y = cell / metadata.Columns * 64 + metadata.GroundRow;
+                int cell = clip.StartIndex + i;
+                int x = cell % metadata.Columns * 64 + 10;
+                int y = cell / metadata.Columns * 64 + metadata.GroundRow;
                 pixels[(y * width + x) * 4 + 3] = 255;
             }
+        }
+
         Assert.Empty(SpritePixels.Validate(metadata, pixels));
         pixels[(metadata.GroundRow * width + 10) * 4 + 3] = 128;
         Assert.Contains(SpritePixels.Validate(metadata, pixels), e => e.Contains("semi-transparent"));

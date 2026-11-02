@@ -23,7 +23,10 @@ public class PetMotionTests
         var motion = new PetMotion();
         motion.Enter(Area, windowWidth: 192);
 
-        for (var i = 0; i < 400; i++) motion.Update(TimeSpan.FromMilliseconds(50));
+        for (int i = 0; i < 400; i++)
+        {
+            motion.Update(TimeSpan.FromMilliseconds(50));
+        }
 
         Assert.False(motion.IsMoving);
         Assert.InRange(motion.X, 0, 1000);
@@ -57,7 +60,7 @@ public class PetMotionTests
     [Fact]
     public void WanderAlwaysProducesAReachableTarget()
     {
-        for (var seed = 0; seed < 20; seed++)
+        for (int seed = 0; seed < 20; seed++)
         {
             var motion = new PetMotion(x: 500, random: new Random(seed));
             motion.Wander(new MotionArea(0, 920, 800), run: false);
@@ -70,14 +73,17 @@ public class PetMotionTests
     public void WanderSometimesCrossesTheWholeScreen()
     {
         var area = new MotionArea(0, 2000, 800);
-        var edgeWalks = 0;
+        int edgeWalks = 0;
 
-        for (var seed = 0; seed < 40; seed++)
+        for (int seed = 0; seed < 40; seed++)
         {
             var motion = new PetMotion(x: 100, random: new Random(seed));
             motion.Wander(area, run: true);
 
-            if (motion.TargetX == area.Left || motion.TargetX == area.Right) edgeWalks++;
+            if (motion.TargetX == area.Left || motion.TargetX == area.Right)
+            {
+                edgeWalks++;
+            }
         }
 
         Assert.True(edgeWalks >= 5, $"expected several walks to a screen edge, got {edgeWalks} of 40");
@@ -115,7 +121,10 @@ public class PetMotionTests
         motion.Exit(Area, windowWidth: 192, direction: 1);
 
         Assert.Equal(1, motion.Facing);
-        for (var i = 0; i < 100; i++) motion.Update(TimeSpan.FromMilliseconds(100));
+        for (int i = 0; i < 100; i++)
+        {
+            motion.Update(TimeSpan.FromMilliseconds(100));
+        }
 
         Assert.Equal(Area.Right + 192, motion.X);
     }
@@ -138,7 +147,10 @@ public class PetMotionTests
         var motion = new PetMotion(x: 100);
         motion.Exit(Area, windowWidth: 192, direction: -1);
 
-        for (var i = 0; i < 100; i++) motion.Update(TimeSpan.FromMilliseconds(100));
+        for (int i = 0; i < 100; i++)
+        {
+            motion.Update(TimeSpan.FromMilliseconds(100));
+        }
 
         Assert.Equal(Area.Left - 192, motion.X);
     }

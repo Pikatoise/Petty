@@ -1,6 +1,6 @@
+using System.Buffers.Binary;
 using Petty.Core.Assets;
 using Petty.Core.Domain;
-using System.Buffers.Binary;
 
 namespace Petty.Tests;
 
@@ -19,14 +19,14 @@ public class SpriteAssetFileTests
     {
         Assert.True(File.Exists(MetadataPath), $"Missing metadata: {MetadataPath}");
 
-        var metadata = System.Text.Json.JsonSerializer.Deserialize<SpriteSheetMetadata>(
+        SpriteSheetMetadata? metadata = System.Text.Json.JsonSerializer.Deserialize<SpriteSheetMetadata>(
             File.ReadAllText(MetadataPath),
             new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
 
         Assert.NotNull(metadata);
         Assert.Empty(SpriteMetadataValidator.Validate(metadata, requirePet: true));
 
-        var totalFrames = metadata!.Animations.Sum(a => a.FrameCount);
+        int totalFrames = metadata!.Animations.Sum(a => a.FrameCount);
         Assert.Equal(64, totalFrames);
 
         var expected = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
@@ -42,9 +42,9 @@ public class SpriteAssetFileTests
             ["exit"] = 8,
         };
 
-        foreach (var (name, count) in expected)
+        foreach ((string? name, int count) in expected)
         {
-            var clip = Assert.Single(metadata.Animations, a => a.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            AnimationClipMetadata clip = Assert.Single(metadata.Animations, a => a.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             Assert.Equal(count, clip.FrameCount);
             Assert.True(clip.FramesPerSecond > 0);
         }
@@ -53,38 +53,23 @@ public class SpriteAssetFileTests
     }
 
     [Fact]
-    public void AtlasPngMatchesMetadataAndHasRealAlpha()
-    {
-        var metadata = LoadMetadata();
-        var atlasPath = Path.Combine(Path.GetDirectoryName(MetadataPath)!, metadata.Image);
-
-        Assert.True(File.Exists(atlasPath), $"Missing atlas: {atlasPath}");
-
-        var header = ReadPngHeader(atlasPath);
-
-        Assert.Equal(8, header.BitDepth);
-        Assert.Equal(6, header.ColorType); // truecolour with alpha
-        Assert.Equal(metadata.Columns * metadata.FrameWidth, header.Width);
-        Assert.Equal(metadata.Rows * metadata.FrameHeight, header.Height);
-    }
-
-    [Fact]
     public void ShippedPacksContainEightBreedsAndFortyValidCoats()
     {
-        var paths = Directory.GetFiles(Path.Combine(SpriteDirectory, "packs"), "*.json", SearchOption.AllDirectories);
+        string[] paths = Directory.GetFiles(Path.Combine(SpriteDirectory, "packs"), "*.json", SearchOption.AllDirectories);
         Assert.Equal(40, paths.Length);
         var metadataList = new List<SpriteSheetMetadata>();
-        foreach (var path in paths)
+        foreach (string path in paths)
         {
-            var id = Path.GetFileNameWithoutExtension(path);
-            var metadata = System.Text.Json.JsonSerializer.Deserialize<SpriteSheetMetadata>(
+            string id = Path.GetFileNameWithoutExtension(path);
+            SpriteSheetMetadata metadata = System.Text.Json.JsonSerializer.Deserialize<SpriteSheetMetadata>(
                 File.ReadAllText(path),
                 new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
             Assert.Equal(id, metadata.Character);
             Assert.Empty(SpriteMetadataValidator.Validate(metadata, requirePet: true));
-            var header = ReadPngHeader(Path.Combine(Path.GetDirectoryName(path)!, metadata.Image));
+            PngHeader header = ReadPngHeader(Path.Combine(Path.GetDirectoryName(path)!, metadata.Image));
             Assert.Equal(metadata.Columns * metadata.FrameWidth, header.Width);
             Assert.Equal(metadata.Rows * metadata.FrameHeight, header.Height);
+            Assert.Equal(8, header.BitDepth);
             Assert.Equal(6, header.ColorType);
             metadataList.Add(metadata);
         }
@@ -92,7 +77,7 @@ public class SpriteAssetFileTests
         Assert.Equal(8, metadataList.Select(m => m.BreedId).Distinct().Count());
         Assert.Equal(4, metadataList.Where(m => m.SpeciesId == "cat").Select(m => m.BreedId).Distinct().Count());
         Assert.Equal(4, metadataList.Where(m => m.SpeciesId == "dog").Select(m => m.BreedId).Distinct().Count());
-        foreach (var breed in metadataList.GroupBy(m => m.BreedId))
+        foreach (IGrouping<string?, SpriteSheetMetadata> breed in metadataList.GroupBy(m => m.BreedId))
         {
             Assert.Equal(5, breed.Count());
             Assert.Equal(5, breed.Select(m => m.CoatId).Distinct().Count());
@@ -104,19 +89,12 @@ public class SpriteAssetFileTests
     }
 
     [Fact]
-    public void GroundRowSitsInsideTheFrame()
-    {
-        var metadata = LoadMetadata();
-        Assert.InRange(metadata.GroundRow, 1, metadata.FrameHeight - 2);
-    }
-
-    [Fact]
     public void TrayIconIsACrisp32pxPng()
     {
-        var path = Path.Combine(SpriteDirectory, "tray-cat.png");
+        string path = Path.Combine(SpriteDirectory, "tray-cat.png");
         Assert.True(File.Exists(path), $"Missing tray icon: {path}");
 
-        var header = ReadPngHeader(path);
+        PngHeader header = ReadPngHeader(path);
 
         Assert.Equal(32, header.Width);
         Assert.Equal(32, header.Height);
@@ -127,10 +105,10 @@ public class SpriteAssetFileTests
     [Fact]
     public void WindowIconIsAWellFormed32pxIco()
     {
-        var path = Path.Combine(SpriteDirectory, "petty.ico");
+        string path = Path.Combine(SpriteDirectory, "petty.ico");
         Assert.True(File.Exists(path), $"Missing window icon: {path}");
 
-        var bytes = File.ReadAllBytes(path);
+        byte[] bytes = File.ReadAllBytes(path);
 
         Assert.True(bytes.Length > 22);
         Assert.Equal(1, BitConverter.ToUInt16(bytes, 2));      // type: icon
@@ -138,8 +116,8 @@ public class SpriteAssetFileTests
         Assert.Equal(32, bytes[6]);                            // width
         Assert.Equal(32, bytes[7]);                            // height
 
-        var size = BitConverter.ToUInt32(bytes, 14);
-        var offset = BitConverter.ToUInt32(bytes, 18);
+        uint size = BitConverter.ToUInt32(bytes, 14);
+        uint offset = BitConverter.ToUInt32(bytes, 18);
         Assert.Equal(bytes.Length - 22u, size);
         Assert.Equal(22u, offset);
         Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, bytes[22..26]); // PNG payload
@@ -148,17 +126,17 @@ public class SpriteAssetFileTests
     [Fact]
     public void PropSpritesAreRealAlphaPngs()
     {
-        foreach (var (file, width, height) in new[]
+        foreach ((string? file, int width, int height) in new[]
                  {
                      ("bowl-empty.png", 24, 24),
                      ("bowl-full.png", 24, 24),
                      ("ball.png", 16, 16),
                  })
         {
-            var path = Path.Combine(SpriteDirectory, file);
+            string path = Path.Combine(SpriteDirectory, file);
             Assert.True(File.Exists(path), $"Missing prop sprite: {path}");
 
-            var header = ReadPngHeader(path);
+            PngHeader header = ReadPngHeader(path);
 
             Assert.Equal(width, header.Width);
             Assert.Equal(height, header.Height);
@@ -166,25 +144,20 @@ public class SpriteAssetFileTests
         }
     }
 
-    private static SpriteSheetMetadata LoadMetadata() =>
-        System.Text.Json.JsonSerializer.Deserialize<SpriteSheetMetadata>(
-            File.ReadAllText(MetadataPath),
-            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
-
     private readonly record struct PngHeader(int Width, int Height, int BitDepth, int ColorType);
 
     private static PngHeader ReadPngHeader(string path)
     {
-        var bytes = new byte[33];
-        using var stream = File.OpenRead(path);
-        var read = stream.Read(bytes, 0, bytes.Length);
+        byte[] bytes = new byte[33];
+        using FileStream stream = File.OpenRead(path);
+        int read = stream.Read(bytes, 0, bytes.Length);
 
         Assert.Equal(33, read);
         Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }, bytes.Take(8).ToArray());
         Assert.Equal("IHDR", System.Text.Encoding.ASCII.GetString(bytes, 12, 4));
 
-        var width = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(16, 4));
-        var height = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(20, 4));
+        int width = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(16, 4));
+        int height = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(20, 4));
         return new PngHeader(width, height, bytes[24], bytes[25]);
     }
 
@@ -194,7 +167,11 @@ public class SpriteAssetFileTests
 
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "Petty.slnx"))) return directory.FullName;
+            if (File.Exists(Path.Combine(directory.FullName, "Petty.slnx")))
+            {
+                return directory.FullName;
+            }
+
             directory = directory.Parent;
         }
 

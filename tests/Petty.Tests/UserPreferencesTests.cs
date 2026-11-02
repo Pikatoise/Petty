@@ -17,12 +17,12 @@ public class UserPreferencesTests
     [Fact]
     public void PreferencesRoundTripAndCorruptFileDoesNotTouchPetState()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "petty-preferences-" + Guid.NewGuid());
+        string directory = Path.Combine(Path.GetTempPath(), "petty-preferences-" + Guid.NewGuid());
         Directory.CreateDirectory(directory);
         try
         {
-            var path = Path.Combine(directory, "preferences.json");
-            var petPath = Path.Combine(directory, "pet-state.json");
+            string path = Path.Combine(directory, "preferences.json");
+            string petPath = Path.Combine(directory, "pet-state.json");
             File.WriteAllText(petPath, "existing pet");
             var store = new PreferencesStore(path);
             Assert.True(store.Load().Autostart);

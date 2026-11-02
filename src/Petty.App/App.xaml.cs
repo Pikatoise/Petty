@@ -1,3 +1,7 @@
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Threading;
 using Petty.App.Desktop;
 using Petty.App.Pet;
 using Petty.App.Sprites;
@@ -8,21 +12,17 @@ using Petty.Core.Domain;
 using Petty.Core.Persistence;
 using Petty.Core.Preferences;
 using Petty.Core.Runtime;
-using System.IO;
-using System.Text.Json;
-using System.Windows;
-using System.Windows.Threading;
 
 namespace Petty.App;
 
 /// <summary>
-/// Application composition root. Stage 3 starts the pet directly with a provisionally
-/// loaded pet; stage 4 adds the tray icon, the first-run wizard and the settings
-/// window around this same session.
+/// Composes pet creation, live sessions, settings, tray integration and shutdown.
 /// </summary>
-public partial class App: Application
+public partial class App : Application
 {
-    private sealed class StartupMessageException(string message): Exception(message) { }
+    private sealed class StartupMessageException(string message) : Exception(message)
+    {
+    }
     private static readonly JsonSerializerOptions ReportJsonOptions = new() { WriteIndented = true };
 
     private readonly DisplayService _displayService = new();
@@ -79,7 +79,7 @@ public partial class App: Application
         catch (Exception ex)
         {
             _log?.Error("Startup initialization failed.", ex);
-            var initialMessage = System.Globalization.CultureInfo.InstalledUICulture.TwoLetterISOLanguageName == "ru"
+            string initialMessage = System.Globalization.CultureInfo.InstalledUICulture.TwoLetterISOLanguageName == "ru"
                 ? "Не удалось запустить Petty. Проверьте параметры запуска и доступ к папке данных."
                 : "Petty could not start. Check its launch arguments and access to the data folder.";
             MessageBox.Show(
@@ -94,7 +94,7 @@ public partial class App: Application
         _log.Info($"Petty starting (pid {Environment.ProcessId}). Data directory: {_paths.DataDirectory}");
 
         // Two instances would fight over the same state file and tray icon.
-        _singleInstance = new System.Threading.Mutex(initiallyOwned: true, @"Local\Petty.SingleInstance", out var isFirst);
+        _singleInstance = new System.Threading.Mutex(initiallyOwned: true, @"Local\Petty.SingleInstance", out bool isFirst);
         if (!isFirst)
         {
             _log.Warn("Another Petty instance is already running; this one exits.");
@@ -123,21 +123,15 @@ public partial class App: Application
     {
         _shellWatcher?.Dispose();
         _shellWatcher = null;
-        _exitTimer?.Stop();
-        _autoSaveTimer?.Stop();
-        _settings?.Close();
-        _settings = null;
-#if DEBUG
-        _debugWindow?.Close();
-        _debugWindow = null;
-#endif
-        _session?.Dispose();
-        _session = null;
+        StopAppTimers();
+        CloseSecondaryWindows();
+        StopSession();
         _window = null;
         _sheet = null;
         _runtime = null;
         _bowlWindow = null;
         _ballWindow = null;
+        _handWindow = null;
         _bowlEmptyImage = null;
         _tray?.Dispose();
         _tray = null;
@@ -151,8 +145,7 @@ public partial class App: Application
     {
         _log?.Info($"Windows session ending ({e.ReasonSessionEnding}); saving without departure animation.");
         _shutdownStarted = true;
-        _exitTimer?.Stop();
-        _autoSaveTimer?.Stop();
+        StopAppTimers();
         SaveState("session-ending");
         // WPF calls Shutdown after this non-cancelled event; OnExit disposes resources.
         base.OnSessionEnding(e);
@@ -161,11 +154,14 @@ public partial class App: Application
 
     private void StartPet()
     {
-        var now = DateTimeOffset.UtcNow;
-        var tuning = PetTuning.Default.Sanitized();
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        PetTuning tuning = PetTuning.Default.Sanitized();
 #if DEBUG
         _debugStore = new DebugTuningStore(Path.Combine(_paths!.DataDirectory, "dev-tuning.json"));
-        try { _debugTuning = _debugStore.Load(); }
+        try
+        {
+            _debugTuning = _debugStore.Load();
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
         {
             _log!.Error("Could not load debug tuning; defaults are in use.", ex);
@@ -177,13 +173,15 @@ public partial class App: Application
         _tuning = tuning;
 
         _store = new PetStateStore(_paths!.StateFile, tuning);
-        var load = _store.Load();
+        LoadResult load = _store.Load();
         _log!.Info($"State: {load.Status}. {load.Message}".TrimEnd());
 
         if (load.Status is LoadStatus.UnsupportedVersion)
+        {
             throw new StartupMessageException(Localization.Text("StateUnsupported"));
+        }
 
-        var assetDirectory = SpriteAssetLocator.FindSharedDirectory()
+        string assetDirectory = SpriteAssetLocator.FindSharedDirectory()
             ?? throw new StartupMessageException(Localization.Text("AssetsMissing"));
 
         _assetDirectory = assetDirectory;
@@ -197,12 +195,15 @@ public partial class App: Application
         {
             try
             {
-                var savedAsset = load.Snapshot.AssetId == PetCatalog.LegacyAssetId ? PetCatalog.DefaultAssetId : load.Snapshot.AssetId;
-                var variant = _variants.FirstOrDefault(v => v.AssetId == savedAsset)
+                string savedAsset = load.Snapshot.AssetId == PetCatalog.LegacyAssetId ? PetCatalog.DefaultAssetId : load.Snapshot.AssetId;
+                SpriteVariant variant = _variants.FirstOrDefault(v => v.AssetId == savedAsset)
                     ?? throw new InvalidDataException($"Saved sprite '{load.Snapshot.AssetId}' was not found.");
                 _sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
                 if (PetCatalog.MigrateLegacyAppearance(load.Snapshot))
+                {
                     _log.Info($"Migrated retired appearance '{PetCatalog.LegacyAssetId}' to '{PetCatalog.DefaultAssetId}'; pet identity and needs preserved.");
+                }
+
                 _stateWasPersisted = true;
                 runtime = PetRuntime.Restore(load.Snapshot, tuning, now);
                 _log.Info($"Restored '{runtime.Snapshot.PetName}' (satiety {runtime.Needs.Satiety:F0}, happiness {runtime.Needs.Happiness:F0}).");
@@ -210,7 +211,7 @@ public partial class App: Application
             catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or NotSupportedException)
             {
                 _log.Error("The saved appearance is missing or invalid.", ex);
-                var choice = MessageBox.Show(string.Format(Localization.Text("SavedAppearanceRecovery"), load.Snapshot.AssetId),
+                MessageBoxResult choice = MessageBox.Show(string.Format(Localization.Text("SavedAppearanceRecovery"), load.Snapshot.AssetId),
                     "Petty", MessageBoxButton.YesNo, MessageBoxImage.None, MessageBoxResult.No);
                 if (choice != MessageBoxResult.Yes)
                 {
@@ -229,7 +230,7 @@ public partial class App: Application
         }
         else if (_options.CreateName is { } createName)
         {
-            var variant = _variants.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId)
+            SpriteVariant variant = _variants.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId)
                 ?? _variants.FirstOrDefault() ?? throw new StartupMessageException(Localization.Text("NoSprites"));
             _sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
             runtime = CreatePet(createName, tuning, variant);
@@ -237,7 +238,7 @@ public partial class App: Application
         }
         else
         {
-            var warning = load.Status is LoadStatus.Corrupt or LoadStatus.UnsupportedVersion
+            string? warning = load.Status is LoadStatus.Corrupt or LoadStatus.UnsupportedVersion
                 ? Localization.Text("CorruptState")
                 : null;
 
@@ -302,16 +303,19 @@ public partial class App: Application
             _window.AttachToDesktop(_options.DesktopLayer, _log!);
         }
 
-        if (_bowlWindow is null) CreatePropWindows();
+        if (_bowlWindow is null)
+        {
+            CreatePropWindows();
+        }
 
-        _session?.Dispose();
+        StopSession();
         _session = new PetSession(
             runtime, _sheet!, _window, _bowlWindow!, _ballWindow!, _handWindow!, _displayService, _assetDirectory!, tuning, _log!);
 #if DEBUG
         _session.ApplyDebugTuning(tuning, _debugTuning.TimeScale);
 #endif
         _session.ExitAnimationCompleted += OnExitAnimationCompleted;
-        _session.StateChanged += (_, reason) => SaveState(reason);
+        _session.StateChanged += OnSessionStateChanged;
         _session.Start();
 
         if (_autoSaveTimer is null)
@@ -321,7 +325,11 @@ public partial class App: Application
             _autoSaveTimer.Start();
         }
 
-        if (_tray is null) CreateTray();
+        if (_tray is null)
+        {
+            CreateTray();
+        }
+
         _shellWatcher ??= new ShellRestartWatcher(RestoreShell);
     }
 
@@ -349,11 +357,18 @@ public partial class App: Application
 
     private void RestoreShell()
     {
-        if (_shutdownStarted || _window is null) return;
+        if (_shutdownStarted || _window is null)
+        {
+            return;
+        }
+
         _tray?.ClosePopup();
         _window.AttachToDesktop(_options.DesktopLayer, _log!);
-        foreach (var prop in Windows.OfType<PropWindow>())
+        foreach (PropWindow prop in Windows.OfType<PropWindow>())
+        {
             prop.AttachToDesktop(_options.DesktopLayer, _log!);
+        }
+
         _session?.RestoreShell();
         _log?.Info("Shell restart: desktop windows reattached; tray icon restoration is handled by NotifyIcon.");
     }
@@ -387,7 +402,7 @@ public partial class App: Application
 
     private void CreateTray()
     {
-        var iconPath = Path.Combine(_assetDirectory!, TrayService.TrayIconFileName);
+        string iconPath = Path.Combine(_assetDirectory!, TrayService.TrayIconFileName);
         _tray = new TrayService(iconPath, _log!);
         _tray.SettingsRequested += (_, _) => ShowSettings();
         _tray.ExitRequested += (_, _) => RequestExitFromTray();
@@ -399,12 +414,24 @@ public partial class App: Application
 #if DEBUG
     private void ShowDebugWindow()
     {
-        if (_runtime is null || _debugStore is null) return;
-        if (_debugWindow is { IsVisible: true }) { _debugWindow.Activate(); return; }
+        if (_runtime is null || _debugStore is null)
+        {
+            return;
+        }
+
+        if (_debugWindow is { IsVisible: true })
+        {
+            _debugWindow.Activate();
+            return;
+        }
         _debugWindow = new DebugWindow(_runtime, () => _session, _debugTuning, _debugStore,
             settings => { _debugTuning = settings; _tuning = settings.ToPetTuning(); _session?.ApplyDebugTuning(_tuning, settings.TimeScale); },
             () => SaveState("debug"));
-        if (_debugLoadError) _debugWindow.ShowLoadError();
+        if (_debugLoadError)
+        {
+            _debugWindow.ShowLoadError();
+        }
+
         _debugWindow.Closed += (_, _) => _debugWindow = null;
         _debugWindow.Show();
     }
@@ -414,7 +441,10 @@ public partial class App: Application
 
     private void ShowSettings()
     {
-        if (_runtime is null) return;
+        if (_runtime is null)
+        {
+            return;
+        }
 
         if (_settings is { IsVisible: true })
         {
@@ -432,9 +462,12 @@ public partial class App: Application
 
     private bool OnRenameRequested(string name)
     {
-        if (_runtime is null) return false;
+        if (_runtime is null)
+        {
+            return false;
+        }
 
-        var previous = _runtime.Snapshot.PetName;
+        string previous = _runtime.Snapshot.PetName;
         _runtime.Snapshot.PetName = name;
         if (!SaveState("rename"))
         {
@@ -449,14 +482,23 @@ public partial class App: Application
     {
         _settings?.Close();
 
-        if (_sheet is null || _tuning is not { } tuning) return;
+        if (_sheet is null || _tuning is not { } tuning)
+        {
+            return;
+        }
 
         _variants = SpriteAssetLocator.Discover(Path.Combine(_paths!.DataDirectory, "sprites"), message => _log!.Warn(message));
         var wizard = new CreationWizardWindow(_variants, firstRun: false, PetNameRules.DefaultName, warning: null, _sheet);
-        if (wizard.ShowDialog() != true) return;
+        if (wizard.ShowDialog() != true)
+        {
+            return;
+        }
 
         PetRuntime runtime;
-        try { runtime = CreatePet(wizard.ConfirmedName, tuning, wizard.SelectedVariant!); }
+        try
+        {
+            runtime = CreatePet(wizard.ConfirmedName, tuning, wizard.SelectedVariant!);
+        }
         catch (Exception ex)
         {
             _log?.Error("Could not save the replacement pet; keeping the current session.", ex);
@@ -471,8 +513,7 @@ public partial class App: Application
 #endif
         if (!ReferenceEquals(_sheet, wizard.SelectedSheet))
         {
-            _session?.Dispose();
-            _session = null;
+            StopSession();
             _window?.Close();
             _window = null;
             _sheet = wizard.SelectedSheet;
@@ -486,7 +527,9 @@ public partial class App: Application
         _settings?.Close();
 
         if (_session is null || !_session.RequestExit())
+        {
             FinishAndShutdown();
+        }
     }
 
     private void OnExitTimerTick(object? sender, EventArgs e)
@@ -494,19 +537,21 @@ public partial class App: Application
         _exitTimer?.Stop();
 
         if (_session is null || !_session.RequestExit())
+        {
             FinishAndShutdown();
+        }
     }
 
-    private void OnExitAnimationCompleted(object? sender, EventArgs e)
-    {
-        FinishAndShutdown();
-    }
+    private void OnExitAnimationCompleted(object? sender, EventArgs e) => FinishAndShutdown();
 
     private void OnAutoSaveTick(object? sender, EventArgs e) => SaveState("autosave");
 
     private bool SaveState(string reason)
     {
-        if (!_stateWasPersisted || _runtime is null || _store is null) return false;
+        if (!_stateWasPersisted || _runtime is null || _store is null)
+        {
+            return false;
+        }
 
         try
         {
@@ -523,27 +568,27 @@ public partial class App: Application
 
     private void FinishAndShutdown()
     {
-        if (_shutdownStarted) return;
+        if (_shutdownStarted)
+        {
+            return;
+        }
+
         _shutdownStarted = true;
 
-        _exitTimer?.Stop();
-        _autoSaveTimer?.Stop();
+        StopAppTimers();
         _log?.Info("Shutdown requested.");
 
         // Save first: a broken diagnostics report must never cost the pet's state.
         SaveState("shutdown");
 
-        _settings?.Close();
-        _settings = null;
-#if DEBUG
-        _debugWindow?.Close();
-        _debugWindow = null;
-#endif
+        CloseSecondaryWindows();
 
-        if (_paths is not null) WriteReport(_paths.FinalReportFile, "final");
+        if (_paths is not null)
+        {
+            WriteReport(_paths.FinalReportFile, "final");
+        }
 
-        _session?.Dispose();
-        _session = null;
+        StopSession();
 
         _window?.Close();
         _window = null;
@@ -562,6 +607,37 @@ public partial class App: Application
         Shutdown();
     }
 
+    private void StopAppTimers()
+    {
+        _exitTimer?.Stop();
+        _autoSaveTimer?.Stop();
+    }
+
+    private void CloseSecondaryWindows()
+    {
+        _settings?.Close();
+        _settings = null;
+#if DEBUG
+        _debugWindow?.Close();
+        _debugWindow = null;
+#endif
+    }
+
+    private void OnSessionStateChanged(object? sender, string reason) => SaveState(reason);
+
+    private void StopSession()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        _session.ExitAnimationCompleted -= OnExitAnimationCompleted;
+        _session.StateChanged -= OnSessionStateChanged;
+        _session.Dispose();
+        _session = null;
+    }
+
     /// <summary>
     /// Writes a machine-readable diagnostics snapshot. It is produced at startup and
     /// again at shutdown (<paramref name="phase"/> = "final") so the window geometry
@@ -569,16 +645,19 @@ public partial class App: Application
     /// </summary>
     private void WriteReport(string path, string phase)
     {
-        if (_log is null || _sheet is null || _window is null || _runtime is null || _assetDirectory is null) return;
+        if (_log is null || _sheet is null || _window is null || _runtime is null || _assetDirectory is null)
+        {
+            return;
+        }
 
         try
         {
-            var attachment = _window.Attachment;
-            var displays = _displayLayout.Count > 0 ? _displayLayout : _displayService.GetDisplays();
-            var display = _displayService.Primary(displays);
-            var rect = _window.PlacementRect;
+            DesktopAttachment attachment = _window.Attachment;
+            IReadOnlyList<DisplayInfo> displays = _displayLayout.Count > 0 ? _displayLayout : _displayService.GetDisplays();
+            DisplayInfo display = _displayService.Primary(displays);
+            (int Left, int Top, int Width, int Height) rect = _window.PlacementRect;
 
-            var hitTests = DesktopWindowService.ProbeHitTest(_window.Handle, new[]
+            IReadOnlyList<HitTestSample> hitTests = DesktopWindowService.ProbeHitTest(_window.Handle, new[]
             {
                 (rect.Left + 3, rect.Top + 3),
                 (rect.Left + (rect.Width / 2), rect.Top + (rect.Height / 2)),
@@ -703,9 +782,6 @@ public partial class App: Application
         FinishAndShutdown();
     }
 
-    private void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
-    {
-        _log?.Error("Unhandled exception.", e.ExceptionObject as Exception);
-    }
+    private void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e) => _log?.Error("Unhandled exception.", e.ExceptionObject as Exception);
 }
 

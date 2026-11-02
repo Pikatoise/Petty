@@ -1,0 +1,14 @@
+{
+    "IndentSize": 4,
+    "IndentWithTabs": false,
+    "AttributesTolerance": 2,
+    "MaxAttributesPerLine": 1,
+    "EnableAttributeReordering": false,
+    "OrderAttributesByName": false,
+    "FormatMarkupExtension": false,
+    "ReorderVSM": 0,
+    "ReorderGridChildren": false,
+    "ReorderCanvasChildren": false,
+    "ReorderSetters": 0,
+    "ThicknessSeparator": 0
+}

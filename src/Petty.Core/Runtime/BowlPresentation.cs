@@ -4,7 +4,10 @@ namespace Petty.Core.Runtime;
 public sealed class BowlPresentation
 {
     public static readonly TimeSpan PourDuration = TimeSpan.FromSeconds(1.2);
-    public bool IsPouring { get; private set; }
+    public bool IsPouring
+    {
+        get; private set;
+    }
     private TimeSpan _elapsed;
 
     // Any positive amount is visible; each stage is the next whole quarter.
@@ -14,7 +17,11 @@ public sealed class BowlPresentation
 
     public bool TryStart(double food, double capacity)
     {
-        if (IsPouring || food >= capacity) return false;
+        if (IsPouring || food >= capacity)
+        {
+            return false;
+        }
+
         IsPouring = true;
         _elapsed = TimeSpan.Zero;
         return true;
@@ -22,9 +29,21 @@ public sealed class BowlPresentation
 
     public int Advance(TimeSpan delta)
     {
-        if (!IsPouring) return 0;
-        if (delta > TimeSpan.Zero) _elapsed += delta;
-        if (_elapsed >= PourDuration) { IsPouring = false; return 5; }
+        if (!IsPouring)
+        {
+            return 0;
+        }
+
+        if (delta > TimeSpan.Zero)
+        {
+            _elapsed += delta;
+        }
+
+        if (_elapsed >= PourDuration)
+        {
+            IsPouring = false;
+            return 5;
+        }
         return Math.Min(5, (int)(_elapsed.TotalSeconds / PourDuration.TotalSeconds * 6));
     }
 

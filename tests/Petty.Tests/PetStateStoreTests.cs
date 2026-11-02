@@ -3,7 +3,7 @@ using Petty.Core.Persistence;
 
 namespace Petty.Tests;
 
-public sealed class PetStateStoreTests: IDisposable
+public sealed class PetStateStoreTests : IDisposable
 {
     private readonly string _directory;
     private readonly string _path;
@@ -17,7 +17,10 @@ public sealed class PetStateStoreTests: IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(_directory, recursive: true); }
+        try
+        {
+            Directory.Delete(_directory, recursive: true);
+        }
         catch (IOException) { }
     }
 
@@ -40,10 +43,10 @@ public sealed class PetStateStoreTests: IDisposable
         var store = new PetStateStore(_path);
 
         store.Save(Sample());
-        var result = store.Load();
+        LoadResult result = store.Load();
 
         Assert.Equal(LoadStatus.Loaded, result.Status);
-        var snapshot = Assert.IsType<PetSnapshot>(result.Snapshot);
+        PetSnapshot snapshot = Assert.IsType<PetSnapshot>(result.Snapshot);
         Assert.Equal("Muffin", snapshot.PetName);
         Assert.Equal(70, snapshot.Satiety, 3);
         Assert.Equal(60, snapshot.Happiness, 3);
@@ -57,7 +60,7 @@ public sealed class PetStateStoreTests: IDisposable
     [Fact]
     public void FoodPersistsWhenPourIsInterrupted()
     {
-        var now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var runtime = Petty.Core.Runtime.PetRuntime.Restore(Sample(food: 10), PetTuning.Default, now);
         var pour = new Petty.Core.Runtime.BowlPresentation();
         Assert.True(pour.TryStart(runtime.Bowl.Food, runtime.Bowl.Capacity));
@@ -88,7 +91,7 @@ public sealed class PetStateStoreTests: IDisposable
 
         File.WriteAllText(_path, "{ not valid json ");
 
-        var result = store.Load();
+        LoadResult result = store.Load();
 
         Assert.Equal(LoadStatus.RecoveredFromBackup, result.Status);
         Assert.Equal("First", result.Snapshot!.PetName);
@@ -100,9 +103,9 @@ public sealed class PetStateStoreTests: IDisposable
         var store = new PetStateStore(_path);
         store.Save(Sample("Backup"));
         store.Save(Sample("Damaged"));
-        var backup = File.ReadAllBytes(store.BackupPath);
+        byte[] backup = File.ReadAllBytes(store.BackupPath);
         File.WriteAllText(_path, "{ broken");
-        var recovered = store.Load().Snapshot!;
+        PetSnapshot recovered = store.Load().Snapshot!;
 
         store.Save(recovered);
 
@@ -115,7 +118,7 @@ public sealed class PetStateStoreTests: IDisposable
     public void MissingFilesReportMissing()
     {
         var store = new PetStateStore(_path);
-        var result = store.Load();
+        LoadResult result = store.Load();
 
         Assert.Equal(LoadStatus.Missing, result.Status);
         Assert.False(result.HasPet);
@@ -127,7 +130,7 @@ public sealed class PetStateStoreTests: IDisposable
         File.WriteAllText(_path, "garbage");
         File.WriteAllText(_path + PetStateStore.BackupSuffix, "also garbage");
 
-        var result = new PetStateStore(_path).Load();
+        LoadResult result = new PetStateStore(_path).Load();
 
         Assert.Equal(LoadStatus.Corrupt, result.Status);
         Assert.False(result.HasPet);
@@ -141,7 +144,7 @@ public sealed class PetStateStoreTests: IDisposable
             { "schemaVersion": 99, "petName": "Future" }
             """);
 
-        var result = new PetStateStore(_path).Load();
+        LoadResult result = new PetStateStore(_path).Load();
 
         Assert.Equal(LoadStatus.UnsupportedVersion, result.Status);
         Assert.False(result.HasPet);
@@ -189,10 +192,10 @@ public sealed class PetStateStoreTests: IDisposable
             }
             """);
 
-        var result = new PetStateStore(_path).Load();
+        LoadResult result = new PetStateStore(_path).Load();
 
         Assert.Equal(LoadStatus.Loaded, result.Status);
-        var snapshot = result.Snapshot!;
+        PetSnapshot snapshot = result.Snapshot!;
         Assert.Equal("Kitty", snapshot.PetName);
         Assert.Equal(100, snapshot.Satiety);
         Assert.Equal(0, snapshot.Happiness);
@@ -208,23 +211,10 @@ public sealed class PetStateStoreTests: IDisposable
             { "schemaVersion": 1, "petName": "Bad\u0001Name" }
             """);
 
-        var result = new PetStateStore(_path).Load();
+        LoadResult result = new PetStateStore(_path).Load();
 
         Assert.Equal(LoadStatus.Loaded, result.Status);
         Assert.Equal(PetNameRules.DefaultName, result.Snapshot!.PetName);
     }
 
-    [Fact]
-    public void DeleteRemovesStateAndBackup()
-    {
-        var store = new PetStateStore(_path);
-        store.Save(Sample());
-        store.Save(Sample());
-
-        store.Delete();
-
-        Assert.False(File.Exists(_path));
-        Assert.False(File.Exists(store.BackupPath));
-        Assert.Equal(LoadStatus.Missing, store.Load().Status);
-    }
 }

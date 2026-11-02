@@ -37,12 +37,18 @@ public sealed class PetMotion
     }
 
     /// <summary>Screen X of the window's left edge.</summary>
-    public double X { get; private set; }
+    public double X
+    {
+        get; private set;
+    }
 
     /// <summary>+1 faces right, -1 faces left. The sprite is authored facing right.</summary>
     public int Facing { get; private set; } = 1;
 
-    public bool HasTarget { get; private set; }
+    public bool HasTarget
+    {
+        get; private set;
+    }
 
     public bool IsMoving => HasTarget && _speed > 0;
 
@@ -62,7 +68,7 @@ public sealed class PetMotion
         X = (screenLeft ?? area.Left) - windowWidth;
         Facing = 1;
 
-        var travel = Math.Clamp(area.Width * 0.3, 120, 360);
+        double travel = Math.Clamp(area.Width * 0.3, 120, 360);
         MoveTo(Math.Min(area.Right, area.Left + travel), EnterSpeed);
     }
 
@@ -85,14 +91,14 @@ public sealed class PetMotion
             return;
         }
 
-        var desired = Math.Min(MinimumWanderDistance, area.Width / 2);
-        var target = X;
+        double desired = Math.Min(MinimumWanderDistance, area.Width / 2);
+        double target = X;
 
         // Playful walks sometimes cross the screen from edge to edge. Short strolls
         // stay local, which keeps the pet from drifting off-screen all the time.
         if (run)
         {
-            var farEdge = X < area.Left + (area.Width / 2) ? area.Right : area.Left;
+            double farEdge = X < area.Left + (area.Width / 2) ? area.Right : area.Left;
             if (_random.NextDouble() < EdgeTargetShare && Math.Abs(farEdge - X) >= desired)
             {
                 MoveTo(farEdge, RunSpeed);
@@ -100,19 +106,26 @@ public sealed class PetMotion
             }
         }
 
-        for (var attempt = 0; attempt < 8; attempt++)
+        for (int attempt = 0; attempt < 8; attempt++)
         {
             target = area.Left + (_random.NextDouble() * area.Width);
-            if (Math.Abs(target - X) >= desired) break;
+            if (Math.Abs(target - X) >= desired)
+            {
+                break;
+            }
+
             target = X < area.Left + (area.Width / 2) ? area.Right : area.Left;
-            if (Math.Abs(target - X) >= desired) break;
+            if (Math.Abs(target - X) >= desired)
+            {
+                break;
+            }
         }
 
         if (!run)
         {
             // A stroll stays within reach so the walk finishes while it still looks
             // like a stroll; crossing the whole desktop is the playful (run) case.
-            var reach = Math.Max(MinimumWanderDistance, area.Width * MaxStrollShare);
+            double reach = Math.Max(MinimumWanderDistance, area.Width * MaxStrollShare);
             target = Math.Clamp(target, Math.Max(area.Left, X - reach), Math.Min(area.Right, X + reach));
         }
 
@@ -124,10 +137,10 @@ public sealed class PetMotion
     /// <summary>Heads for the nearest (or the requested) screen edge.</summary>
     public void Exit(MotionArea area, double windowWidth, int? direction = null, double? screenLeft = null, double? screenRight = null)
     {
-        var left = screenLeft ?? area.Left;
-        var right = screenRight ?? area.Right + windowWidth;
-        var sign = direction ?? (X + (windowWidth / 2) >= (left + right) / 2 ? 1 : -1);
-        var target = sign > 0 ? right : left - windowWidth;
+        double left = screenLeft ?? area.Left;
+        double right = screenRight ?? area.Right + windowWidth;
+        int sign = direction ?? (X + (windowWidth / 2) >= (left + right) / 2 ? 1 : -1);
+        double target = sign > 0 ? right : left - windowWidth;
         MoveTo(target, ExitSpeed);
     }
 
@@ -144,7 +157,9 @@ public sealed class PetMotion
         HasTarget = true;
 
         if (Math.Abs(targetX - X) > 0.01)
+        {
             Facing = targetX > X ? 1 : -1;
+        }
     }
 
     public void Stop()
@@ -156,8 +171,8 @@ public sealed class PetMotion
     /// <summary>Keeps the pet and its target inside a changed display area.</summary>
     public void KeepInside(MotionArea area)
     {
-        var left = Math.Min(area.Left, area.Right);
-        var right = Math.Max(area.Left, area.Right);
+        double left = Math.Min(area.Left, area.Right);
+        double right = Math.Max(area.Left, area.Right);
 
         _targetX = Math.Clamp(_targetX, left, right);
         X = Math.Clamp(X, left, right);
@@ -166,10 +181,13 @@ public sealed class PetMotion
     /// <summary>Advances the position. Returns true when the pet actually moved.</summary>
     public bool Update(TimeSpan delta)
     {
-        if (!HasTarget || delta <= TimeSpan.Zero) return false;
+        if (!HasTarget || delta <= TimeSpan.Zero)
+        {
+            return false;
+        }
 
-        var step = _speed * delta.TotalSeconds;
-        var distance = _targetX - X;
+        double step = _speed * delta.TotalSeconds;
+        double distance = _targetX - X;
 
         if (Math.Abs(distance) <= step)
         {

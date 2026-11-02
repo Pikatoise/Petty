@@ -60,8 +60,8 @@ public static class TrayIconBuilder
     {
         Directory.CreateDirectory(outputDirectory);
 
-        var png = Build().ToPngBytes();
-        var bytes = new byte[22 + png.Length];
+        byte[] png = Build().ToPngBytes();
+        byte[] bytes = new byte[22 + png.Length];
 
         using var stream = new MemoryStream(bytes);
         using var writer = new BinaryWriter(stream);

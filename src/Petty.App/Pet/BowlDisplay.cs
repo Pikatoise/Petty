@@ -1,16 +1,17 @@
+using System.Diagnostics;
+using System.IO;
+using System.Windows.Threading;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
 using Petty.App.Views;
 using Petty.Core.Diagnostics;
+using Petty.Core.Domain;
 using Petty.Core.Runtime;
-using System.Diagnostics;
-using System.IO;
-using System.Windows.Threading;
 
 namespace Petty.App.Pet;
 
 /// <summary>Owns bowl images and the click-through pouring effect for one session.</summary>
-internal sealed class BowlDisplay: IDisposable
+internal sealed class BowlDisplay : IDisposable
 {
     private readonly PropWindow _bowl;
     private readonly PropWindow _effect;
@@ -39,7 +40,11 @@ internal sealed class BowlDisplay: IDisposable
 
     public bool TryPour(double food, double capacity)
     {
-        if (!_pour.TryStart(food, capacity)) return false;
+        if (!_pour.TryStart(food, capacity))
+        {
+            return false;
+        }
+
         _clock.Restart();
         _lastTick = TimeSpan.Zero;
         _effect.ShowImage(_frames[0]);
@@ -51,16 +56,20 @@ internal sealed class BowlDisplay: IDisposable
 
     public void UpdateLevel(double food, double capacity)
     {
-        var level = BowlPresentation.Level(food, capacity);
-        if (level == _level) return;
+        int level = BowlPresentation.Level(food, capacity);
+        if (level == _level)
+        {
+            return;
+        }
+
         _level = level;
         _bowl.ShowImage(_levels[level]);
     }
 
     private void OnTick(object? sender, EventArgs e)
     {
-        var now = _clock.Elapsed;
-        var frame = _pour.Advance(now - _lastTick);
+        TimeSpan now = _clock.Elapsed;
+        int frame = _pour.Advance(now - _lastTick);
         _lastTick = now;
         if (!_pour.IsPouring)
         {
@@ -74,12 +83,12 @@ internal sealed class BowlDisplay: IDisposable
 
     private void PlaceEffect()
     {
-        var bowl = _bowl.ScreenRect;
-        var left = (double)bowl.Left;
-        var top = (double)bowl.Top - _effect.PhysicalHeight + 39;
+        (int Left, int Top, int Width, int Height) bowl = _bowl.ScreenRect;
+        double left = (double)bowl.Left;
+        double top = (double)bowl.Top - _effect.PhysicalHeight + 39;
         if (_surface.PrimaryDisplay is { } display)
         {
-            var bounds = display.UsableArea;
+            ScreenRect bounds = display.UsableArea;
             left = Math.Clamp(left, bounds.X, Math.Max(bounds.X, bounds.Right - _effect.PhysicalWidth));
             top = Math.Clamp(top, bounds.Y, Math.Max(bounds.Y, bounds.Bottom - _effect.PhysicalHeight));
         }

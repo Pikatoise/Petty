@@ -1,6 +1,7 @@
-using Petty.Core.Preferences;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows;
+using Petty.Core.Preferences;
 
 namespace Petty.App;
 
@@ -16,7 +17,10 @@ internal sealed class Localization
         Apply();
     }
 
-    public UserPreferences Preferences { get; private set; }
+    public UserPreferences Preferences
+    {
+        get; private set;
+    }
     public event EventHandler? LanguageChanged;
     public event EventHandler? AutostartChanged;
 
@@ -30,7 +34,10 @@ internal sealed class Localization
 
     public void SetAutostart(bool enabled)
     {
-        var updated = Preferences with { Autostart = enabled };
+        UserPreferences updated = Preferences with
+        {
+            Autostart = enabled
+        };
         _store.Save(updated);
         Preferences = updated;
         AutostartChanged?.Invoke(this, EventArgs.Empty);
@@ -38,7 +45,10 @@ internal sealed class Localization
 
     public void SetLanguage(string? language)
     {
-        var updated = (Preferences with { Language = language }).Sanitized();
+        UserPreferences updated = (Preferences with
+        {
+            Language = language
+        }).Sanitized();
         _store.Save(updated);
         Preferences = updated;
         Apply();
@@ -47,10 +57,14 @@ internal sealed class Localization
 
     private void Apply()
     {
-        var language = Preferences.EffectiveLanguage(CultureInfo.InstalledUICulture.Name);
-        var resources = Application.Current.Resources.MergedDictionaries;
+        string language = Preferences.EffectiveLanguage(CultureInfo.InstalledUICulture.Name);
+        Collection<ResourceDictionary> resources = Application.Current.Resources.MergedDictionaries;
         var replacement = new ResourceDictionary { Source = new Uri($"/Petty;component/Resources/Strings.{language}.xaml", UriKind.Relative) };
-        if (_strings is not null) resources.Remove(_strings);
+        if (_strings is not null)
+        {
+            resources.Remove(_strings);
+        }
+
         resources.Add(replacement);
         _strings = replacement;
     }

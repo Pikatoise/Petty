@@ -9,7 +9,7 @@ public sealed class DisplayService
     {
         var displays = new List<DisplayInfo>(2);
 
-        var enumerated = NativeMethods.EnumDisplayMonitors(
+        bool enumerated = NativeMethods.EnumDisplayMonitors(
             IntPtr.Zero,
             IntPtr.Zero,
             (monitor, _, _, _) =>
@@ -34,11 +34,15 @@ public sealed class DisplayService
             IntPtr.Zero);
 
         if (!enumerated)
+        {
             throw new InvalidOperationException(
                 $"EnumDisplayMonitors failed with error {System.Runtime.InteropServices.Marshal.GetLastPInvokeError()}.");
+        }
 
         if (displays.Count == 0)
+        {
             throw new InvalidOperationException("No display devices were reported by the operating system.");
+        }
 
         return displays
             .OrderByDescending(d => d.IsPrimary)
@@ -49,13 +53,6 @@ public sealed class DisplayService
     public DisplayInfo Primary(IReadOnlyList<DisplayInfo> displays) =>
         displays.FirstOrDefault(d => d.IsPrimary) ?? displays[0];
 
-    public DisplayInfo ForPoint(IReadOnlyList<DisplayInfo> displays, double x, double y) =>
-        displays.FirstOrDefault(d => Contains(d.Bounds, x, y))
-        ?? Primary(displays);
-
     private static ScreenRect ToScreenRect(NativeMethods.Rect rect) =>
         new(rect.Left, rect.Top, rect.Width, rect.Height);
-
-    private static bool Contains(ScreenRect rect, double x, double y) =>
-        x >= rect.X && x < rect.Right && y >= rect.Y && y < rect.Bottom;
 }

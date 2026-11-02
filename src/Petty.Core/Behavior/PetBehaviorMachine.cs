@@ -31,18 +31,29 @@ public sealed class PetBehaviorMachine
     public void SetTuning(PetTuning tuning)
     {
         ArgumentNullException.ThrowIfNull(tuning);
-        var wanderChanged = _tuning.WanderMinInterval != tuning.WanderMinInterval || _tuning.WanderMaxInterval != tuning.WanderMaxInterval;
-        var awakeChanged = _tuning.AwakeMinDuration != tuning.AwakeMinDuration || _tuning.AwakeMaxDuration != tuning.AwakeMaxDuration;
+        bool wanderChanged = _tuning.WanderMinInterval != tuning.WanderMinInterval || _tuning.WanderMaxInterval != tuning.WanderMaxInterval;
+        bool awakeChanged = _tuning.AwakeMinDuration != tuning.AwakeMinDuration || _tuning.AwakeMaxDuration != tuning.AwakeMaxDuration;
         _tuning = tuning;
-        if (awakeChanged) ScheduleAwake();
-        if (wanderChanged && State is PetActivity.Idle) ScheduleWander();
+        if (awakeChanged)
+        {
+            ScheduleAwake();
+        }
+
+        if (wanderChanged && State is PetActivity.Idle)
+        {
+            ScheduleWander();
+        }
     }
 
     public bool RequestDebugActivity(PetActivity activity)
     {
         if (activity is not (PetActivity.Idle or PetActivity.Walking or PetActivity.Running or PetActivity.Sleeping) ||
             State is not (PetActivity.Idle or PetActivity.Walking or PetActivity.Running or PetActivity.Sleeping or PetActivity.Tired) ||
-            State == activity) return false;
+            State == activity)
+        {
+            return false;
+        }
+
         MoveTo(activity, "debug-request");
         return true;
     }
@@ -68,7 +79,11 @@ public sealed class PetBehaviorMachine
 
     private bool RequestInteraction(PetActivity activity)
     {
-        if (State is not (PetActivity.Idle or PetActivity.Walking or PetActivity.Running or PetActivity.Sleeping or PetActivity.Tired)) return false;
+        if (State is not (PetActivity.Idle or PetActivity.Walking or PetActivity.Running or PetActivity.Sleeping or PetActivity.Tired))
+        {
+            return false;
+        }
+
         _resumeSleep = State is PetActivity.Sleeping;
         MoveTo(activity, activity is PetActivity.Playing ? "user-play" : "user-pet");
         return true;
@@ -77,12 +92,18 @@ public sealed class PetBehaviorMachine
     public void CancelInteraction()
     {
         if (State is PetActivity.Playing or PetActivity.Petting)
+        {
             MoveTo(_resumeSleep ? PetActivity.Sleeping : PetActivity.Idle, "scene-cancelled");
+        }
     }
 
     public bool RequestExit()
     {
-        if (State is PetActivity.Exiting) return false;
+        if (State is PetActivity.Exiting)
+        {
+            return false;
+        }
+
         MoveTo(PetActivity.Exiting, "user-exit");
         return true;
     }
@@ -91,7 +112,9 @@ public sealed class PetBehaviorMachine
     public void OnUserInteraction()
     {
         if (State is PetActivity.Tired or PetActivity.Idle)
+        {
             MoveTo(PetActivity.Idle, "user-interaction");
+        }
     }
 
     /// <summary>
@@ -103,12 +126,18 @@ public sealed class PetBehaviorMachine
     public void NotifyArrived()
     {
         if (State is PetActivity.Entering or PetActivity.Walking or PetActivity.Running)
+        {
             MoveTo(PetActivity.Idle, "arrived");
+        }
     }
 
     public void ArriveAtBowl(Bowl bowl)
     {
-        if (State is not PetActivity.SeekingFood) return;
+        if (State is not PetActivity.SeekingFood)
+        {
+            return;
+        }
+
         MoveTo(
             bowl.HasFood ? PetActivity.Eating : PetActivity.Tired,
             bowl.HasFood ? "bowl-reached" : "bowl-empty");
@@ -116,72 +145,161 @@ public sealed class PetBehaviorMachine
 
     public void BowlEmptied()
     {
-        if (State is PetActivity.Eating) MoveTo(PetActivity.Idle, "bowl-emptied");
+        if (State is PetActivity.Eating)
+        {
+            MoveTo(PetActivity.Idle, "bowl-emptied");
+        }
     }
 
     public void Update(TimeSpan delta, Needs needs, Bowl bowl)
     {
-        if (delta <= TimeSpan.Zero) return;
+        if (delta <= TimeSpan.Zero)
+        {
+            return;
+        }
+
         _stateElapsed += delta;
         if (State is not (PetActivity.Entering or PetActivity.Exiting or PetActivity.Sleeping) && !_resumeSleep)
+        {
             _awakeElapsed += delta;
+        }
 
         switch (State)
         {
             case PetActivity.Entering:
-                if (_stateElapsed >= TimeSpan.FromTicks(Math.Max(_tuning.EnterDuration.Ticks, TimeSpan.FromSeconds(20).Ticks))) MoveTo(PetActivity.Idle, "enter-timeout");
+                if (_stateElapsed >= TimeSpan.FromTicks(Math.Max(_tuning.EnterDuration.Ticks, TimeSpan.FromSeconds(20).Ticks)))
+                {
+                    MoveTo(PetActivity.Idle, "enter-timeout");
+                }
+
                 break;
 
             case PetActivity.Exiting:
                 break;
 
             case PetActivity.Playing:
-                if (_stateElapsed >= _interactionDuration) MoveTo(PetActivity.Idle, "play-finished");
+                if (_stateElapsed >= _interactionDuration)
+                {
+                    MoveTo(PetActivity.Idle, "play-finished");
+                }
+
                 break;
 
             case PetActivity.Petting:
-                if (_stateElapsed >= _interactionDuration) MoveTo(_resumeSleep ? PetActivity.Sleeping : PetActivity.Idle, "pet-finished");
+                if (_stateElapsed >= _interactionDuration)
+                {
+                    MoveTo(_resumeSleep ? PetActivity.Sleeping : PetActivity.Idle, "pet-finished");
+                }
+
                 break;
 
             case PetActivity.Eating:
-                if (!bowl.HasFood) MoveTo(PetActivity.Idle, "bowl-emptied");
-                else if (needs.Satiety >= Needs.Maximum) MoveTo(PetActivity.Idle, "fed");
-                else if (_stateElapsed >= _tuning.MaxEatDuration) MoveTo(PetActivity.Idle, "eat-timeout");
+                if (!bowl.HasFood)
+                {
+                    MoveTo(PetActivity.Idle, "bowl-emptied");
+                }
+                else if (needs.Satiety >= Needs.Maximum)
+                {
+                    MoveTo(PetActivity.Idle, "fed");
+                }
+                else if (_stateElapsed >= _tuning.MaxEatDuration)
+                {
+                    MoveTo(PetActivity.Idle, "eat-timeout");
+                }
+
                 break;
 
             case PetActivity.SeekingFood:
-                if (!bowl.HasFood) MoveTo(PetActivity.Tired, "bowl-empty");
-                else if (needs.Satiety > _tuning.SatietyRecoveryThreshold) MoveTo(PetActivity.Idle, "not-hungry-anymore");
-                else if (_stateElapsed >= _tuning.SeekTimeout) MoveTo(PetActivity.Idle, "seek-timeout");
+                if (!bowl.HasFood)
+                {
+                    MoveTo(PetActivity.Tired, "bowl-empty");
+                }
+                else if (needs.Satiety > _tuning.SatietyRecoveryThreshold)
+                {
+                    MoveTo(PetActivity.Idle, "not-hungry-anymore");
+                }
+                else if (_stateElapsed >= _tuning.SeekTimeout)
+                {
+                    MoveTo(PetActivity.Idle, "seek-timeout");
+                }
+
                 break;
 
             case PetActivity.Sleeping:
                 _sleepRemaining -= delta;
-                if (needs.IsHungry(_tuning) && bowl.HasFood) MoveTo(PetActivity.SeekingFood, "hungry");
-                else if (_sleepRemaining <= TimeSpan.Zero) MoveTo(PetActivity.Idle, "woke-up");
+                if (needs.IsHungry(_tuning) && bowl.HasFood)
+                {
+                    MoveTo(PetActivity.SeekingFood, "hungry");
+                }
+                else if (_sleepRemaining <= TimeSpan.Zero)
+                {
+                    MoveTo(PetActivity.Idle, "woke-up");
+                }
+
                 break;
 
             case PetActivity.Tired:
-                if (needs.IsHungry(_tuning) && bowl.HasFood) MoveTo(PetActivity.SeekingFood, "hungry");
-                else if (needs.Satiety > _tuning.TiredThreshold + 10 && needs.Happiness > Needs.Minimum) MoveTo(PetActivity.Idle, "recovered");
-                else TrySleep();
+                if (needs.IsHungry(_tuning) && bowl.HasFood)
+                {
+                    MoveTo(PetActivity.SeekingFood, "hungry");
+                }
+                else if (needs.Satiety > _tuning.TiredThreshold + 10 && needs.Happiness > Needs.Minimum)
+                {
+                    MoveTo(PetActivity.Idle, "recovered");
+                }
+                else
+                {
+                    TrySleep();
+                }
+
                 break;
 
             case PetActivity.Walking:
-                if (NeedsOverride(needs, bowl)) break;
-                if (TrySleep()) break;
-                if (_stateElapsed >= _tuning.WalkDuration) MoveTo(PetActivity.Idle, "walk-done");
+                if (NeedsOverride(needs, bowl))
+                {
+                    break;
+                }
+
+                if (TrySleep())
+                {
+                    break;
+                }
+
+                if (_stateElapsed >= _tuning.WalkDuration)
+                {
+                    MoveTo(PetActivity.Idle, "walk-done");
+                }
+
                 break;
 
             case PetActivity.Running:
-                if (NeedsOverride(needs, bowl)) break;
-                if (TrySleep()) break;
-                if (_stateElapsed >= _tuning.RunDuration) MoveTo(PetActivity.Idle, "run-done");
+                if (NeedsOverride(needs, bowl))
+                {
+                    break;
+                }
+
+                if (TrySleep())
+                {
+                    break;
+                }
+
+                if (_stateElapsed >= _tuning.RunDuration)
+                {
+                    MoveTo(PetActivity.Idle, "run-done");
+                }
+
                 break;
 
             case PetActivity.Idle:
-                if (NeedsOverride(needs, bowl)) break;
-                if (TrySleep()) break;
+                if (NeedsOverride(needs, bowl))
+                {
+                    break;
+                }
+
+                if (TrySleep())
+                {
+                    break;
+                }
 
                 _wanderCountdown -= delta;
                 if (_wanderCountdown <= TimeSpan.Zero)
@@ -197,7 +315,11 @@ public sealed class PetBehaviorMachine
 
     private bool TrySleep()
     {
-        if (_awakeElapsed < _awakeDuration) return false;
+        if (_awakeElapsed < _awakeDuration)
+        {
+            return false;
+        }
+
         _awakeElapsed = TimeSpan.Zero;
         if (_tuning.SleepChance < 1 && (_tuning.SleepChance <= 0 || _random.NextDouble() >= _tuning.SleepChance))
         {
@@ -227,23 +349,42 @@ public sealed class PetBehaviorMachine
 
     private void MoveTo(PetActivity next, string reason)
     {
-        if (next == State) return;
+        if (next == State)
+        {
+            return;
+        }
 
-        var previous = State;
+        PetActivity previous = State;
         State = next;
         _stateElapsed = TimeSpan.Zero;
         if (next is PetActivity.Sleeping && !_resumeSleep)
+        {
             _sleepRemaining = SampleDuration(_tuning.SleepMinDuration, _tuning.SleepMaxDuration);
+        }
+
         if ((previous is PetActivity.Sleeping && next is not PetActivity.Petting) || previous is PetActivity.Eating)
         {
             _awakeElapsed = TimeSpan.Zero;
             ScheduleAwake();
         }
-        if (next is not PetActivity.Petting) _resumeSleep = false;
-        if (next is PetActivity.Playing) _interactionDuration = _tuning.PlayDuration;
-        else if (next is PetActivity.Petting) _interactionDuration = _tuning.PetDuration;
+        if (next is not PetActivity.Petting)
+        {
+            _resumeSleep = false;
+        }
 
-        if (next is PetActivity.Idle) ScheduleWander();
+        if (next is PetActivity.Playing)
+        {
+            _interactionDuration = _tuning.PlayDuration;
+        }
+        else if (next is PetActivity.Petting)
+        {
+            _interactionDuration = _tuning.PetDuration;
+        }
+
+        if (next is PetActivity.Idle)
+        {
+            ScheduleWander();
+        }
 
         Transitioned?.Invoke(this, new BehaviorTransition(previous, next, reason));
     }
@@ -255,8 +396,8 @@ public sealed class PetBehaviorMachine
 
     private void ScheduleWander()
     {
-        var min = _tuning.WanderMinInterval.TotalMilliseconds;
-        var max = Math.Max(min, _tuning.WanderMaxInterval.TotalMilliseconds);
+        double min = _tuning.WanderMinInterval.TotalMilliseconds;
+        double max = Math.Max(min, _tuning.WanderMaxInterval.TotalMilliseconds);
         _wanderCountdown = TimeSpan.FromMilliseconds(min + (_random.NextDouble() * (max - min)));
     }
 }

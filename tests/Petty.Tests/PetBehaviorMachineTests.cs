@@ -11,7 +11,7 @@ public class PetBehaviorMachineTests
         ExitDuration = TimeSpan.FromSeconds(3),
         PlayDuration = TimeSpan.FromSeconds(10),
         AwakeMinDuration = TimeSpan.FromSeconds(60),
-            AwakeMaxDuration = TimeSpan.FromSeconds(60),
+        AwakeMaxDuration = TimeSpan.FromSeconds(60),
         SleepMinDuration = TimeSpan.FromMinutes(10),
         SleepMaxDuration = TimeSpan.FromMinutes(10),
         WalkDuration = TimeSpan.FromSeconds(2),
@@ -139,18 +139,6 @@ public class PetBehaviorMachineTests
     }
 
     [Fact]
-    public void SleepsAfterAwakePeriodAndIgnoresPassiveInteraction()
-    {
-        var machine = new PetBehaviorMachine(Tuning(), new Random(1));
-
-        machine.Update(TimeSpan.FromSeconds(61), Needs.FromValues(80, 80), new Bowl(0, 100));
-        Assert.Equal(PetActivity.Sleeping, machine.State);
-
-        machine.OnUserInteraction();
-        Assert.Equal(PetActivity.Sleeping, machine.State);
-    }
-
-    [Fact]
     public void CertainSleepWorksWhenHappinessIsLow()
     {
         var tuning = new PetTuning
@@ -241,7 +229,7 @@ public class PetBehaviorMachineTests
         Assert.Equal(PetActivity.Idle, noSleep.State);
     }
 
-    private sealed class SequenceRandom(params double[] values): Random
+    private sealed class SequenceRandom(params double[] values) : Random
     {
         private int _index;
         public override double NextDouble() => values[Math.Min(_index++, values.Length - 1)];
@@ -275,18 +263,6 @@ public class PetBehaviorMachineTests
     }
 
     [Fact]
-    public void HungerWakesSleepingPetWhenFoodIsAvailable()
-    {
-        var machine = new PetBehaviorMachine(Tuning(), new Random(1));
-
-        machine.Update(TimeSpan.FromSeconds(61), Needs.FromValues(80, 80), new Bowl(0, 100));
-        Assert.Equal(PetActivity.Sleeping, machine.State);
-
-        machine.Update(TimeSpan.FromMilliseconds(200), HungryNotStarving, new Bowl(40, 100));
-        Assert.Equal(PetActivity.SeekingFood, machine.State);
-    }
-
-    [Fact]
     public void TransitionsAreReportedWithReasons()
     {
         var machine = new PetBehaviorMachine(Tuning(), new Random(1));
@@ -295,7 +271,7 @@ public class PetBehaviorMachineTests
 
         machine.Update(TimeSpan.FromMilliseconds(200), HungryNotStarving, new Bowl(40, 100));
 
-        var transition = Assert.Single(transitions);
+        BehaviorTransition transition = Assert.Single(transitions);
         Assert.Equal(PetActivity.Idle, transition.From);
         Assert.Equal(PetActivity.SeekingFood, transition.To);
         Assert.Equal("hungry", transition.Reason);

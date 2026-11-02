@@ -17,9 +17,15 @@ public sealed class AnimationController
         _sheet = sheet ?? throw new ArgumentNullException(nameof(sheet));
     }
 
-    public SpriteClip? CurrentClip { get; private set; }
+    public SpriteClip? CurrentClip
+    {
+        get; private set;
+    }
 
-    public SpriteFrame? CurrentFrame { get; private set; }
+    public SpriteFrame? CurrentFrame
+    {
+        get; private set;
+    }
 
     public event EventHandler? FrameChanged;
 
@@ -29,14 +35,17 @@ public sealed class AnimationController
     /// </summary>
     public bool Play(string clipName)
     {
-        if (!_sheet.TryGetClip(clipName, out var clip) &&
-            !(clipName == PetAnimationMap.Pet && _sheet.TryGetClip(PetAnimationMap.Idle, out clip))) return false;
+        if (!_sheet.TryGetClip(clipName, out SpriteClip? clip) &&
+            !(clipName == PetAnimationMap.Pet && _sheet.TryGetClip(PetAnimationMap.Idle, out clip)))
+        {
+            return false;
+        }
 
-        var loop = string.Equals(clip.Name, PetAnimationMap.Exit, StringComparison.OrdinalIgnoreCase)
+        bool? loop = string.Equals(clip.Name, PetAnimationMap.Exit, StringComparison.OrdinalIgnoreCase)
             ? true
             : (bool?)null;
 
-        var changed = _playback.Play(clip.Metadata, restart: false, loop: loop);
+        bool changed = _playback.Play(clip.Metadata, restart: false, loop: loop);
 
         if (changed || CurrentFrame is null)
         {
@@ -49,8 +58,15 @@ public sealed class AnimationController
 
     public bool Advance(TimeSpan delta)
     {
-        if (CurrentClip is null) return false;
-        if (!_playback.Advance(delta)) return false;
+        if (CurrentClip is null)
+        {
+            return false;
+        }
+
+        if (!_playback.Advance(delta))
+        {
+            return false;
+        }
 
         SetFrame(CurrentClip[_playback.FrameIndex]);
         return true;
@@ -59,9 +75,16 @@ public sealed class AnimationController
     /// <summary>Displays an absolute scene frame without accumulating a second clock.</summary>
     public void ShowSceneFrame(int frameIndex)
     {
-        if (CurrentClip is null) return;
-        var frame = CurrentClip[frameIndex];
-        if (!ReferenceEquals(frame, CurrentFrame)) SetFrame(frame);
+        if (CurrentClip is null)
+        {
+            return;
+        }
+
+        SpriteFrame frame = CurrentClip[frameIndex];
+        if (!ReferenceEquals(frame, CurrentFrame))
+        {
+            SetFrame(frame);
+        }
     }
 
     private void SetFrame(SpriteFrame frame)

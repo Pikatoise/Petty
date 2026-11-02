@@ -1,14 +1,14 @@
-using Petty.App.Sprites;
-using Petty.Core.Animation;
-using Petty.Core.Domain;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using Petty.App.Sprites;
+using Petty.Core.Animation;
+using Petty.Core.Domain;
 
 namespace Petty.App.Views;
 
 /// <summary>Collects the name and appearance; application composition creates the pet.</summary>
-public partial class CreationWizardWindow: Window
+public partial class CreationWizardWindow : Window
 {
     private sealed record SpeciesOption(string Id, string Label);
     private BreedOption[] _breeds = [];
@@ -45,14 +45,18 @@ public partial class CreationWizardWindow: Window
                 ?? group.FirstOrDefault(v => v.AssetId == PetCatalog.DefaultAssetId)
                 ?? group.OrderBy(v => v.AssetId, StringComparer.OrdinalIgnoreCase).First())
             .Select(v => new BreedOption(v, Localization.BreedName(v.BreedId))).ToArray();
-        var species = _breeds.Select(v => v.Variant.SpeciesId).Distinct(StringComparer.OrdinalIgnoreCase)
+        SpeciesOption[] species = _breeds.Select(v => v.Variant.SpeciesId).Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(id => new SpeciesOption(id, Localization.SpeciesName(id))).ToArray();
         SpeciesSelector.ItemsSource = species;
-        var initialSpecies = _breeds.FirstOrDefault(v => v.Variant.AssetId == initialSheet?.Metadata.Character)?.Variant.SpeciesId;
+        string? initialSpecies = _breeds.FirstOrDefault(v => v.Variant.AssetId == initialSheet?.Metadata.Character)?.Variant.SpeciesId;
         SpeciesSelector.SelectedItem = species.FirstOrDefault(v => v.Id == initialSpecies)
             ?? species.FirstOrDefault(v => v.Id == "cat") ?? species.FirstOrDefault();
-        var initialBreed = _breeds.FirstOrDefault(v => v.Variant.AssetId == initialSheet?.Metadata.Character);
-        if (initialBreed is not null) BreedSelector.SelectedItem = initialBreed;
+        BreedOption? initialBreed = _breeds.FirstOrDefault(v => v.Variant.AssetId == initialSheet?.Metadata.Character);
+        if (initialBreed is not null)
+        {
+            BreedSelector.SelectedItem = initialBreed;
+        }
+
         if (BreedSelector.SelectedItem is null)
         {
             ErrorText.Text = Localization.Text("NoSprites");
@@ -64,19 +68,30 @@ public partial class CreationWizardWindow: Window
 
     public string ConfirmedName { get; private set; } = string.Empty;
     public SpriteVariant? SelectedVariant => _coats.Length == 0 ? null : _coats[_coatIndex];
-    public SpriteSheet? SelectedSheet { get; private set; }
+    public SpriteSheet? SelectedSheet
+    {
+        get; private set;
+    }
 
     private void OnSpeciesChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (SpeciesSelector.SelectedItem is not SpeciesOption species) return;
-        var options = _breeds.Where(v => v.Variant.SpeciesId.Equals(species.Id, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (SpeciesSelector.SelectedItem is not SpeciesOption species)
+        {
+            return;
+        }
+
+        BreedOption[] options = _breeds.Where(v => v.Variant.SpeciesId.Equals(species.Id, StringComparison.OrdinalIgnoreCase)).ToArray();
         BreedSelector.ItemsSource = options;
         BreedSelector.SelectedItem = options.FirstOrDefault(v => v.Variant.AssetId == PetCatalog.DefaultAssetId) ?? options.FirstOrDefault();
     }
 
     private void OnBreedChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (BreedSelector.SelectedItem is not BreedOption breed) return;
+        if (BreedSelector.SelectedItem is not BreedOption breed)
+        {
+            return;
+        }
+
         _coats = _variants.Where(v => v.SpeciesId.Equals(breed.Variant.SpeciesId, StringComparison.OrdinalIgnoreCase)
                 && v.BreedId.Equals(breed.Variant.BreedId, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(v => v.IsDefault).ThenBy(v => v.AssetId, StringComparer.OrdinalIgnoreCase).ToArray();
@@ -89,7 +104,11 @@ public partial class CreationWizardWindow: Window
 
     private void ChangeCoat(int direction)
     {
-        if (_coats.Length < 2) return;
+        if (_coats.Length < 2)
+        {
+            return;
+        }
+
         _coatIndex = (_coatIndex + direction + _coats.Length) % _coats.Length;
         LoadSelectedCoat();
     }
@@ -98,11 +117,18 @@ public partial class CreationWizardWindow: Window
     {
         PreviousCoatButton.IsEnabled = NextCoatButton.IsEnabled = _coats.Length > 1;
         CoatPositionText.Text = string.Format(Localization.Text("CoatPositionFormat"), _coatIndex + 1, _coats.Length);
-        if (SelectedVariant is not { } variant) return;
+        if (SelectedVariant is not { } variant)
+        {
+            return;
+        }
+
         try
         {
             if (SelectedSheet?.Metadata.Character != variant.AssetId)
+            {
                 SelectedSheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
+            }
+
             _idle = SelectedSheet.GetClip(PetAnimationMap.Idle);
             _playback.Play(_idle.Metadata, restart: true);
             _previewTimer.Interval = TimeSpan.FromSeconds(1 / Math.Clamp(_idle.FramesPerSecond, 1, 60));
@@ -117,7 +143,11 @@ public partial class CreationWizardWindow: Window
             _idle = null;
             _previewTimer.Stop();
             PreviewImage.Source = null;
-            if (Application.Current is App app) app.LogError("Could not load sprite appearance.", ex);
+            if (Application.Current is App app)
+            {
+                app.LogError("Could not load sprite appearance.", ex);
+            }
+
             ErrorText.Text = Localization.Text("AppearanceLoadError");
             CreateButton.IsEnabled = false;
         }
@@ -131,18 +161,25 @@ public partial class CreationWizardWindow: Window
 
     private void ShowPreviewFrame()
     {
-        if (_idle is not null) PreviewImage.Source = _idle[_playback.FrameIndex].Image;
+        if (_idle is not null)
+        {
+            PreviewImage.Source = _idle[_playback.FrameIndex].Image;
+        }
     }
 
     private void OnCreate(object sender, RoutedEventArgs e)
     {
-        if (!PetNameRules.TryNormalize(NameBox.Text, out var name, out _))
+        if (!PetNameRules.TryNormalize(NameBox.Text, out string? name, out _))
         {
             ErrorText.Text = Localization.Text("NameInvalid");
             NameBox.Focus();
             return;
         }
-        if (SelectedSheet is null || SelectedVariant is null) return;
+        if (SelectedSheet is null || SelectedVariant is null)
+        {
+            return;
+        }
+
         ConfirmedName = name;
         DialogResult = true;
     }

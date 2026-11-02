@@ -38,7 +38,10 @@ public class SleepCycleTests
 
     private sealed class ControlledRandom : Random
     {
-        public double Value { get; set; }
+        public double Value
+        {
+            get; set;
+        }
         public override double NextDouble() => Value;
     }
 
@@ -84,7 +87,7 @@ public class SleepCycleTests
             RunChance = runChance,
         });
         var bowl = new Bowl(0, 100);
-        for (var cycle = 0; cycle < 3; cycle++)
+        for (int cycle = 0; cycle < 3; cycle++)
         {
             machine.Update(TimeSpan.FromSeconds(1), Needs.Full, bowl);
             Assert.Equal(runChance == 1 ? PetActivity.Running : PetActivity.Walking, machine.State);
@@ -105,7 +108,7 @@ public class SleepCycleTests
         var machine = new PetBehaviorMachine(Tuning());
         var bowl = new Bowl(0, 100);
         machine.Update(TimeSpan.FromSeconds(10), Needs.Full, bowl);
-        for (var i = 0; i < 2; i++)
+        for (int i = 0; i < 2; i++)
         {
             machine.Update(TimeSpan.FromSeconds(5), Needs.Full, bowl);
             machine.OnUserInteraction();
@@ -133,7 +136,11 @@ public class SleepCycleTests
         machine.Update(TimeSpan.FromSeconds(10), Needs.Full, bowl);
         machine.Update(TimeSpan.FromSeconds(15), Needs.FromValues(66, 100), bowl);
         Assert.Equal(PetActivity.Sleeping, machine.State);
-        if (!foodAlreadyPresent) bowl.Fill(25);
+        if (!foodAlreadyPresent)
+        {
+            bowl.Fill(25);
+        }
+
         machine.Update(TimeSpan.FromSeconds(1), Needs.FromValues(65, 100), bowl);
         Assert.Equal(PetActivity.SeekingFood, machine.State);
         machine.ArriveAtBowl(bowl);
@@ -187,7 +194,7 @@ public class SleepCycleTests
     [Fact]
     public void SleepUsesNormalDecayAndSleepingPettingAppliesItsCost()
     {
-        var now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var runtime = PetRuntime.CreateNew("Cat", Tuning(), now);
         runtime.Update(TimeSpan.FromSeconds(10), now);
         runtime.Update(TimeSpan.FromSeconds(5), now);
@@ -205,7 +212,7 @@ public class SleepCycleTests
     [InlineData(false, 3, 5, 10)]
     public void InteractionEffectsAreProportionalAndCancellationStopsCharging(bool play, double seconds, double cost, double gain)
     {
-        var now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var tuning = new PetTuning { SatietyDecayPerMinute = 0, HappinessDecayPerMinute = 0 };
         var runtime = PetRuntime.Restore(new PetSnapshot { PetName = "Cat", Satiety = 100, Happiness = 20 }, tuning, now);
         Assert.True(play ? runtime.RequestPlay() : runtime.RequestPet());

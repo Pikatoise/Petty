@@ -21,7 +21,7 @@ public class BowlPlacementTests
     [Fact]
     public void SecondarySavedDisplayIsRelocatedToPrimary()
     {
-        var resolved = BowlPlacement.Resolve(new BowlPlacementState(0.5, 100, "DISPLAY2"), Displays, 64, 64);
+        ResolvedBowlPosition resolved = BowlPlacement.Resolve(new BowlPlacementState(0.5, 100, "DISPLAY2"), Displays, 64, 64);
 
         Assert.Equal("DISPLAY1", resolved.DisplayDeviceName);
         Assert.Equal(0.5 * (1920 - 64), resolved.Left, 3);
@@ -31,7 +31,7 @@ public class BowlPlacementTests
     [Fact]
     public void MissingDisplayFallsBackToPrimary()
     {
-        var resolved = BowlPlacement.Resolve(new BowlPlacementState(0.5, 100, "UNPLUGGED"), Displays, 64, 64);
+        ResolvedBowlPosition resolved = BowlPlacement.Resolve(new BowlPlacementState(0.5, 100, "UNPLUGGED"), Displays, 64, 64);
 
         Assert.Equal("DISPLAY1", resolved.DisplayDeviceName);
         Assert.InRange(resolved.Left, Primary.WorkArea.X, Primary.WorkArea.Right - 64);
@@ -40,7 +40,7 @@ public class BowlPlacementTests
     [Fact]
     public void OutOfRangeValuesAreClampedIntoTheWorkArea()
     {
-        var resolved = BowlPlacement.Resolve(new BowlPlacementState(5, 5000, null), Displays, 64, 64);
+        ResolvedBowlPosition resolved = BowlPlacement.Resolve(new BowlPlacementState(5, 5000, null), Displays, 64, 64);
 
         Assert.InRange(resolved.Left, Primary.WorkArea.X, Primary.WorkArea.Right - 64);
         Assert.True(resolved.Left + 64 <= Primary.WorkArea.Right);
@@ -51,7 +51,7 @@ public class BowlPlacementTests
     public void ResolutionChangeKeepsTheBowlOnScreen()
     {
         var small = new DisplayInfo("DISPLAY1", true, new ScreenRect(0, 0, 800, 600), new ScreenRect(0, 0, 800, 560));
-        var resolved = BowlPlacement.Resolve(new BowlPlacementState(0.99, 300, "DISPLAY1"), [small], 64, 64);
+        ResolvedBowlPosition resolved = BowlPlacement.Resolve(new BowlPlacementState(0.99, 300, "DISPLAY1"), [small], 64, 64);
 
         Assert.True(resolved.Left + 64 <= small.WorkArea.Right + 0.001);
         Assert.True(resolved.Top >= small.WorkArea.Y);
@@ -61,8 +61,8 @@ public class BowlPlacementTests
     [Fact]
     public void CaptureAndResolveRoundTrip()
     {
-        var captured = BowlPlacement.Capture(400, 700, 64, 64, Displays);
-        var resolved = BowlPlacement.Resolve(captured, Displays, 64, 64);
+        BowlPlacementState captured = BowlPlacement.Capture(400, 700, 64, 64, Displays);
+        ResolvedBowlPosition resolved = BowlPlacement.Resolve(captured, Displays, 64, 64);
 
         Assert.Equal("DISPLAY1", captured.DisplayDeviceName);
         Assert.Equal(400, resolved.Left, 3);
@@ -72,8 +72,8 @@ public class BowlPlacementTests
     [Fact]
     public void CaptureOnSecondaryMonitorClampsToPrimary()
     {
-        var captured = BowlPlacement.Capture(-1000, 500, 64, 64, Displays);
-        var resolved = BowlPlacement.Resolve(captured, Displays, 64, 64);
+        BowlPlacementState captured = BowlPlacement.Capture(-1000, 500, 64, 64, Displays);
+        ResolvedBowlPosition resolved = BowlPlacement.Resolve(captured, Displays, 64, 64);
 
         Assert.Equal("DISPLAY1", captured.DisplayDeviceName);
         Assert.InRange(resolved.Left, Primary.WorkArea.X, Primary.WorkArea.Right - 64);

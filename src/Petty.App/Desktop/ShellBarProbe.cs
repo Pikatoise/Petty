@@ -41,17 +41,23 @@ public sealed class ShellBarProbe
         RefreshHandles();
 
         ShellBarSnapshot? best = null;
-        var bestOverlap = 0.0;
+        double bestOverlap = 0.0;
 
-        foreach (var handle in _handles)
+        foreach (nint handle in _handles)
         {
-            if (!NativeMethods.GetWindowRect(handle, out var rect)) continue;
+            if (!NativeMethods.GetWindowRect(handle, out NativeMethods.Rect rect))
+            {
+                continue;
+            }
 
             var bar = new ScreenRect(rect.Left, rect.Top, rect.Width, rect.Height);
-            var overlap = WalkSurface.Intersect(bar, display.Bounds);
-            var area = overlap.Width * overlap.Height;
+            ScreenRect overlap = WalkSurface.Intersect(bar, display.Bounds);
+            double area = overlap.Width * overlap.Height;
 
-            if (area <= 0 || area <= bestOverlap) continue;
+            if (area <= 0 || area <= bestOverlap)
+            {
+                continue;
+            }
 
             bestOverlap = area;
             best = Describe(handle, bar);
@@ -62,24 +68,31 @@ public sealed class ShellBarProbe
 
     private static ShellBarSnapshot Describe(IntPtr handle, ScreenRect rect)
     {
-        var className = DesktopWindowService.ClassName(handle);
+        string className = DesktopWindowService.ClassName(handle);
 
         if (!NativeMethods.IsWindowVisible(handle))
+        {
             return new ShellBarSnapshot(handle.ToInt64(), className, rect, false, "window hidden");
+        }
 
-        foreach (var fraction in SampleFractions)
+        foreach (double fraction in SampleFractions)
         {
             // A retracted auto-hide bar leaves a couple of pixels inside the screen, so
             // the sample row is taken from the middle of the reported rectangle.
-            var x = (int)Math.Round(rect.X + (rect.Width * fraction));
-            var y = (int)Math.Round(rect.Y + (rect.Height / 2));
+            int x = (int)Math.Round(rect.X + (rect.Width * fraction));
+            int y = (int)Math.Round(rect.Y + (rect.Height / 2));
 
-            var hit = NativeMethods.WindowFromPoint(new NativeMethods.Point { X = x, Y = y });
-            if (hit == IntPtr.Zero) continue;
+            nint hit = NativeMethods.WindowFromPoint(new NativeMethods.Point { X = x, Y = y });
+            if (hit == IntPtr.Zero)
+            {
+                continue;
+            }
 
-            var root = NativeMethods.GetAncestor(hit, NativeMethods.GaRoot);
+            nint root = NativeMethods.GetAncestor(hit, NativeMethods.GaRoot);
             if (root == handle)
+            {
                 return new ShellBarSnapshot(handle.ToInt64(), className, rect, true, $"hit at {x},{y}");
+            }
         }
 
         return new ShellBarSnapshot(handle.ToInt64(), className, rect, false, "not hit-testable (auto-hide)");
@@ -87,12 +100,18 @@ public sealed class ShellBarProbe
 
     private void RefreshHandles()
     {
-        if (_handles.Count > 0 && _handles.All(NativeMethods.IsWindow)) return;
+        if (_handles.Count > 0 && _handles.All(NativeMethods.IsWindow))
+        {
+            return;
+        }
 
         _handles.Clear();
 
-        var main = NativeMethods.FindWindow(MainBarClass, null);
-        if (main != IntPtr.Zero) _handles.Add(main);
+        nint main = NativeMethods.FindWindow(MainBarClass, null);
+        if (main != IntPtr.Zero)
+        {
+            _handles.Add(main);
+        }
 
         NativeMethods.EnumWindows((hwnd, _) =>
         {

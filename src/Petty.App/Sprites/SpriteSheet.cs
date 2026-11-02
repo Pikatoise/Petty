@@ -1,14 +1,20 @@
-using Petty.Core.Assets;
 using System.Windows.Media.Imaging;
+using Petty.Core.Assets;
 
 namespace Petty.App.Sprites;
 
 public sealed record SpriteFrame(int CellIndex, int ClipFrameIndex, BitmapSource Image)
 {
     /// <summary>Column/row of the frame inside the atlas, for diagnostics.</summary>
-    public int Column { get; init; }
+    public int Column
+    {
+        get; init;
+    }
 
-    public int Row { get; init; }
+    public int Row
+    {
+        get; init;
+    }
 }
 
 public sealed record SpriteClip(
@@ -49,7 +55,10 @@ public sealed class SpriteSheet
         _clips = clips;
     }
 
-    public SpriteSheetMetadata Metadata { get; }
+    public SpriteSheetMetadata Metadata
+    {
+        get;
+    }
 
     public IReadOnlyDictionary<string, SpriteClip> Clips => _clips;
 
@@ -62,19 +71,26 @@ public sealed class SpriteSheet
     public bool TryGetClip(string name, out SpriteClip clip) => _clips.TryGetValue(name, out clip!);
 
     public SpriteClip GetClip(string name) =>
-        _clips.TryGetValue(name, out var clip)
+        _clips.TryGetValue(name, out SpriteClip? clip)
             ? clip
             : throw new KeyNotFoundException($"Animation clip '{name}' is not present in the atlas.");
 
     /// <summary>Alpha test against the original, unsmoothed sprite pixel grid.</summary>
     public bool IsOpaque(int cellIndex, int spriteX, int spriteY)
     {
-        if (spriteX < 0 || spriteY < 0 || spriteX >= FrameWidth || spriteY >= FrameHeight) return false;
-        if (cellIndex < 0 || cellIndex >= Metadata.CellCount) return false;
+        if (spriteX < 0 || spriteY < 0 || spriteX >= FrameWidth || spriteY >= FrameHeight)
+        {
+            return false;
+        }
 
-        var (column, row) = SpriteMetadataValidator.CellPosition(Metadata, cellIndex);
-        var x = (column * FrameWidth) + spriteX;
-        var y = (row * FrameHeight) + spriteY;
+        if (cellIndex < 0 || cellIndex >= Metadata.CellCount)
+        {
+            return false;
+        }
+
+        (int column, int row) = SpriteMetadataValidator.CellPosition(Metadata, cellIndex);
+        int x = (column * FrameWidth) + spriteX;
+        int y = (row * FrameHeight) + spriteY;
         return _alpha[(y * _atlasWidth) + x] > AlphaThreshold;
     }
 }

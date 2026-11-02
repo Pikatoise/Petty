@@ -37,25 +37,27 @@ public static class BowlPlacement
         double bowlHeight)
     {
         if (displays is null || displays.Count == 0)
+        {
             throw new ArgumentException("At least one display is required.", nameof(displays));
+        }
 
-        var display = Primary(displays);
-        var area = display.UsableArea;
+        DisplayInfo display = Primary(displays);
+        ScreenRect area = display.UsableArea;
 
-        var width = Math.Max(0, Math.Min(bowlWidth, area.Width));
-        var height = Math.Max(0, Math.Min(bowlHeight, area.Height));
+        double width = Math.Max(0, Math.Min(bowlWidth, area.Width));
+        double height = Math.Max(0, Math.Min(bowlHeight, area.Height));
 
-        var relativeX = double.IsNaN(placement.RelativeX)
+        double relativeX = double.IsNaN(placement.RelativeX)
             ? 0.5
             : Math.Clamp(placement.RelativeX, MinRelativeX, MaxRelativeX);
 
-        var travel = Math.Max(0, area.Width - width);
-        var left = area.X + (relativeX * travel);
+        double travel = Math.Max(0, area.Width - width);
+        double left = area.X + (relativeX * travel);
         left = Math.Clamp(left, area.X, area.X + travel);
 
-        var bottomOffset = double.IsNaN(placement.BottomOffset) ? 0 : Math.Max(0, placement.BottomOffset);
+        double bottomOffset = double.IsNaN(placement.BottomOffset) ? 0 : Math.Max(0, placement.BottomOffset);
         bottomOffset = Math.Min(bottomOffset, Math.Max(0, area.Height - height));
-        var top = area.Y + Math.Max(0, area.Height - height - bottomOffset);
+        double top = area.Y + Math.Max(0, area.Height - height - bottomOffset);
 
         return new ResolvedBowlPosition(left, top, display.DeviceName);
     }
@@ -71,18 +73,20 @@ public static class BowlPlacement
         IReadOnlyList<DisplayInfo> displays)
     {
         if (displays is null || displays.Count == 0)
+        {
             throw new ArgumentException("At least one display is required.", nameof(displays));
+        }
 
-        var display = Primary(displays);
-        var area = display.UsableArea;
+        DisplayInfo display = Primary(displays);
+        ScreenRect area = display.UsableArea;
 
-        var width = Math.Max(0, Math.Min(bowlWidth, area.Width));
-        var height = Math.Max(0, Math.Min(bowlHeight, area.Height));
-        var travel = Math.Max(0, area.Width - width);
+        double width = Math.Max(0, Math.Min(bowlWidth, area.Width));
+        double height = Math.Max(0, Math.Min(bowlHeight, area.Height));
+        double travel = Math.Max(0, area.Width - width);
 
-        var relativeX = travel <= 0 ? 0.5 : (left - area.X) / travel;
-        var maxOffset = Math.Max(0, area.Height - height);
-        var bottomOffset = area.Bottom - (top + height);
+        double relativeX = travel <= 0 ? 0.5 : (left - area.X) / travel;
+        double maxOffset = Math.Max(0, area.Height - height);
+        double bottomOffset = area.Bottom - (top + height);
 
         return new BowlPlacementState(
             Math.Clamp(relativeX, MinRelativeX, MaxRelativeX),

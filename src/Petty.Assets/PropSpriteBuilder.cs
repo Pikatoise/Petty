@@ -32,13 +32,16 @@ public static class PropSpriteBuilder
         if (level > 0)
         {
             // A stepped mound rises from the bowl as the inventory increases.
-            var top = 12 - (level - 1) * 3;
-            var center = level >= 2 ? 11 : 12;
-            for (var y = top; y <= 13; y++)
+            int top = 12 - (level - 1) * 3;
+            int center = level >= 2 ? 11 : 12;
+            for (int y = top; y <= 13; y++)
             {
-                var halfWidth = Math.Min(6, 2 + (y - top));
+                int halfWidth = Math.Min(6, 2 + (y - top));
                 canvas.FillRect(center - halfWidth, y, halfWidth * 2 + 1, 1, OrangeDark);
-                if (halfWidth > 2) canvas.FillRect(center + 1 - halfWidth, y, halfWidth * 2 - 1, 1, Orange);
+                if (halfWidth > 2)
+                {
+                    canvas.FillRect(center + 1 - halfWidth, y, halfWidth * 2 - 1, 1, Orange);
+                }
             }
             if (level >= 2)
             {
@@ -46,8 +49,15 @@ public static class PropSpriteBuilder
                 canvas.FillRect(18, 12, 1, 2, Cream);
                 canvas[10, top + 1] = CreamShade;
             }
-            if (level >= 3) canvas[14, top + 4] = CreamShade;
-            if (level >= 4) canvas[8, top + 6] = CreamShade;
+            if (level >= 3)
+            {
+                canvas[14, top + 4] = CreamShade;
+            }
+
+            if (level >= 4)
+            {
+                canvas[8, top + 6] = CreamShade;
+            }
         }
 
         canvas.Outline(Outline);
@@ -57,7 +67,7 @@ public static class PropSpriteBuilder
     public static PixelCanvas BuildPour(int frame)
     {
         var canvas = new PixelCanvas(24, 32);
-        var y = frame == 0 ? 1 : 3;
+        int y = frame == 0 ? 1 : 3;
         canvas.FillRect(11, y + 1, 8, 10, Cream);
         canvas.FillRect(12, y, 6, 1, OrangeDark);
         canvas.FillRect(12, y + 3, 6, 3, Orange);
@@ -65,9 +75,9 @@ public static class PropSpriteBuilder
         canvas.Outline(Outline);
         if (frame is >= 1 and <= 4)
         {
-            for (var i = 0; i < 4; i++)
+            for (int i = 0; i < 4; i++)
             {
-                var dropY = 14 + ((frame * 4 + i * 5) % 17);
+                int dropY = 14 + ((frame * 4 + i * 5) % 17);
                 canvas.FillRect(10 - i % 2, dropY, 2, 2, i % 2 == 0 ? Orange : CreamShade);
             }
         }
@@ -102,11 +112,17 @@ public static class PropSpriteBuilder
     {
         Directory.CreateDirectory(outputDirectory);
         BuildBowl(0).SavePng(Path.Combine(outputDirectory, BowlEmptyName));
-        for (var level = 1; level <= 3; level++)
+        for (int level = 1; level <= 3; level++)
+        {
             BuildBowl(level).SavePng(Path.Combine(outputDirectory, $"bowl-{level * 25}.png"));
+        }
+
         BuildBowl(4).SavePng(Path.Combine(outputDirectory, BowlFullName));
-        for (var frame = 0; frame < 6; frame++)
+        for (int frame = 0; frame < 6; frame++)
+        {
             BuildPour(frame).SavePng(Path.Combine(outputDirectory, $"pour-{frame}.png"));
+        }
+
         BuildHand().SavePng(Path.Combine(outputDirectory, "hand.png"));
         BuildBall().SavePng(Path.Combine(outputDirectory, BallName));
     }

@@ -20,18 +20,11 @@ public class AnimationPlaybackTests
         };
 
     [Fact]
-    public void StartsOnFrameZero()
-    {
-        var playback = new AnimationPlayback();
-        Assert.True(playback.Play(Clip()));
-        Assert.Equal(0, playback.FrameIndex);
-    }
-
-    [Fact]
     public void AdvancesOneFramePerFrameDuration()
     {
         var playback = new AnimationPlayback();
-        playback.Play(Clip(frames: 4, fps: 10));
+        Assert.True(playback.Play(Clip(frames: 4, fps: 10)));
+        Assert.Equal(0, playback.FrameIndex);
 
         Assert.False(playback.Advance(TimeSpan.FromMilliseconds(90)));
         Assert.Equal(0, playback.FrameIndex);
@@ -73,7 +66,7 @@ public class AnimationPlaybackTests
     public void SameClipDoesNotRestartUnlessAsked()
     {
         var playback = new AnimationPlayback();
-        var clip = Clip();
+        AnimationClipMetadata clip = Clip();
         playback.Play(clip);
         playback.Advance(TimeSpan.FromMilliseconds(200));
 
@@ -141,8 +134,5 @@ public class AnimationPlaybackTests
     [InlineData(PetActivity.Tired, "tired")]
     [InlineData(PetActivity.Exiting, "exit")]
     [InlineData(PetActivity.Idle, "idle")]
-    public void BehaviourStatesMapToClips(PetActivity activity, string expected)
-    {
-        Assert.Equal(expected, PetAnimationMap.ClipFor(activity));
-    }
+    public void BehaviourStatesMapToClips(PetActivity activity, string expected) => Assert.Equal(expected, PetAnimationMap.ClipFor(activity));
 }

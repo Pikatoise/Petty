@@ -13,48 +13,64 @@ internal static class PlayPreview
     // JavaScript implementation of the animation under review.
     public static void Write(IReadOnlyList<SpriteVariant> variants, string output)
     {
-        var directory = Path.Combine(output, "play");
+        string directory = Path.Combine(output, "play");
         Directory.CreateDirectory(directory);
         var ball = PropImage.Load(Path.Combine(SpriteAssetLocator.FindSharedDirectory()!, "ball.png"));
         var previews = new List<object>();
-        var times = new[] { 0.0, 0.3, 0.45, 0.6, 0.75, 0.9 };
+        double[] times = new[] { 0.0, 0.3, 0.45, 0.6, 0.75, 0.9 };
         var board = new DrawingVisual();
-        using (var drawing = board.RenderOpen())
+        using (DrawingContext drawing = board.RenderOpen())
         {
             drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(30, 34, 44)), null, new Rect(0, 0, 1920, 8 * 195));
-            var row = 0;
-            foreach (var variant in variants.Where(v => v.IsDefault))
+            int row = 0;
+            foreach (SpriteVariant? variant in variants.Where(v => v.IsDefault))
             {
-                var sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
-                var clip = sheet.GetClip("play");
+                SpriteSheet sheet = SpriteSheetLoader.Load(variant.Directory, variant.AssetId);
+                SpriteClip clip = sheet.GetClip("play");
                 var animation = new Petty.App.Sprites.AnimationController(sheet);
                 animation.Play("play");
-                var contactX = sheet.Metadata.PlayContactX ?? 58;
-                var contactY = sheet.Metadata.PlayContactY ?? 45;
-                var lift = Math.Max(0, (sheet.GroundRow - contactY) * 3 - 48 * 0.44);
-                var frames = clip.Frames.Select(f => Encode(f.Image)).ToArray();
+                int contactX = sheet.Metadata.PlayContactX ?? 58;
+                int contactY = sheet.Metadata.PlayContactY ?? 45;
+                double lift = Math.Max(0, (sheet.GroundRow - contactY) * 3 - 48 * 0.44);
+                string[] frames = clip.Frames.Select(f => Encode(f.Image)).ToArray();
                 var samples = new List<object>();
-                for (var i = 0; i <= 300; i++)
+                for (int i = 0; i <= 300; i++)
                 {
-                    var t = i / 50.0;
-                    var pose = ActionScene.SamplePlay(t, 6, clip.Frames.Count, clip.FramesPerSecond, 700, lift);
+                    double t = i / 50.0;
+                    PlayScenePose pose = ActionScene.SamplePlay(t, 6, clip.Frames.Count, clip.FramesPerSecond, 700, lift);
                     animation.ShowSceneFrame(pose.FrameIndex);
-                    if (animation.CurrentFrame != clip[pose.FrameIndex]) throw new InvalidOperationException("Play frame clock mismatch.");
-                    samples.Add(new { frame = pose.FrameIndex, x = pose.PropOffset, y = pose.PropHeight });
+                    if (animation.CurrentFrame != clip[pose.FrameIndex])
+                    {
+                        throw new InvalidOperationException("Play frame clock mismatch.");
+                    }
+
+                    samples.Add(new
+                    {
+                        frame = pose.FrameIndex,
+                        x = pose.PropOffset,
+                        y = pose.PropHeight
+                    });
                 }
-                previews.Add(new { id = variant.BreedId, frames, contactX, groundRow = sheet.GroundRow, samples });
-                for (var column = 0; column < times.Length; column++)
+                previews.Add(new
                 {
-                    var t = times[column];
-                    var pose = ActionScene.SamplePlay(t, 6, clip.Frames.Count, clip.FramesPerSecond, 700, lift);
+                    id = variant.BreedId,
+                    frames,
+                    contactX,
+                    groundRow = sheet.GroundRow,
+                    samples
+                });
+                for (int column = 0; column < times.Length; column++)
+                {
+                    double t = times[column];
+                    PlayScenePose pose = ActionScene.SamplePlay(t, 6, clip.Frames.Count, clip.FramesPerSecond, 700, lift);
                     drawing.PushTransform(new TranslateTransform(column * 320, row * 195));
                     drawing.DrawText(new FormattedText($"{variant.BreedId} / {t:0.00}s", CultureInfo.InvariantCulture,
                         FlowDirection.LeftToRight, new Typeface("Consolas"), 11, Brushes.Wheat, 1), new Point(8, 8));
                     const double floor = 175;
                     drawing.DrawLine(new Pen(Brushes.SlateGray, 1), new Point(0, floor), new Point(315, floor));
                     drawing.DrawImage(clip[pose.FrameIndex].Image, new Rect(0, floor - (sheet.GroundRow + 1) * 3, 192, 192));
-                    var x = contactX * 3 + 48 * 0.44 + pose.PropOffset;
-                    var y = floor - 21 + pose.PropHeight;
+                    double x = contactX * 3 + 48 * 0.44 + pose.PropOffset;
+                    double y = floor - 21 + pose.PropHeight;
                     drawing.PushTransform(new RotateTransform(pose.PropOffset / (48 * 0.44) * 180 / Math.PI, x, y));
                     drawing.DrawImage(ball.Image, new Rect(x - 24, y - 24, 48, 48));
                     drawing.Pop();
@@ -69,8 +85,16 @@ internal static class PlayPreview
         image.Render(board);
         var png = new PngBitmapEncoder();
         png.Frames.Add(BitmapFrame.Create(image));
-        using (var file = File.Create(Path.Combine(directory, "contact-sheet.png"))) png.Save(file);
-        var data = JsonSerializer.Serialize(new { ball = Encode(ball.Image), previews });
+        using (FileStream file = File.Create(Path.Combine(directory, "contact-sheet.png")))
+        {
+            png.Save(file);
+        }
+
+        string data = JsonSerializer.Serialize(new
+        {
+            ball = Encode(ball.Image),
+            previews
+        });
         File.WriteAllText(Path.Combine(directory, "preview.html"), Html.Replace("/*DATA*/", data));
     }
 

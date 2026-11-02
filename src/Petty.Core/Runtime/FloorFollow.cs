@@ -15,15 +15,25 @@ public sealed class FloorFollow
     public FloorFollow(double floor = 0) => Current = floor;
 
     /// <summary>Ground row the pet's paws are currently resting on.</summary>
-    public double Current { get; private set; }
+    public double Current
+    {
+        get; private set;
+    }
 
     public bool IsAt(double target, double tolerance = 0.5) => Math.Abs(target - Current) <= tolerance;
 
     /// <summary>Moves towards <paramref name="target"/>; returns the new ground row.</summary>
     public double Advance(double target, TimeSpan delta, double pixelsPerSecond = PixelsPerSecond)
     {
-        if (double.IsNaN(target) || double.IsInfinity(target)) return Current;
-        if (delta <= TimeSpan.Zero) return Current;
+        if (double.IsNaN(target) || double.IsInfinity(target))
+        {
+            return Current;
+        }
+
+        if (delta <= TimeSpan.Zero)
+        {
+            return Current;
+        }
 
         if (double.IsNaN(Current) || double.IsInfinity(Current) || pixelsPerSecond <= 0)
         {
@@ -31,8 +41,8 @@ public sealed class FloorFollow
             return Current;
         }
 
-        var step = pixelsPerSecond * Math.Min(delta.TotalSeconds, MaxStep);
-        var distance = target - Current;
+        double step = pixelsPerSecond * Math.Min(delta.TotalSeconds, MaxStep);
+        double distance = target - Current;
 
         Current = Math.Abs(distance) <= step ? target : Current + (Math.Sign(distance) * step);
         return Current;
@@ -41,7 +51,11 @@ public sealed class FloorFollow
     /// <summary>Jumps to a floor without easing (startup, display changes).</summary>
     public void Snap(double floor)
     {
-        if (double.IsNaN(floor) || double.IsInfinity(floor)) return;
+        if (double.IsNaN(floor) || double.IsInfinity(floor))
+        {
+            return;
+        }
+
         Current = floor;
     }
 }

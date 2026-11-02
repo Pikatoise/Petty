@@ -1,9 +1,9 @@
-using Petty.Core.Diagnostics;
-using Petty.Core.Domain;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Petty.Core.Diagnostics;
+using Petty.Core.Domain;
 
 namespace Petty.App.Views;
 
@@ -11,7 +11,7 @@ namespace Petty.App.Views;
 /// Rename and recreate. Breed and coat are fixed after creation and are only shown.
 /// The window never shuts the application down; closing it leaves the pet running.
 /// </summary>
-public partial class SettingsWindow: Window
+public partial class SettingsWindow : Window
 {
     private static readonly Brush ErrorBrush = new SolidColorBrush(Color.FromRgb(0xB0, 0x00, 0x20));
     private static readonly Brush OkBrush = new SolidColorBrush(Color.FromRgb(0x2E, 0x6B, 0x2E));
@@ -33,7 +33,12 @@ public partial class SettingsWindow: Window
         _savedName = petName;
         InitializeComponent();
         NameBox.Text = petName;
-        LanguageSelector.SelectedIndex = localization.Preferences.Language switch { "ru" => 1, "en" => 2, _ => 0 };
+        LanguageSelector.SelectedIndex = localization.Preferences.Language switch
+        {
+            "ru" => 1,
+            "en" => 2,
+            _ => 0
+        };
         AutostartCheck.IsChecked = localization.Preferences.Autostart;
         UpdateAppearance();
         _ready = true;
@@ -41,7 +46,10 @@ public partial class SettingsWindow: Window
         Closing += (sender, e) =>
         {
             _nameSaveTimer.Stop();
-            if (PetNameRules.TryNormalize(NameBox.Text, out _, out _) && !SaveName()) e.Cancel = true;
+            if (PetNameRules.TryNormalize(NameBox.Text, out _, out _) && !SaveName())
+            {
+                e.Cancel = true;
+            }
         };
         Closed += (_, _) => _nameSaveTimer.Stop();
         Loaded += (_, _) => NameBox.SelectAll();
@@ -53,7 +61,11 @@ public partial class SettingsWindow: Window
 
     private void OnNameChanged(object sender, TextChangedEventArgs e)
     {
-        if (!_ready) return;
+        if (!_ready)
+        {
+            return;
+        }
+
         _nameSaveTimer.Stop();
         StatusText.Text = string.Empty;
         _nameSaveTimer.Start();
@@ -61,19 +73,26 @@ public partial class SettingsWindow: Window
 
     private void OnNameLostFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
     {
-        if (_ready) SaveName();
+        if (_ready)
+        {
+            SaveName();
+        }
     }
 
     private bool SaveName()
     {
         _nameSaveTimer.Stop();
-        if (!PetNameRules.TryNormalize(NameBox.Text, out var name, out _))
+        if (!PetNameRules.TryNormalize(NameBox.Text, out string? name, out _))
         {
             ShowStatus(Text("NameInvalid"), ErrorBrush);
             return false;
         }
 
-        if (name == _savedName) return true;
+        if (name == _savedName)
+        {
+            return true;
+        }
+
         if (RenameRequested?.Invoke(name) != true)
         {
             ShowSaveError();
@@ -86,17 +105,28 @@ public partial class SettingsWindow: Window
 
     private void OnNewPet(object sender, RoutedEventArgs e)
     {
-        if (PetNameRules.TryNormalize(NameBox.Text, out _, out _) && !SaveName()) return;
+        if (PetNameRules.TryNormalize(NameBox.Text, out _, out _) && !SaveName())
+        {
+            return;
+        }
+
         var confirmation = new ConfirmNewPetWindow { Owner = this };
-        if (confirmation.ShowDialog() == true) NewPetRequested?.Invoke(this, EventArgs.Empty);
+        if (confirmation.ShowDialog() == true)
+        {
+            NewPetRequested?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
 
     private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_ready || LanguageSelector.SelectedItem is not ComboBoxItem item) return;
-        var old = _localization.Preferences.Language;
+        if (!_ready || LanguageSelector.SelectedItem is not ComboBoxItem item)
+        {
+            return;
+        }
+
+        string? old = _localization.Preferences.Language;
         try
         {
             _localization.SetLanguage(item.Tag as string == "system" ? null : item.Tag as string);
@@ -107,7 +137,12 @@ public partial class SettingsWindow: Window
         {
             _log.Error("Could not save preferences.", ex);
             _ready = false;
-            LanguageSelector.SelectedIndex = old switch { "ru" => 1, "en" => 2, _ => 0 };
+            LanguageSelector.SelectedIndex = old switch
+            {
+                "ru" => 1,
+                "en" => 2,
+                _ => 0
+            };
             _ready = true;
             ProgramStatusText.Text = Text("PreferencesError");
         }
@@ -115,8 +150,12 @@ public partial class SettingsWindow: Window
 
     private void OnAutostartChanged(object sender, RoutedEventArgs e)
     {
-        if (!_ready) return;
-        var old = _localization.Preferences.Autostart;
+        if (!_ready)
+        {
+            return;
+        }
+
+        bool old = _localization.Preferences.Autostart;
         try
         {
             ProgramStatusText.Text = string.Empty;

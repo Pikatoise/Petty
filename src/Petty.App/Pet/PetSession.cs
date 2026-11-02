@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
@@ -7,8 +9,6 @@ using Petty.Core.Behavior;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
 using Petty.Core.Runtime;
-using System.Diagnostics;
-using System.Windows.Threading;
 
 namespace Petty.App.Pet;
 
@@ -16,12 +16,11 @@ namespace Petty.App.Pet;
 /// Owns the live session: feeds elapsed time into <see cref="PetRuntime"/>, maps the
 /// behaviour state to a sprite clip and a motion target, and moves the window.
 ///
-/// Two timers keep the work small and predictable:
-///  - a ~20 ms frame timer advances the currently displayed animation;
-///  - a ~200 ms simulation timer advances needs and the state machine.
-/// Both are stopped when the session is disposed.
+/// An adaptive frame timer advances animation and movement; separate simulation,
+/// hover and taskbar timers track needs, input and desktop changes.
+/// All timers are stopped when the session is disposed.
 /// </summary>
-public sealed class PetSession: IDisposable
+public sealed class PetSession : IDisposable
 {
     private static readonly TimeSpan MinFrameInterval = TimeSpan.FromMilliseconds(20);
     private static readonly TimeSpan MaxFrameDelta = TimeSpan.FromMilliseconds(250);
@@ -133,7 +132,10 @@ public sealed class PetSession: IDisposable
         {
             _clock.SetSpeed(timeScale, Timestamp());
             _debugTimeScale = timeScale;
-            if (_started) SyncFrameInterval();
+            if (_started)
+            {
+                SyncFrameInterval();
+            }
         }
     }
     public void RefreshDebugBowl() => _bowlDisplay.UpdateLevel(_runtime.Bowl.Food, _runtime.Bowl.Capacity);
@@ -152,8 +154,15 @@ public sealed class PetSession: IDisposable
 
     public void Start()
     {
-        if (_started) return;
-        if (_disposed) throw new ObjectDisposedException(nameof(PetSession));
+        if (_started)
+        {
+            return;
+        }
+
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(PetSession));
+        }
 
         _started = true;
 
@@ -170,7 +179,7 @@ public sealed class PetSession: IDisposable
         _menu.Hide();
 
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
-        var startedAt = Timestamp();
+        TimeSpan startedAt = Timestamp();
         _lastFrameRealTick = _clock.Read(startedAt);
         _lastFrameTick = SimulationTime(startedAt);
         _lastSimulationTick = _lastFrameTick;
@@ -191,11 +200,14 @@ public sealed class PetSession: IDisposable
     /// <summary>Starts the animated exit; <see cref="ExitAnimationCompleted"/> fires at the screen edge.</summary>
     public bool RequestExit()
     {
-        if (_disposed || _exitRequested) return false;
+        if (_disposed || _exitRequested)
+        {
+            return false;
+        }
 
         _exitRequested = true;
         _bowlDisplay.Stop();
-        var exitAt = Timestamp();
+        TimeSpan exitAt = Timestamp();
         _exitStarted = _clock.Read(exitAt);
 #if DEBUG
         _clock.SetSpeed(1, exitAt);
@@ -213,7 +225,11 @@ public sealed class PetSession: IDisposable
 
     public void RestoreShell()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
+
         HideInteractionMenu();
         _menu?.Attach(_window.Attachment.Mode, _window.Handle);
         ApplySurfaceChange(_surface.Poll());
@@ -221,7 +237,11 @@ public sealed class PetSession: IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
+
         _disposed = true;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
 
@@ -257,40 +277,63 @@ public sealed class PetSession: IDisposable
 
     private void OnFrameTick(object? sender, EventArgs e)
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
 
-        var now = Timestamp();
-        var realElapsed = _clock.Read(now);
-        var elapsed = SimulationTime(now);
-        var realDelta = realElapsed - _lastFrameRealTick;
-        var delta = elapsed - _lastFrameTick;
+        TimeSpan now = Timestamp();
+        TimeSpan realElapsed = _clock.Read(now);
+        TimeSpan elapsed = SimulationTime(now);
+        TimeSpan realDelta = realElapsed - _lastFrameRealTick;
+        TimeSpan delta = elapsed - _lastFrameTick;
         _lastFrameRealTick = realElapsed;
         _lastFrameTick = elapsed;
 
-        if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
-        if (realDelta < TimeSpan.Zero) realDelta = TimeSpan.Zero;
+        if (delta < TimeSpan.Zero)
+        {
+            delta = TimeSpan.Zero;
+        }
+
+        if (realDelta < TimeSpan.Zero)
+        {
+            realDelta = TimeSpan.Zero;
+        }
+
         if (realDelta > MaxFrameDelta)
         {
             delta = TimeSpan.FromTicks((long)(delta.Ticks * (MaxFrameDelta.TotalSeconds / realDelta.TotalSeconds)));
             realDelta = MaxFrameDelta;
         }
 
-        if (_runtime.Behavior.State is not PetActivity.Playing) _animation.Advance(delta);
+        if (_runtime.Behavior.State is not PetActivity.Playing)
+        {
+            _animation.Advance(delta);
+        }
 
-        var wasMoving = _motion.IsMoving;
-        var moved = _motion.Update(delta);
-        var climbed = _surface.AdvanceFloor(realDelta);
+        bool wasMoving = _motion.IsMoving;
+        bool moved = _motion.Update(delta);
+        bool climbed = _surface.AdvanceFloor(realDelta);
 
         if (wasMoving && !_motion.IsMoving && !_exitRequested)
+        {
             _runtime.NotifyArrived();
+        }
 
         if (moved || climbed)
         {
-            if (_runtime.Behavior.State is not (PetActivity.Playing or PetActivity.Petting or PetActivity.Eating)) FaceMovement();
+            if (_runtime.Behavior.State is not (PetActivity.Playing or PetActivity.Petting or PetActivity.Eating))
+            {
+                FaceMovement();
+            }
+
             ApplyPosition();
         }
 
-        if (climbed) _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
+        if (climbed)
+        {
+            _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
+        }
 
         UpdateScene();
 
@@ -309,45 +352,68 @@ public sealed class PetSession: IDisposable
     /// </summary>
     private void SyncFrameInterval()
     {
-        var busy = _runtime.Behavior.State is PetActivity.Playing or PetActivity.Petting || _motion.IsMoving || _surface.IsFloorMoving || _menu?.IsVisible == true;
-        var fps = _animation.CurrentClip?.FramesPerSecond ?? 0;
+        bool busy = _runtime.Behavior.State is PetActivity.Playing or PetActivity.Petting || _motion.IsMoving || _surface.IsFloorMoving || _menu?.IsVisible == true;
+        double fps = _animation.CurrentClip?.FramesPerSecond ?? 0;
 #if DEBUG
         fps *= _debugTimeScale;
 #endif
 
-        var interval = busy || fps <= 0
+        TimeSpan interval = busy || fps <= 0
             ? MinFrameInterval
             : TimeSpan.FromSeconds(1 / Math.Clamp(fps, 1, 60));
 
-        if (interval > MaxFrameDelta) interval = MaxFrameDelta;
-        if (_frameTimer.Interval != interval) _frameTimer.Interval = interval;
+        if (interval > MaxFrameDelta)
+        {
+            interval = MaxFrameDelta;
+        }
+
+        if (_frameTimer.Interval != interval)
+        {
+            _frameTimer.Interval = interval;
+        }
     }
 
     private void OnShellBarTick(object? sender, EventArgs e)
     {
-        if (!_disposed) ApplySurfaceChange(_surface.Poll());
+        if (!_disposed)
+        {
+            ApplySurfaceChange(_surface.Poll());
+        }
     }
 
     private void OnSimulationTick(object? sender, EventArgs e)
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
 
-        var now = Timestamp();
-        var realElapsed = _clock.Read(now);
-        var elapsed = SimulationTime(now);
-        var delta = elapsed - _lastSimulationTick;
+        TimeSpan now = Timestamp();
+        TimeSpan realElapsed = _clock.Read(now);
+        TimeSpan elapsed = SimulationTime(now);
+        TimeSpan delta = elapsed - _lastSimulationTick;
         _lastSimulationTick = elapsed;
 
-        if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
+        if (delta < TimeSpan.Zero)
+        {
+            delta = TimeSpan.Zero;
+        }
+
         _runtime.Update(delta, DateTimeOffset.UtcNow);
         _bowlDisplay.UpdateLevel(_runtime.Bowl.Food, _runtime.Bowl.Capacity);
 
-        if (!_exitRequested || _exitCompleted) return;
+        if (!_exitRequested || _exitCompleted)
+        {
+            return;
+        }
 
-        var timedOut = realElapsed - _exitStarted > _exitSafetyTimeout;
-        var offScreen = _runtime.IsExitAnimationComplete && !_motion.IsMoving;
+        bool timedOut = realElapsed - _exitStarted > _exitSafetyTimeout;
+        bool offScreen = _runtime.IsExitAnimationComplete && !_motion.IsMoving;
 
-        if (!offScreen && !timedOut) return;
+        if (!offScreen && !timedOut)
+        {
+            return;
+        }
 
         _exitCompleted = true;
         _log.Info(timedOut
@@ -357,21 +423,26 @@ public sealed class PetSession: IDisposable
         ExitAnimationCompleted?.Invoke(this, EventArgs.Empty);
     }
 
-    private TimeSpan SimulationTime(TimeSpan timestamp)
-    {
+    private TimeSpan SimulationTime(TimeSpan timestamp) =>
 #if DEBUG
-        return _clock.ReadScaled(timestamp);
+        _clock.ReadScaled(timestamp);
 #else
-        return _clock.Read(timestamp);
+        _clock.Read(timestamp);
 #endif
-    }
+
 
     private static TimeSpan Timestamp() => Stopwatch.GetElapsedTime(0, Stopwatch.GetTimestamp());
 
     private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
     {
-        if (e.Mode is PowerModes.Suspend) _clock.Suspend(Timestamp());
-        else if (e.Mode is PowerModes.Resume) _clock.Resume(Timestamp());
+        if (e.Mode is PowerModes.Suspend)
+        {
+            _clock.Suspend(Timestamp());
+        }
+        else if (e.Mode is PowerModes.Resume)
+        {
+            _clock.Resume(Timestamp());
+        }
     }
 
     private void OnBehaviorTransition(object? sender, BehaviorTransition transition)
@@ -385,7 +456,10 @@ public sealed class PetSession: IDisposable
             HideInteractionMenu();
             _hoverTimer.Stop();
         }
-        else if (_menu?.IsVisible != true) _hoverTimer.Start();
+        else if (_menu?.IsVisible != true)
+        {
+            _hoverTimer.Start();
+        }
 
         switch (transition.To)
         {
@@ -420,7 +494,15 @@ public sealed class PetSession: IDisposable
                 _sceneOrigin = _motion.X;
                 _sceneDirection = _motion.X < (WalkArea.Left + WalkArea.Right) / 2 ? 1 : -1;
                 _window.SetFacing(_sceneDirection < 0);
-                if (transition.To is PetActivity.Playing) _props.ShowBall(); else _props.ShowHand();
+                if (transition.To is PetActivity.Playing)
+                {
+                    _props.ShowBall();
+                }
+                else
+                {
+                    _props.ShowHand();
+                }
+
                 UpdateScene();
                 break;
 
@@ -434,12 +516,21 @@ public sealed class PetSession: IDisposable
                 break;
         }
 
-        if (transition.From is PetActivity.Playing or PetActivity.Petting) _props.HideScenes();
+        if (transition.From is PetActivity.Playing or PetActivity.Petting)
+        {
+            _props.HideScenes();
+        }
 
         if (transition.From is PetActivity.Playing or PetActivity.Petting or PetActivity.Eating)
+        {
             StateChanged?.Invoke(this, transition.From is PetActivity.Eating ? "eat" : "play");
+        }
 
-        if (transition.To is not (PetActivity.Playing or PetActivity.Petting or PetActivity.Eating)) FaceMovement();
+        if (transition.To is not (PetActivity.Playing or PetActivity.Petting or PetActivity.Eating))
+        {
+            FaceMovement();
+        }
+
         ApplyPosition();
         SyncFrameInterval();
     }
@@ -447,7 +538,9 @@ public sealed class PetSession: IDisposable
     private void OnFrameChanged(object? sender, EventArgs e)
     {
         if (_animation.CurrentFrame is { } frame)
+        {
             _window.ShowFrame(frame);
+        }
     }
 
     private void OnPetClicked(object? sender, EventArgs e)
@@ -464,84 +557,123 @@ public sealed class PetSession: IDisposable
             _log.Info("Play requested from the pet.");
             _runtime.RequestPlay();
         }
-        else if (action is PetInteraction.Pet) _runtime.RequestPet();
+        else if (action is PetInteraction.Pet)
+        {
+            _runtime.RequestPet();
+        }
     }
 
     private void OnPointerChanged(object? sender, EventArgs e) => UpdatePointer();
 
     private void UpdatePointer()
     {
-        if (_disposed || _menu is null || !NativeMethods.GetCursorPos(out var point)) return;
+        if (_disposed || _menu is null || !NativeMethods.GetCursorPos(out NativeMethods.Point point))
+        {
+            return;
+        }
+
         if (_runtime.Behavior.State is PetActivity.Eating or PetActivity.Playing or PetActivity.Petting or PetActivity.Exiting)
         {
             HideInteractionMenu();
             return;
         }
         _menu.SetPlayEnabled(_runtime.Behavior.CanPlay);
-        var petRect = _window.PlacementRect;
-        var insidePetBox = point.X >= petRect.Left && point.X < petRect.Left + petRect.Width &&
+        (int Left, int Top, int Width, int Height) petRect = _window.PlacementRect;
+        bool insidePetBox = point.X >= petRect.Left && point.X < petRect.Left + petRect.Width &&
                            point.Y >= petRect.Top && point.Y < petRect.Top + petRect.Height;
-        if (!insidePetBox && _menu.IsVisible != true) return;
-        var underPointer = NativeMethods.WindowFromPoint(point);
-        var overPet = InteractionMenuPlacement.IsPetHovered(
+        if (!insidePetBox && _menu.IsVisible != true)
+        {
+            return;
+        }
+
+        nint underPointer = NativeMethods.WindowFromPoint(point);
+        bool overPet = InteractionMenuPlacement.IsPetHovered(
             new ScreenRect(petRect.Left, petRect.Top, petRect.Width, petRect.Height), point.X, point.Y,
             underPointer == _window.Handle || DesktopWindowService.IsDesktopSurface(underPointer));
-        var overMenu = underPointer == _menu.Handle && _menu.ContainsScreenPoint(point.X, point.Y);
+        bool overMenu = underPointer == _menu.Handle && _menu.ContainsScreenPoint(point.X, point.Y);
         if (!_menu.IsVisible && overPet)
         {
             _menuAnchorX = point.X - _window.PlacementRect.Left;
             PlaceInteractionMenu();
             _menu.Show();
             PlaceInteractionMenu();
-            if (_window.Attachment.Mode != DesktopLayerMode.WorkerW) _menu.PlaceAbovePet(_window.Handle);
+            if (_window.Attachment.Mode != DesktopLayerMode.WorkerW)
+            {
+                _menu.PlaceAbovePet(_window.Handle);
+            }
+
             _hoverTimer.Stop();
             SyncFrameInterval();
         }
-        else if (_menu.IsVisible && !overPet && !overMenu) HideInteractionMenu();
+        else if (_menu.IsVisible && !overPet && !overMenu)
+        {
+            HideInteractionMenu();
+        }
     }
 
     private void HideInteractionMenu()
     {
-        if (_menu?.IsVisible != true) return;
+        if (_menu?.IsVisible != true)
+        {
+            return;
+        }
+
         _menu.Hide();
         if (_runtime.Behavior.State is not (PetActivity.Eating or PetActivity.Playing or PetActivity.Petting or PetActivity.Exiting))
+        {
             _hoverTimer.Start();
+        }
+
         SyncFrameInterval();
     }
 
     private void PlaceInteractionMenu()
     {
         if (_menu is null || _surface.PrimaryDisplay is not { } display ||
-            !_window.TryGetMenuAnchor(_menuAnchorX, out var x, out var y)) return;
-        var work = display.UsableArea;
-        var top = work.Y;
+            !_window.TryGetMenuAnchor(_menuAnchorX, out int x, out int y))
+        {
+            return;
+        }
+
+        ScreenRect work = display.UsableArea;
+        double top = work.Y;
         if (_surface.ShellBar is { Revealed: true } bar &&
             WalkSurface.EdgeOf(display.Bounds, WalkSurface.Intersect(display.Bounds, bar.Rect)) is ShellBarEdge.Top)
+        {
             top = Math.Max(top, bar.Rect.Bottom);
-        var left = Math.Max(work.X, WalkArea.Left);
-        var right = Math.Min(work.Right, WalkArea.Right + _window.PhysicalWidth);
-        var bottom = Math.Min(work.Bottom, WalkArea.FloorY);
+        }
+
+        double left = Math.Max(work.X, WalkArea.Left);
+        double right = Math.Min(work.Right, WalkArea.Right + _window.PhysicalWidth);
+        double bottom = Math.Min(work.Bottom, WalkArea.FloorY);
         var usable = new ScreenRect(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
-        var dpi = _window.DpiScale;
+        double dpi = _window.DpiScale;
         _menu.Place(InteractionMenuPlacement.Place(usable, x, y,
             InteractionMenuWindow.MenuWidth * dpi, InteractionMenuWindow.MenuHeight * dpi));
     }
 
     private void OnBowlClicked(object? sender, EventArgs e)
     {
-        if (_exitRequested || !_bowlDisplay.TryPour(_runtime.Bowl.Food, _runtime.Bowl.Capacity)) return;
-        var added = _runtime.RefillBowl();
+        if (_exitRequested || !_bowlDisplay.TryPour(_runtime.Bowl.Food, _runtime.Bowl.Capacity))
+        {
+            return;
+        }
+
+        double added = _runtime.RefillBowl();
         _bowlDisplay.UpdateLevel(_runtime.Bowl.Food, _runtime.Bowl.Capacity);
         _log.Info($"Bowl filled with {added:F0}; food {_runtime.Bowl.Food:F0}/{_runtime.Bowl.Capacity:F0}.");
 
-        if (added > 0) StateChanged?.Invoke(this, "feed");
+        if (added > 0)
+        {
+            StateChanged?.Invoke(this, "feed");
+        }
     }
 
     private void OnBowlDragged(object? sender, EventArgs e)
     {
-        var rect = _bowl.ScreenRect;
+        (int Left, int Top, int Width, int Height) rect = _bowl.ScreenRect;
 
-        var placement = _props.CaptureBowlPosition();
+        BowlPlacementState placement = _props.CaptureBowlPosition();
 
         _runtime.UpdateBowlPlacement(placement);
         _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
@@ -550,36 +682,58 @@ public sealed class PetSession: IDisposable
         StateChanged?.Invoke(this, "bowl-move");
 
         // The cat may be walking towards the old spot right now.
-        if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(_props.SeekTargetX(_motion.X));
+        if (_runtime.Behavior.State is PetActivity.SeekingFood)
+        {
+            _motion.Seek(_props.SeekTargetX(_motion.X));
+        }
     }
 
     private void UpdateScene()
     {
-        var activity = _runtime.Behavior.State;
-        if (activity is not (PetActivity.Playing or PetActivity.Petting)) return;
-        var elapsed = (SimulationTime(Timestamp()) - _sceneStarted).TotalSeconds;
-        var progress = elapsed / Math.Max(0.001, _sceneDuration.TotalSeconds);
+        PetActivity activity = _runtime.Behavior.State;
+        if (activity is not (PetActivity.Playing or PetActivity.Petting))
+        {
+            return;
+        }
+
+        double elapsed = (SimulationTime(Timestamp()) - _sceneStarted).TotalSeconds;
+        double progress = elapsed / Math.Max(0.001, _sceneDuration.TotalSeconds);
         if (activity is PetActivity.Playing)
         {
-            if (_animation.CurrentClip is not { } clip) return;
-            var pose = ActionScene.SamplePlay(elapsed, _sceneDuration.TotalSeconds,
+            if (_animation.CurrentClip is not { } clip)
+            {
+                return;
+            }
+
+            PlayScenePose pose = ActionScene.SamplePlay(elapsed, _sceneDuration.TotalSeconds,
                 clip.Frames.Count, clip.FramesPerSecond, _props.PlayExitDistance(_sceneOrigin, _sceneDirection), _props.PlayContactLift);
             _animation.ShowSceneFrame(pose.FrameIndex);
             _props.UpdatePlay(_motion.X, _sceneDirection, pose);
         }
-        else _props.UpdateScene(activity, _motion.X, _sceneDirection, progress);
+        else
+        {
+            _props.UpdateScene(activity, _motion.X, _sceneDirection, progress);
+        }
     }
 
     private void OnWindowGeometryChanged(object? sender, EventArgs e)
     {
-        if (!_started || _disposed) return;
+        if (!_started || _disposed)
+        {
+            return;
+        }
+
         _surface.Load();
         ApplySurfaceChange(SurfaceChange.Display);
     }
 
     private void ApplySurfaceChange(SurfaceChange change)
     {
-        if (change is SurfaceChange.None) return;
+        if (change is SurfaceChange.None)
+        {
+            return;
+        }
+
         if (_runtime.Behavior.State is PetActivity.Exiting)
         {
             _motion.Exit(WalkArea, _window.PhysicalWidth, _motion.Facing, _surface.PrimaryDisplay?.Bounds.X, _surface.PrimaryDisplay?.Bounds.Right);
@@ -587,13 +741,27 @@ public sealed class PetSession: IDisposable
                 (_clock.Read(Timestamp()) - _exitStarted).TotalSeconds + Math.Abs(_motion.TargetX - _motion.X) / PetMotion.ExitSpeed + 5));
         }
         else if (_runtime.Behavior.State is PetActivity.Entering)
+        {
             _motion.MoveTo(Math.Clamp(_motion.TargetX, WalkArea.Left, WalkArea.Right), PetMotion.EnterSpeed);
-        else _motion.KeepInside(WalkArea);
+        }
+        else
+        {
+            _motion.KeepInside(WalkArea);
+        }
+
         ApplyPosition();
-        if (change is not SurfaceChange.Display) return;
+        if (change is not SurfaceChange.Display)
+        {
+            return;
+        }
+
         _runtime.Behavior.CancelInteraction();
         _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
-        if (_runtime.Behavior.State is PetActivity.SeekingFood) _motion.Seek(_props.SeekTargetX(_motion.X));
+        if (_runtime.Behavior.State is PetActivity.SeekingFood)
+        {
+            _motion.Seek(_props.SeekTargetX(_motion.X));
+        }
+
         UpdateScene();
     }
 
@@ -601,7 +769,10 @@ public sealed class PetSession: IDisposable
 
     private void ApplyPosition()
     {
-        if (WalkArea.FloorY <= 0) return;
+        if (WalkArea.FloorY <= 0)
+        {
+            return;
+        }
 
         _window.MoveTo(_motion.X, _surface.FloorY);
     }
