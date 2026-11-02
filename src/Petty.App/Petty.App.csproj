@@ -31,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="..\..\assets\sprites\tray-cat.png" Link="Resources\AppIcon.png" />
     <ProjectReference Include="..\Petty.Core\Petty.Core.csproj" />
     <PackageReference Include="WPF-UI" Version="4.3.0" GeneratePathProperty="true" />
   </ItemGroup>

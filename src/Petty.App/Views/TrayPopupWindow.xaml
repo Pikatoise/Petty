@@ -1,24 +1,69 @@
 <Window x:Class="Petty.App.Views.TrayPopupWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Petty" Width="250" SizeToContent="Height" WindowStyle="None" AllowsTransparency="True"
-        Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
-        WindowStartupLocation="Manual">
-    <Window.Resources><ResourceDictionary Source="../Resources/CozyControls.xaml" /></Window.Resources>
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Petty" SizeToContent="WidthAndHeight"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
+        WindowStartupLocation="Manual" FontFamily="Segoe UI" FontSize="15"
+        Foreground="{StaticResource CozyText}" UseLayoutRounding="True">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Resources/CozyControls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="TrayMenuItem" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{StaticResource CozyText}" />
+                <Setter Property="Padding" Value="10,6" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Row" Background="{TemplateBinding Background}" CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Row" Property="Background" Value="{StaticResource CozySurface}" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="Row" Property="Background" Value="{StaticResource CozySurface}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Row" Property="Background" Value="{StaticResource CozyEdge}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
     <Border Background="{StaticResource CozyBackground}" BorderBrush="{StaticResource CozyBorder}"
-            BorderThickness="1" CornerRadius="10" Padding="6">
-        <Grid>
-			<Grid.RowDefinitions>
-				<RowDefinition />
-				<RowDefinition />
-			</Grid.RowDefinitions>
-            <Button Content="{DynamicResource TraySettings}" Style="{StaticResource CozyButton}"
-                    Click="OnSettings" Margin="0,0,0,4" />
-            <Button 
-                Content="{DynamicResource TrayExit}" 
-                Style="{StaticResource CozyButton}"
-                Click="OnExit"
-                Grid.Row="1"/>
-		</Grid>
+            BorderThickness="1" CornerRadius="12">
+        <StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="18,12">
+                <TextBlock Text="Petty" Foreground="{StaticResource CozyMuted}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
+            <Border Height="1" Background="{StaticResource CozyEdge}" />
+            <StackPanel x:Name="ActionsPanel" Margin="5,4">
+                <Button Style="{StaticResource TrayMenuItem}" Click="OnSettings"
+                        AutomationProperties.Name="{DynamicResource TraySettings}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{DynamicResource TraySettings}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <Border Height="1" Background="{StaticResource CozyEdge}" />
+            <Button Style="{StaticResource TrayMenuItem}" Click="OnExit" Margin="5,4"
+                    AutomationProperties.Name="{DynamicResource TrayExit}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{DynamicResource TrayExit}" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
     </Border>
 </Window>
