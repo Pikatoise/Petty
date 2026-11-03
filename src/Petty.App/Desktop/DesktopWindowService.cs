@@ -363,6 +363,39 @@ public static class DesktopWindowService
     }
 
     /// <summary>
+    /// Show Desktop raises Progman above non-minimizable windows instead of hiding them.
+    /// Only request recovery when that desktop actually precedes our top-level window.
+    /// </summary>
+    internal static bool IsCoveredByDesktop(IntPtr hwnd, IntPtr desktop = default)
+    {
+        if (hwnd == IntPtr.Zero || !NativeMethods.IsWindowVisible(hwnd) || ShellParent(hwnd) != IntPtr.Zero)
+        {
+            return false;
+        }
+
+        if (desktop == IntPtr.Zero)
+        {
+            desktop = NativeMethods.FindWindow("Progman", null);
+        }
+        if (desktop == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        for (nint below = NativeMethods.GetWindow(desktop, NativeMethods.GwHwndNext);
+             below != IntPtr.Zero;
+             below = NativeMethods.GetWindow(below, NativeMethods.GwHwndNext))
+        {
+            if (below == hwnd)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Finds the window that hosts the wallpaper. Candidates are tried in order of
     /// preference and each one is validated, because the shell also creates small
     /// helper windows with the same class name.

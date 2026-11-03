@@ -13,10 +13,15 @@ internal sealed class PetPropsController
     private readonly PropWindow _ball;
     private readonly PropWindow _hand;
     private readonly DesktopSurfaceController _surface;
-    private readonly int _petWidth;
-    private readonly double _playContactX;
-    private readonly double _playContactLift;
-    private readonly double _eatMouthX;
+    private readonly BowlDrop _bowlDrop = new();
+    private int _petWidth;
+    private readonly int _contactX;
+    private readonly int _contactY;
+    private readonly int _groundRow;
+    private readonly int _mouthX;
+    private double Scale => _petWidth / 64.0;
+    private double PlayContactX => _contactX * Scale;
+    private double EatMouthX => _mouthX * Scale;
 
     public PetPropsController(PropWindow bowl, PropWindow ball, PropWindow hand, DesktopSurfaceController surface, int petWidth,
         int contactX, int contactY, int groundRow, int eatMouthX)
@@ -26,10 +31,18 @@ internal sealed class PetPropsController
         _hand = hand;
         _surface = surface;
         _petWidth = petWidth;
-        double scale = petWidth / 64.0;
-        _eatMouthX = eatMouthX * scale;
-        _playContactX = contactX * scale;
-        _playContactLift = Math.Max(0, (groundRow - contactY) * scale - ball.PhysicalWidth * 0.44);
+        _mouthX = eatMouthX;
+        _contactX = contactX;
+        _contactY = contactY;
+        _groundRow = groundRow;
+    }
+
+    public void SetSpriteScale(double scale, int petWidth)
+    {
+        _petWidth = petWidth;
+        _bowl.SetSpriteScale(scale);
+        _ball.SetSpriteScale(scale);
+        _hand.SetSpriteScale(scale);
     }
 
     private double Floor => _surface.FloorY > 0 ? _surface.FloorY : _surface.WalkArea.FloorY;
@@ -45,6 +58,8 @@ internal sealed class PetPropsController
         {
             return;
         }
+
+        _bowlDrop.Stop();
 
         ResolvedBowlPosition resolved = BowlPlacement.Resolve(placement, _surface.Displays, _bowl.PhysicalWidth, _bowl.PhysicalHeight);
         if (Floor <= 0)
@@ -63,6 +78,31 @@ internal sealed class PetPropsController
         return BowlPlacement.Capture(rect.Left, Floor - rect.Height, rect.Width, rect.Height, _surface.Displays);
     }
 
+    public bool IsBowlMoving => _bowlDrop.IsMoving;
+
+    public void StartBowlDrop(BowlPlacementState placement)
+    {
+        ResolvedBowlPosition resolved = BowlPlacement.Resolve(placement, _surface.Displays, _bowl.PhysicalWidth, _bowl.PhysicalHeight);
+        int top = _bowl.ScreenRect.Top;
+        _bowl.PlaceAt(resolved.Left, top);
+        _bowlDrop.Start(top - (Floor - _bowl.FloorOffset));
+    }
+
+    public void AdvanceBowlDrop(TimeSpan delta, TimeSpan duration)
+    {
+        if (_bowl.IsDragging)
+        {
+            _bowlDrop.Stop();
+            return;
+        }
+
+        if (_bowlDrop.IsMoving)
+        {
+            double offset = _bowlDrop.Advance(delta, duration);
+            _bowl.PlaceAt(_bowl.ScreenRect.Left, Floor - _bowl.FloorOffset + offset);
+        }
+    }
+
     public double SeekTargetX(double petX)
     {
         MotionArea area = _surface.WalkArea;
@@ -76,7 +116,7 @@ internal sealed class PetPropsController
         bool fromLeft = petX + (_petWidth / 2.0) < center;
         // Align the eating mouth, not the old standing-head anchor. Mirror the
         // same sprite coordinate when approaching the bowl from its right.
-        double mouth = fromLeft ? _eatMouthX : _petWidth - _eatMouthX;
+        double mouth = fromLeft ? EatMouthX : _petWidth - EatMouthX;
         return Math.Clamp(center - mouth, area.Left, area.Right);
     }
 
@@ -100,10 +140,10 @@ internal sealed class PetPropsController
     }
     public void ShowHand() => _hand.Show();
 
-    public double PlayContactLift => _playContactLift;
+    public double PlayContactLift => Math.Max(0, (_groundRow - _contactY) * Scale - _ball.PhysicalWidth * 0.44);
 
     private double BallContactCenter(double petX, int direction) =>
-        petX + (direction > 0 ? _playContactX : _petWidth - _playContactX) + direction * _ball.PhysicalWidth * 0.44;
+        petX + (direction > 0 ? PlayContactX : _petWidth - PlayContactX) + direction * _ball.PhysicalWidth * 0.44;
 
     public double PlayExitDistance(double petX, int direction)
     {
@@ -127,8 +167,9 @@ internal sealed class PetPropsController
         if (activity is PetActivity.Petting)
         {
             double head = petX + (direction > 0 ? _petWidth * 0.68 : _petWidth * 0.32);
-            _hand.PlaceAt(head - _hand.PhysicalWidth / 2.0 + direction * pose.PropOffset,
-                Floor - 155 + pose.PropHeight);
+            double ratio = Scale / SpriteDisplayScale.ReferenceScale;
+            _hand.PlaceAt(head - _hand.PhysicalWidth / 2.0 + direction * pose.PropOffset * ratio,
+                Floor - 155 * ratio + pose.PropHeight * ratio);
         }
     }
 }

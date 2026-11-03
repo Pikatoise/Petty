@@ -103,6 +103,7 @@ public static class SpriteAssetLocator
             yield return Path.Combine(directory.FullName, "assets", "sprites");
             directory = directory.Parent;
         }
+        yield return EmbeddedContent.Sprites;
     }
 
 }

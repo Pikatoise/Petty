@@ -40,16 +40,20 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(PkgWPF-UI)\LICENSE.md;$(PkgWPF-UI)\ThirdPartyNotices.txt"
-             Link="licenses\WPF-UI\%(Filename)%(Extension)"
-             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="$(PkgWPF-UI)\LICENSE.md;$(PkgWPF-UI)\ThirdPartyNotices.txt"
+                      LogicalName="Licenses/WPF-UI/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\LICENSE.txt" LogicalName="Licenses/Petty/LICENSE.txt" />
+    <EmbeddedResource Include="..\..\assets\sprites\*.png"
+                      LogicalName="Sprites/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\assets\sprites\packs\**\*.png;..\..\assets\sprites\packs\**\*.json"
+                      LogicalName="Sprites/packs/%(RecursiveDir)%(Filename)%(Extension)" />
     <Content Include="..\..\assets\sprites\*.png;..\..\assets\sprites\*.json"
              Exclude="..\..\assets\sprites\catalog.json"
              Link="Assets\Sprites\%(Filename)%(Extension)"
-             CopyToOutputDirectory="PreserveNewest" />
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
     <Content Include="..\..\assets\sprites\packs\**\*.png;..\..\assets\sprites\packs\**\*.json"
              Link="Assets\Sprites\packs\%(RecursiveDir)%(Filename)%(Extension)"
-             CopyToOutputDirectory="PreserveNewest" />
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>

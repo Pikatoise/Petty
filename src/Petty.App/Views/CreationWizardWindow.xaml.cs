@@ -25,6 +25,8 @@ public partial class CreationWizardWindow : Window
     {
         _variants = variants;
         InitializeComponent();
+        AdaptiveWindowLayout.Attach(this);
+        SizeChanged += (_, _) => UpdateColumns();
         if (!firstRun)
         {
             SetResourceReference(TitleProperty, "NewPetTitle");
@@ -67,6 +69,20 @@ public partial class CreationWizardWindow : Window
     }
 
     public string ConfirmedName { get; private set; } = string.Empty;
+
+    private void UpdateColumns()
+    {
+        bool narrow = Width < 560;
+        LayoutGrid.ColumnDefinitions[0].Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(192);
+        LayoutGrid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        Grid.SetColumn(FormPanel, narrow ? 0 : 1);
+        Grid.SetRow(FormPanel, narrow ? 1 : 0);
+        FormPanel.Margin = narrow ? new Thickness(0, 16, 0, 0) : new Thickness(22, 0, 0, 0);
+        PreviewBorder.HorizontalAlignment = narrow ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+        PreviewBorder.Width = narrow ? Math.Min(192, Math.Max(1, Width - 80)) : double.NaN;
+        PreviewImage.Width = narrow ? PreviewBorder.Width : 192;
+        PreviewImage.Height = PreviewImage.Width;
+    }
     public SpriteVariant? SelectedVariant => _coats.Length == 0 ? null : _coats[_coatIndex];
     public SpriteSheet? SelectedSheet
     {

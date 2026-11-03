@@ -3,6 +3,7 @@ using System.Windows.Interop;
 using Petty.App.Desktop;
 using Petty.App.Sprites;
 using Petty.Core.Diagnostics;
+using Petty.Core.Runtime;
 
 namespace Petty.App.Views;
 
@@ -13,13 +14,13 @@ namespace Petty.App.Views;
 /// </summary>
 public partial class PetWindow : Window
 {
-    /// <summary>Sprite pixels are drawn at 3x, i.e. one 64x64 frame becomes 192x192 screen pixels.</summary>
-    public const int ScreenPixelsPerSpritePixel = 3;
+    /// <summary>Reference scale at 2560x1600; the session adapts it to the monitor resolution.</summary>
+    public const int ScreenPixelsPerSpritePixel = SpriteDisplayScale.ReferenceScale;
 
     private readonly SpriteSheet _sheet;
     private readonly IAppLog _log;
-    private readonly int _physicalWidth;
-    private readonly int _physicalHeight;
+    private int _physicalWidth;
+    private int _physicalHeight;
     private IntPtr _handle;
     private HwndSource? _source;
     private SpriteFrame? _frame;
@@ -75,6 +76,20 @@ public partial class PetWindow : Window
     public int PhysicalHeight => _physicalHeight;
 
     public double DpiScale => _dpiScale;
+
+    public void SetSpriteScale(double scale)
+    {
+        int width = (int)Math.Round(_sheet.FrameWidth * scale);
+        int height = (int)Math.Round(_sheet.FrameHeight * scale);
+        if (_physicalWidth == width && _physicalHeight == height)
+        {
+            return;
+        }
+
+        _physicalWidth = width;
+        _physicalHeight = height;
+        ApplyDpiSize();
+    }
 
     /// <summary>Floor row used by the last <see cref="MoveTo"/> call, for diagnostics.</summary>
     public double PlacementFloorY
@@ -226,8 +241,7 @@ public partial class PetWindow : Window
 
     private void ApplyDpiSize()
     {
-        // Physical size stays constant so the pet looks the same size on every monitor;
-        // only the DIP size changes with the monitor's scale factor.
+        // Resolution selects physical size; DPI only converts it to WPF units.
         Width = _physicalWidth / _dpiScale;
         Height = _physicalHeight / _dpiScale;
     }

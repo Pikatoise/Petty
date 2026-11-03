@@ -122,4 +122,5 @@
     <sys:String x:Key="DebugCategorySleep">Сон</sys:String>
     <sys:String x:Key="DebugCategoryMovement">Движение</sys:String>
     <sys:String x:Key="DebugCategoryInteraction">Игра и поглаживание</sys:String>
+    <sys:String x:Key="Licenses">Лицензии</sys:String>
 </ResourceDictionary>

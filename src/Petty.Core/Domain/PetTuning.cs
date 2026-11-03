@@ -20,6 +20,7 @@ public sealed class PetTuning
     // Bowl.
     public double BowlCapacity { get; init; } = 100.0;
     public double BowlFoodPerClick { get; init; } = 25.0;
+    public TimeSpan BowlDropDuration { get; init; } = TimeSpan.FromSeconds(0.9);
 
     // Eating.
     public double EatFoodPerBite { get; init; } = 5.0;
@@ -83,6 +84,7 @@ public sealed class PetTuning
             SatietyRecoveryThreshold = Clamp(SatietyRecoveryThreshold, 1, 100),
             BowlCapacity = Math.Max(1, BowlCapacity),
             BowlFoodPerClick = Math.Max(1, BowlFoodPerClick),
+            BowlDropDuration = Positive(BowlDropDuration, Default.BowlDropDuration),
             EatFoodPerBite = Math.Max(0.1, EatFoodPerBite),
             EatSatietyPerBite = Math.Max(0.1, EatSatietyPerBite),
             EatBiteInterval = Positive(EatBiteInterval, TimeSpan.FromSeconds(1)),

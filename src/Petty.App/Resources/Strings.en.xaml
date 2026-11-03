@@ -122,4 +122,5 @@
     <sys:String x:Key="DebugCategorySleep">Sleep</sys:String>
     <sys:String x:Key="DebugCategoryMovement">Movement</sys:String>
     <sys:String x:Key="DebugCategoryInteraction">Play and petting</sys:String>
+    <sys:String x:Key="Licenses">Licenses</sys:String>
 </ResourceDictionary>

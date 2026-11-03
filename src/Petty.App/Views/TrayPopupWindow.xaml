@@ -58,35 +58,33 @@
         BorderBrush="{StaticResource CozyBorder}"
         BorderThickness="1"
         CornerRadius="12">
-        <StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="18,12">
-                <TextBlock
-                    Text="Petty"
-                    Foreground="{StaticResource CozyMuted}"
-                    FontWeight="SemiBold"
-                    VerticalAlignment="Center" />
-            </StackPanel>
-            <Border Height="1" Background="{StaticResource CozyEdge}" />
-            <StackPanel x:Name="ActionsPanel" Margin="5,4">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="18,12">
+                    <TextBlock
+                        Text="Petty"
+                        Foreground="{StaticResource CozyMuted}"
+                        FontWeight="SemiBold"
+                        VerticalAlignment="Center" />
+                </StackPanel>
+                <Border Height="1" Background="{StaticResource CozyEdge}" />
+                <StackPanel x:Name="ActionsPanel" Margin="5,4">
+                    <Button
+                        Style="{StaticResource TrayMenuItem}"
+                        Click="OnSettings"
+                        AutomationProperties.Name="{DynamicResource TraySettings}">
+                        <TextBlock Text="{DynamicResource TraySettings}" TextWrapping="Wrap" />
+                    </Button>
+                </StackPanel>
+                <Border Height="1" Background="{StaticResource CozyEdge}" />
                 <Button
                     Style="{StaticResource TrayMenuItem}"
-                    Click="OnSettings"
-                    AutomationProperties.Name="{DynamicResource TraySettings}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{DynamicResource TraySettings}" />
-                    </StackPanel>
+                    Click="OnExit"
+                    Margin="5,4"
+                    AutomationProperties.Name="{DynamicResource TrayExit}">
+                    <TextBlock Text="{DynamicResource TrayExit}" TextWrapping="Wrap" />
                 </Button>
             </StackPanel>
-            <Border Height="1" Background="{StaticResource CozyEdge}" />
-            <Button
-                Style="{StaticResource TrayMenuItem}"
-                Click="OnExit"
-                Margin="5,4"
-                AutomationProperties.Name="{DynamicResource TrayExit}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{DynamicResource TrayExit}" />
-                </StackPanel>
-            </Button>
-        </StackPanel>
+        </ScrollViewer>
     </Border>
 </Window>

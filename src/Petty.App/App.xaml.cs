@@ -330,7 +330,8 @@ public partial class App : Application
             CreateTray();
         }
 
-        _shellWatcher ??= new ShellRestartWatcher(RestoreShell);
+        _shellWatcher ??= new ShellRestartWatcher(RestoreShell,
+            () => _options.DesktopLayer == DesktopLayerMode.AboveDesktop ? _window?.Handle ?? IntPtr.Zero : IntPtr.Zero);
     }
 
     private void SynchronizeAutostart()
@@ -370,7 +371,7 @@ public partial class App : Application
         }
 
         _session?.RestoreShell();
-        _log?.Info("Shell restart: desktop windows reattached; tray icon restoration is handled by NotifyIcon.");
+        _log?.Info("Shell recovery: desktop windows reattached; tray icon restoration is handled by NotifyIcon.");
     }
 
     /// <summary>
@@ -682,7 +683,7 @@ public partial class App : Application
                     frameSize = $"{_sheet.FrameWidth}x{_sheet.FrameHeight}",
                     clips = _sheet.Clips.Count,
                     groundRow = _sheet.GroundRow,
-                    scale = PetWindow.ScreenPixelsPerSpritePixel,
+                    scale = _window.PhysicalWidth / (double)_sheet.FrameWidth,
                 },
                 desktop = new
                 {

@@ -32,6 +32,7 @@ public partial class SettingsWindow : Window
         _species = species;
         _savedName = petName;
         InitializeComponent();
+        AdaptiveWindowLayout.Attach(this);
         NameBox.Text = petName;
         LanguageSelector.SelectedIndex = localization.Preferences.Language switch
         {
@@ -172,6 +173,29 @@ public partial class SettingsWindow : Window
     }
 
     private string Text(string key) => (string)FindResource(key);
+
+    private void OnLicenses(object sender, RoutedEventArgs e)
+    {
+        var window = new Window
+        {
+            Title = Text("Licenses"),
+            Owner = this,
+            Width = 700,
+            Height = 500,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new TextBox
+            {
+                Text = Sprites.EmbeddedContent.Licenses,
+                IsReadOnly = true,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Margin = new Thickness(16)
+            }
+        };
+        AdaptiveWindowLayout.Attach(window);
+        window.ShowDialog();
+    }
 
     internal void ShowAutostartError() => ProgramStatusText.Text = Text("AutostartError");
     internal void ShowSaveError() => ShowStatus(Text("PetSaveError"), ErrorBrush);

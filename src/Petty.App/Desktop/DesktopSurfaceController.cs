@@ -15,7 +15,7 @@ internal sealed class DesktopSurfaceController
     private const int DisplayReloadTickCount = 16;
     private readonly DisplayService _displays;
     private readonly IAppLog _log;
-    private readonly int _windowWidth;
+    private int _windowWidth;
     private readonly ShellBarProbe _shellBars = new();
     private readonly FloorFollow _floor = new();
     private IReadOnlyList<DisplayInfo> _layout = Array.Empty<DisplayInfo>();
@@ -49,6 +49,12 @@ internal sealed class DesktopSurfaceController
         _layout = _displays.GetDisplays();
         PrimaryDisplay = _displays.Primary(_layout);
         Refresh(force: true);
+    }
+
+    public void SetWindowWidth(int width)
+    {
+        _windowWidth = width;
+        Refresh(force: false);
     }
 
     public SurfaceChange Poll()

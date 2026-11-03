@@ -5,6 +5,18 @@ namespace Petty.Tests;
 
 public class InteractionMenuPlacementTests
 {
+    [Theory]
+    [InlineData(1280, 720, 1, 1.35)]
+    [InlineData(1920, 1080, 1, 1.35)]
+    [InlineData(2560, 1600, 1, 1)]
+    [InlineData(2560, 1600, 1.5, 1)]
+    [InlineData(3840, 2160, 2, 1)]
+    public void ActionsRemainReadableWithoutChangingReferenceDisplay(int width, int height, double dpi, double expected)
+    {
+        double spriteScale = SpriteDisplayScale.ForDisplay(new ScreenRect(0, 0, width, height));
+        Assert.Equal(expected, InteractionMenuPlacement.ScaleForDisplay(spriteScale, dpi), 6);
+    }
+
     [Fact]
     public void HoverUsesEntireExposedWindowButNotCoveredOrOutside()
     {

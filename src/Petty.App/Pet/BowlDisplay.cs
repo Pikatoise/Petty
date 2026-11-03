@@ -83,9 +83,10 @@ internal sealed class BowlDisplay : IDisposable
 
     private void PlaceEffect()
     {
+        _effect.SetSpriteScale(_bowl.SpriteScale);
         (int Left, int Top, int Width, int Height) bowl = _bowl.ScreenRect;
         double left = (double)bowl.Left;
-        double top = (double)bowl.Top - _effect.PhysicalHeight + 39;
+        double top = (double)bowl.Top - _effect.PhysicalHeight + 13 * _bowl.SpriteScale;
         if (_surface.PrimaryDisplay is { } display)
         {
             ScreenRect bounds = display.UsableArea;

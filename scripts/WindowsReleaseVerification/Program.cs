@@ -51,6 +51,7 @@ internal static partial class Program
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         Exception? failure = null;
         object? completedSession = null;
+        object? completedWatcher = null;
         var started = Stopwatch.StartNew();
         TimeSpan endingAt = TimeSpan.Zero;
         app.Startup += (_, _) => timer.Start();
@@ -127,6 +128,9 @@ internal static partial class Program
                     Invoke(app, "OnNewPetRequested", null, EventArgs.Empty);
                     Require(!ReferenceEquals(oldSession, Get(app, "_session")), "Successful replacement kept the previous session.");
                     CheckStoppedSession(oldSession!);
+                    CheckDesktopRecovery(app);
+                    completedWatcher = Get(app, "_shellWatcher");
+                    CheckBowlDragging(app);
                     object session = Get(app, "_session")!;
                     var hover = (DispatcherTimer)Get(session, "_hoverTimer")!;
                     var menu = (InteractionMenuWindow)Get(session, "_menu")!;
@@ -196,6 +200,8 @@ internal static partial class Program
             return 0;
         }
         CheckStoppedSession(completedSession!);
+        Require(!((DispatcherTimer)Get(completedWatcher!, "_desktopTimer")!).IsEnabled,
+            "Disposed shell watcher still polls desktop z-order.");
         Require(store.Load().Snapshot?.PetName == "WindowsCheck", "Saved pet did not reload.");
         string log = File.ReadAllText(Path.Combine(data, "petty.log"));
         Require(log.Contains("Autostart integration skipped"), "Isolated startup touched registry integration.");

@@ -19,47 +19,55 @@
     <Window.Resources>
         <ResourceDictionary Source="../Resources/CozyControls.xaml" />
     </Window.Resources>
-    <Border
-        x:Name="MenuBorder"
-        Background="Transparent"
-        BorderBrush="Transparent"
-        BorderThickness="1"
-        CornerRadius="8"
-        Padding="2">
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition />
-                <ColumnDefinition />
-            </Grid.ColumnDefinitions>
-            <Button
-                x:Name="PlayButton"
-                ToolTip="{DynamicResource Play}"
-                AutomationProperties.Name="{DynamicResource Play}"
-                Style="{StaticResource CozyButton}"
-                Click="OnPlay"
-                Padding="2"
-                HorizontalAlignment="Stretch">
-                <ui:SymbolIcon
-                    Symbol="SportSoccer24"
-                    FontSize="18"
-                    IsHitTestVisible="False" />
-            </Button>
-            <Button
-                x:Name="PetButton"
-                ToolTip="{DynamicResource PetAction}"
-                AutomationProperties.Name="{DynamicResource PetAction}"
-                ToolTipService.ShowOnDisabled="True"
-                Style="{StaticResource CozyButton}"
-                Grid.Column="1"
-                Click="OnPet"
-                Padding="2"
-                Margin="3,0,0,0"
-                HorizontalAlignment="Stretch">
-                <ui:SymbolIcon
-                    Symbol="HandRight24"
-                    FontSize="18"
-                    IsHitTestVisible="False" />
-            </Button>
-        </Grid>
-    </Border>
+    <Viewbox Stretch="Uniform">
+        <Border
+            x:Name="MenuBorder"
+            Width="{x:Static local:InteractionMenuWindow.MenuWidth}"
+            Height="{x:Static local:InteractionMenuWindow.MenuHeight}"
+            Background="Transparent"
+            BorderBrush="Transparent"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="2">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Button
+                    x:Name="PlayButton"
+                    ToolTip="{DynamicResource Play}"
+                    AutomationProperties.Name="{DynamicResource Play}"
+                    Style="{StaticResource CozyButton}"
+                    MinWidth="0"
+                    MinHeight="0"
+                    Click="OnPlay"
+                    Padding="2"
+                    HorizontalAlignment="Stretch">
+                    <ui:SymbolIcon
+                        Symbol="SportSoccer24"
+                        FontSize="18"
+                        IsHitTestVisible="False" />
+                </Button>
+                <Button
+                    x:Name="PetButton"
+                    ToolTip="{DynamicResource PetAction}"
+                    AutomationProperties.Name="{DynamicResource PetAction}"
+                    ToolTipService.ShowOnDisabled="True"
+                    Style="{StaticResource CozyButton}"
+                    MinWidth="0"
+                    MinHeight="0"
+                    Grid.Column="1"
+                    Click="OnPet"
+                    Padding="2"
+                    Margin="3,0,0,0"
+                    HorizontalAlignment="Stretch">
+                    <ui:SymbolIcon
+                        Symbol="HandRight24"
+                        FontSize="18"
+                        IsHitTestVisible="False" />
+                </Button>
+            </Grid>
+        </Border>
+    </Viewbox>
 </Window>

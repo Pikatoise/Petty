@@ -5,6 +5,11 @@ namespace Petty.Core.Runtime;
 /// <summary>Places a menu against an opaque sprite point, in physical screen pixels.</summary>
 public static class InteractionMenuPlacement
 {
+    /// <summary>Keep compact-display actions readable, and follow large pets without applying DPI twice.</summary>
+    public static double ScaleForDisplay(double spriteScale, double dpiScale) =>
+        Math.Max(Math.Clamp(SpriteDisplayScale.ReferenceScale / spriteScale, 1, 1.35),
+            spriteScale / (SpriteDisplayScale.ReferenceScale * Math.Max(1, dpiScale)));
+
     public static bool IsPetHovered(ScreenRect pet, double x, double y, bool isExposed) =>
         isExposed && x >= pet.X && x < pet.Right && y >= pet.Y && y < pet.Bottom;
 

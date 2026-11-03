@@ -12,7 +12,10 @@ both species, all breed previews, coat cycling/wraparound and existing-coat recr
 in RU/EN, and compares regenerated PNG bytes
 against the repository assets after WPF DPI initialization.
 
-Creator windows are rendered offscreen at 200% into `artifacts/verification/content/creator-*.png`.
+Creator content is rendered without showing windows at 200% into `artifacts/verification/content/creator-*.png`.
+Adaptive layout checks cover RU/EN dialogs and tray content at normal and compact DIP budgets,
+including creator reflow and scrolling to final actions. Interaction action previews cover
+720p, Full HD, the reference display and 4K at representative DPI scales.
 `artifacts/verification/content/play/` contains a contact sheet and standalone animated preview
 sampled by the real Core scene implementation, with the runtime WPF frame controller.
 This does not modify pet data, registry settings, preferences or the running pet.

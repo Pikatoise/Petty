@@ -1,4 +1,4 @@
-param()
+param([switch]$Zip)
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
@@ -10,30 +10,18 @@ $releaseRoot = Join-Path $repo ('artifacts/portable/' + (Get-Date -Format 'yyyyM
 $folder = Join-Path $releaseRoot $releaseName
 New-Item -ItemType Directory -Path $folder -Force | Out-Null
 
-# Framework-dependent single-file output; the .NET SDK only supports bundle
-# compression for self-contained apps. Compress the distribution ZIP instead.
+# Artwork and license notices are embedded resources. The Desktop Runtime is installed separately.
 dotnet publish (Join-Path $repo 'src/Petty.App/Petty.App.csproj') -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -m:1 -o $folder
 if ($LASTEXITCODE -ne 0) { throw 'Portable publish failed.' }
 
-foreach ($file in @('Petty.exe', 'Assets/Sprites/ball.png')) {
-    if (!(Test-Path -LiteralPath (Join-Path $folder $file))) { throw "Missing portable file: $file" }
+$files = @(Get-ChildItem -LiteralPath $folder -Recurse -File)
+if ($files.Count -ne 1 -or $files[0].Name -ne 'Petty.exe') {
+    throw 'Portable output must contain only Petty.exe, with embedded artwork and licenses.'
 }
-$looseLibraries = Get-ChildItem -LiteralPath $folder -Recurse -File | Where-Object {
-    $_.Extension -in @('.dll', '.pdb') -or $_.Name -match '\.(deps|runtimeconfig)\.json$'
+if ($Zip) {
+    $archive = Join-Path $releaseRoot "$releaseName.zip"
+    Compress-Archive -Path (Join-Path $folder '*') -DestinationPath $archive -CompressionLevel Optimal
+    Get-Item -LiteralPath $archive | Select-Object FullName, Length
+} else {
+    $files | Select-Object FullName, Length
 }
-if ($looseLibraries) { throw 'Framework-dependent single-file output contains loose libraries, runtime files or symbols.' }
-$packs = Join-Path $folder 'Assets/Sprites/packs'
-if (@(Get-ChildItem -LiteralPath $packs -Recurse -Filter '*.png').Count -ne 40 -or
-    @(Get-ChildItem -LiteralPath $packs -Recurse -Filter '*.json').Count -ne 40) {
-    throw 'Portable release must contain forty external sprite/metadata pairs.'
-}
-$unwanted = Get-ChildItem -LiteralPath $folder -Recurse -File | Where-Object {
-    $_.Name -in @('pet-state.json', 'preferences.json', 'dev-tuning.json', 'cat-orange-white.png', 'cat-orange-white.json') -or
-    $_.Extension -in @('.bak', '.log')
-}
-if ($unwanted) { throw 'Portable output contains user data or retired content.' }
-Copy-Item -LiteralPath (Join-Path $repo 'README.md') -Destination (Join-Path $folder 'README.md')
-Copy-Item -LiteralPath (Join-Path $repo 'LICENSE.txt') -Destination (Join-Path $folder 'LICENSE.txt')
-$archive = Join-Path $releaseRoot "$releaseName.zip"
-Compress-Archive -Path (Join-Path $folder '*') -DestinationPath $archive -CompressionLevel Optimal
-Get-Item -LiteralPath $archive | Select-Object FullName, Length

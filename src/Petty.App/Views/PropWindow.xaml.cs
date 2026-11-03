@@ -22,14 +22,15 @@ public partial class PropWindow : Window
     private PropImage _hitMask;
     private readonly bool _interactive;
     private readonly IAppLog _log;
-    private readonly int _physicalWidth;
-    private readonly int _physicalHeight;
-    private readonly int _floorPadding;
+    private int _physicalWidth;
+    private int _physicalHeight;
+    private int _floorPadding;
     private IntPtr _handle;
     private HwndSource? _source;
     private double _dpiScale = 1;
     private bool _pressed;
     private bool _dragging;
+    private bool _draggingEnabled = true;
     private int _pressCursorX;
     private int _pressCursorY;
     private int _pressLeft;
@@ -69,8 +70,37 @@ public partial class PropWindow : Window
 
     public int PhysicalHeight => _physicalHeight;
 
+    public double SpriteScale { get; private set; } = PetWindow.ScreenPixelsPerSpritePixel;
+
+    public void SetSpriteScale(double scale)
+    {
+        SpriteScale = scale;
+        int width = (int)Math.Round(_hitMask.Width * scale);
+        int height = (int)Math.Round(_hitMask.Height * scale);
+        if (_physicalWidth == width && _physicalHeight == height)
+        {
+            return;
+        }
+
+        _physicalWidth = width;
+        _physicalHeight = height;
+        _floorPadding = height - (int)Math.Round((_hitMask.LastOpaqueRow + 1) * height / (double)_hitMask.Height);
+        ApplyDpiSize();
+    }
+
     /// <summary>True while the user holds the prop; the session must not move it then.</summary>
     public bool IsDragging => _dragging;
+
+    public int FloorOffset => _physicalHeight - _floorPadding;
+
+    public void SetDraggingEnabled(bool enabled)
+    {
+        _draggingEnabled = enabled;
+        if (!enabled)
+        {
+            EndPress();
+        }
+    }
 
     public ScreenRect? DragBounds
     {
@@ -139,7 +169,7 @@ public partial class PropWindow : Window
     private void OnDpiChanged(object sender, DpiChangedEventArgs e) => ApplyDpiSize();
 
     /// <summary>
-    /// The physical size is fixed; only the DIP size follows the monitor scale. WPF's own
+    /// Resolution selects physical size; only the DIP size follows monitor DPI. WPF's own
     /// DPI is used so the properties it may re-apply later agree with the pixel placement.
     /// </summary>
     private void ApplyDpiSize()
@@ -192,7 +222,14 @@ public partial class PropWindow : Window
 
                 int deltaX = move.X - _pressCursorX;
                 int deltaY = move.Y - _pressCursorY;
-                if (!_dragging && Math.Max(Math.Abs(deltaX), Math.Abs(deltaY)) >= DragThreshold)
+                if (!_draggingEnabled && Math.Max(Math.Abs(deltaX), Math.Abs(deltaY)) >= DragThreshold)
+                {
+                    EndPress();
+                    handled = true;
+                    break;
+                }
+
+                if (_draggingEnabled && !_dragging && Math.Max(Math.Abs(deltaX), Math.Abs(deltaY)) >= DragThreshold)
                 {
                     _dragging = true;
                 }

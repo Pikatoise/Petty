@@ -10,7 +10,7 @@ using Petty.Assets;
 using Petty.Core.Assets;
 using Petty.Core.Domain;
 
-internal static class Program
+internal static partial class Program
 {
     [STAThread]
     private static void Main(string[] args)
@@ -19,6 +19,19 @@ internal static class Program
         string output = Path.Combine(root, "artifacts", "verification", "content");
         Directory.CreateDirectory(output);
         var problems = new List<string>();
+        string embedded = EmbeddedContent.Sprites;
+        Require(Directory.GetFiles(Path.Combine(embedded, "packs"), "*.json", SearchOption.AllDirectories).Length == 40,
+            "Embedded release must contain forty metadata files.");
+        foreach (string metadata in Directory.EnumerateFiles(Path.Combine(embedded, "packs"), "*.json", SearchOption.AllDirectories))
+        {
+            SpriteSheet bundled = SpriteSheetLoader.Load(Path.GetDirectoryName(metadata)!, Path.GetFileNameWithoutExtension(metadata));
+            Require(bundled.Clips.Count == 9, "Embedded atlas could not be loaded.");
+        }
+        Require(File.Exists(Path.Combine(embedded, "ball.png")) && File.Exists(Path.Combine(embedded, "bowl-empty.png")),
+            "Embedded props are missing.");
+        Require(EmbeddedContent.Licenses.Contains("WPF UI Contributors", StringComparison.Ordinal) &&
+            EmbeddedContent.Licenses.Contains("THIRD-PARTY SOFTWARE NOTICES", StringComparison.Ordinal) &&
+            EmbeddedContent.Licenses.Contains("2026 \"Petty\"", StringComparison.Ordinal), "Embedded license notices are missing.");
         IReadOnlyList<SpriteVariant> variants = SpriteAssetLocator.Discover(reportProblem: problems.Add);
         Require(problems.Count == 0, string.Join("; ", problems));
         Require(variants.Count == 40, $"Expected 40 discovered coats, got {variants.Count}.");
@@ -82,6 +95,8 @@ internal static class Program
         {
             var strings = new ResourceDictionary { Source = new Uri($"/Petty;component/Resources/Strings.{language}.xaml", UriKind.Relative) };
             app.Resources.MergedDictionaries.Add(strings);
+            AdaptiveLayoutVerification.Check(variants, output, language!);
+            CheckInteractionLayout(output, language!);
             var wizard = new CreationWizardWindow(variants, true, "Milo", null);
             var species = (ComboBox)wizard.FindName("SpeciesSelector");
             var breeds = (ComboBox)wizard.FindName("BreedSelector");
@@ -150,18 +165,19 @@ internal static class Program
 
     private static void Render(Window window, string path)
     {
-        if (!window.IsVisible)
+        var content = (FrameworkElement)window.Content;
+        double height = double.IsFinite(window.Height) ? window.Height : window.MaxHeight;
+        content.Measure(new Size(window.Width, height));
+        content.Arrange(new Rect(0, 0, window.Width, Math.Min(content.DesiredSize.Height, height)));
+        content.UpdateLayout();
+        var image = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth * 2), (int)Math.Ceiling(content.ActualHeight * 2), 192, 192, PixelFormats.Pbgra32);
+        var backdrop = new DrawingVisual();
+        using (DrawingContext drawing = backdrop.RenderOpen())
         {
-            window.WindowStartupLocation = WindowStartupLocation.Manual;
-            window.Left = -10000;
-            window.Top = -10000;
-            window.ShowInTaskbar = false;
-            window.ShowActivated = false;
-            window.Show();
+            drawing.DrawRectangle(window.Background, null, new Rect(0, 0, content.ActualWidth, content.ActualHeight));
         }
-        window.UpdateLayout();
-        var image = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth * 2), (int)Math.Ceiling(window.ActualHeight * 2), 192, 192, PixelFormats.Pbgra32);
-        image.Render(window);
+        image.Render(backdrop);
+        image.Render(content);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(image));
         using FileStream file = File.Create(path);

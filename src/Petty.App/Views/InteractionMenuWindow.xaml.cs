@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Petty.App.Desktop;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
@@ -62,8 +63,14 @@ public partial class InteractionMenuWindow : Window
             NativeMethods.SwpNoMove | NativeMethods.SwpNoSize | NativeMethods.SwpNoActivate);
     }
 
-    public void Place(ScreenRect rect) => DesktopWindowService.PlaceAt(_handle,
-        (int)Math.Round(rect.X), (int)Math.Round(rect.Y), (int)Math.Round(rect.Width), (int)Math.Round(rect.Height));
+    public void Place(ScreenRect rect)
+    {
+        DpiScale dpi = VisualTreeHelper.GetDpi(this);
+        Width = rect.Width / dpi.DpiScaleX;
+        Height = rect.Height / dpi.DpiScaleY;
+        DesktopWindowService.PlaceAt(_handle,
+            (int)Math.Round(rect.X), (int)Math.Round(rect.Y), (int)Math.Round(rect.Width), (int)Math.Round(rect.Height));
+    }
 
     public bool ContainsScreenPoint(int x, int y)
     {
@@ -79,7 +86,7 @@ public partial class InteractionMenuWindow : Window
             return false;
         }
 
-        double radius = Math.Min(8 * (NativeMethods.GetDpiForWindow(_handle) / 96.0), Math.Min(rect.Width, rect.Height) / 2.0);
+        double radius = 8 * Math.Min(rect.Width / MenuWidth, rect.Height / MenuHeight);
         double dx = Math.Max(0, radius - Math.Min(localX, rect.Width - 1 - localX));
         double dy = Math.Max(0, radius - Math.Min(localY, rect.Height - 1 - localY));
         return dx * dx + dy * dy <= radius * radius;

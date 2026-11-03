@@ -17,6 +17,7 @@ internal static class NativeMethods
     public const long WsExLayered = 0x00080000L;
     public const long WsExNoActivate = 0x08000000L;
 
+    public const uint GwHwndNext = 2;
     public const uint GwHwndPrev = 3;
     public const uint GwOwner = 4;
 

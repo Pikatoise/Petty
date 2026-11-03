@@ -14,27 +14,32 @@
     <Window.Resources>
         <ResourceDictionary Source="../Resources/CozyControls.xaml" />
     </Window.Resources>
-    <StackPanel Margin="24">
-        <TextBlock
-            Text="{DynamicResource ConfirmNew}"
-            TextWrapping="Wrap"
-            Margin="0,0,0,18" />
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button
-                Content="{DynamicResource Cancel}"
-                Style="{StaticResource CozyButton}"
-                IsCancel="True"
-                Margin="0,0,8,0" />
-            <Button
-                Content="{DynamicResource ConfirmReplace}"
-                Style="{StaticResource CozyPrimaryButton}"
-                Click="OnConfirm">
-                <Button.Resources>
-                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#BF6242" />
-                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#873B26" />
-                    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="White" />
-                </Button.Resources>
-            </Button>
+    <ScrollViewer
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled"
+        Background="{StaticResource CozyBackground}">
+        <StackPanel Margin="24">
+            <TextBlock
+                Text="{DynamicResource ConfirmNew}"
+                TextWrapping="Wrap"
+                Margin="0,0,0,18" />
+            <WrapPanel HorizontalAlignment="Right">
+                <Button
+                    Content="{DynamicResource Cancel}"
+                    Style="{StaticResource CozyButton}"
+                    IsCancel="True"
+                    Margin="0,0,8,0" />
+                <Button
+                    Content="{DynamicResource ConfirmReplace}"
+                    Style="{StaticResource CozyPrimaryButton}"
+                    Click="OnConfirm">
+                    <Button.Resources>
+                        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#BF6242" />
+                        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#873B26" />
+                        <SolidColorBrush x:Key="ButtonForegroundPressed" Color="White" />
+                    </Button.Resources>
+                </Button>
+            </WrapPanel>
         </StackPanel>
-    </StackPanel>
+    </ScrollViewer>
 </Window>

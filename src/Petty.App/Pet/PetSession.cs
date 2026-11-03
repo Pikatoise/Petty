@@ -32,6 +32,7 @@ public sealed class PetSession : IDisposable
     private readonly DesktopSurfaceController _surface;
     private readonly PetPropsController _props;
     private readonly BowlDisplay _bowlDisplay;
+    private TimeSpan _bowlDropDuration;
     private readonly IAppLog _log;
     private readonly AnimationController _animation;
     private readonly PetMotion _motion;
@@ -87,6 +88,7 @@ public sealed class PetSession : IDisposable
             sheet.Metadata.PlayContactX ?? 58, sheet.Metadata.PlayContactY ?? 45, sheet.GroundRow,
             sheet.Metadata.SpeciesId == "dog" ? 50 : 54);
         _bowlDisplay = new BowlDisplay(bowl, _surface, assetDirectory, window.Attachment.Mode, log);
+        _bowlDropDuration = tuning.Sanitized().BowlDropDuration;
 
         _animation = new AnimationController(sheet);
         _animation.FrameChanged += OnFrameChanged;
@@ -128,6 +130,7 @@ public sealed class PetSession : IDisposable
     public void ApplyDebugTuning(PetTuning tuning, double timeScale)
     {
         _runtime.SetTuning(tuning);
+        _bowlDropDuration = tuning.Sanitized().BowlDropDuration;
         if (!_exitRequested)
         {
             _clock.SetSpeed(timeScale, Timestamp());
@@ -169,6 +172,7 @@ public sealed class PetSession : IDisposable
         _runtime.Behavior.Transitioned += OnBehaviorTransition;
 
         _surface.Load();
+        UpdateSpriteScale();
         _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
 
         _menu = new InteractionMenuWindow(_log);
@@ -314,8 +318,11 @@ public sealed class PetSession : IDisposable
         bool wasMoving = _motion.IsMoving;
         bool moved = _motion.Update(delta);
         bool climbed = _surface.AdvanceFloor(realDelta);
+        _props.AdvanceBowlDrop(realDelta, _bowlDropDuration);
 
-        if (wasMoving && !_motion.IsMoving && !_exitRequested)
+        bool bowlReady = !_bowl.IsDragging && !_props.IsBowlMoving;
+        if (!_motion.IsMoving && !_exitRequested &&
+            (_runtime.Behavior.State is PetActivity.SeekingFood ? bowlReady : wasMoving))
         {
             _runtime.NotifyArrived();
         }
@@ -330,7 +337,7 @@ public sealed class PetSession : IDisposable
             ApplyPosition();
         }
 
-        if (climbed)
+        if (climbed && !_props.IsBowlMoving)
         {
             _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
         }
@@ -352,7 +359,7 @@ public sealed class PetSession : IDisposable
     /// </summary>
     private void SyncFrameInterval()
     {
-        bool busy = _runtime.Behavior.State is PetActivity.Playing or PetActivity.Petting || _motion.IsMoving || _surface.IsFloorMoving || _menu?.IsVisible == true;
+        bool busy = _runtime.Behavior.State is PetActivity.Playing or PetActivity.Petting || _motion.IsMoving || _surface.IsFloorMoving || _props.IsBowlMoving || _menu?.IsVisible == true;
         double fps = _animation.CurrentClip?.FramesPerSecond ?? 0;
 #if DEBUG
         fps *= _debugTimeScale;
@@ -448,6 +455,12 @@ public sealed class PetSession : IDisposable
     private void OnBehaviorTransition(object? sender, BehaviorTransition transition)
     {
         _log.Info($"Behaviour {transition.From} -> {transition.To} ({transition.Reason}).");
+
+        _bowl.SetDraggingEnabled(transition.To is not (PetActivity.Eating or PetActivity.Exiting));
+        if (transition.To is PetActivity.Eating)
+        {
+            _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
+        }
 
         _animation.Play(PetAnimationMap.ClipFor(transition.To));
         _menu?.SetPlayEnabled(_runtime.Behavior.CanPlay);
@@ -648,8 +661,9 @@ public sealed class PetSession : IDisposable
         double bottom = Math.Min(work.Bottom, WalkArea.FloorY);
         var usable = new ScreenRect(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
         double dpi = _window.DpiScale;
+        double menuScale = InteractionMenuPlacement.ScaleForDisplay(SpriteDisplayScale.ForDisplay(display.Bounds), dpi);
         _menu.Place(InteractionMenuPlacement.Place(usable, x, y,
-            InteractionMenuWindow.MenuWidth * dpi, InteractionMenuWindow.MenuHeight * dpi));
+            InteractionMenuWindow.MenuWidth * dpi * menuScale, InteractionMenuWindow.MenuHeight * dpi * menuScale));
     }
 
     private void OnBowlClicked(object? sender, EventArgs e)
@@ -676,7 +690,8 @@ public sealed class PetSession : IDisposable
         BowlPlacementState placement = _props.CaptureBowlPosition();
 
         _runtime.UpdateBowlPlacement(placement);
-        _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
+        _props.StartBowlDrop(placement);
+        SyncFrameInterval();
 
         _log.Info($"Bowl dropped at x {rect.Left} ({(placement.RelativeX * 100):F0} % of {placement.DisplayDeviceName}).");
         StateChanged?.Invoke(this, "bowl-move");
@@ -734,6 +749,11 @@ public sealed class PetSession : IDisposable
             return;
         }
 
+        if (change is SurfaceChange.Display)
+        {
+            UpdateSpriteScale();
+        }
+
         if (_runtime.Behavior.State is PetActivity.Exiting)
         {
             _motion.Exit(WalkArea, _window.PhysicalWidth, _motion.Facing, _surface.PrimaryDisplay?.Bounds.X, _surface.PrimaryDisplay?.Bounds.Right);
@@ -761,8 +781,27 @@ public sealed class PetSession : IDisposable
         {
             _motion.Seek(_props.SeekTargetX(_motion.X));
         }
+        else if (_runtime.Behavior.State is PetActivity.Eating)
+        {
+            _motion.Place(_props.SeekTargetX(_motion.X));
+            _window.SetFacing(_props.IsBowlLeft(_motion.X));
+            ApplyPosition();
+        }
 
         UpdateScene();
+    }
+
+    private void UpdateSpriteScale()
+    {
+        if (_surface.PrimaryDisplay is not { } display)
+        {
+            return;
+        }
+
+        double scale = SpriteDisplayScale.ForDisplay(display.Bounds);
+        _window.SetSpriteScale(scale);
+        _props.SetSpriteScale(scale, _window.PhysicalWidth);
+        _surface.SetWindowWidth(_window.PhysicalWidth);
     }
 
     private void FaceMovement() => _window.SetFacing(_motion.Facing < 0);
