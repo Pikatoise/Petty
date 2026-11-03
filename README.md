@@ -152,16 +152,6 @@ Remove-Item Env:PETTY_VERIFY_TUTORIAL
 ./scripts/publish-portable.ps1 -Zip
 ```
 
-The output contains only `Petty.exe` and requires the .NET 10 Desktop Runtime x64.
-Desktop sprites scale continuously with the primary monitor's resolution, from 1× at
-1280×720 to 3× at 2560×1600 (about 1.82× at 1920×1080 and 4.27× at 3840×2160).
-The scale follows the smaller width/height growth from those reference resolutions,
-with a 1× minimum and no upper cap; final window dimensions round to screen pixels. A display change
-updates pet and props together, with nearest-neighbor rendering at every size.
-Interaction actions are larger on compact displays while retaining their reference size
-at 2560×1600. Ordinary dialogs follow Windows DPI and fit the monitor's work area;
-short windows scroll, and the creator stacks its preview above the form when narrow.
-
 ## License
 
 [MIT](LICENSE.txt). License notices are embedded in the application and available from Settings → Licenses.
