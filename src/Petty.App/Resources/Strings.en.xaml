@@ -123,4 +123,22 @@
     <sys:String x:Key="DebugCategoryMovement">Movement</sys:String>
     <sys:String x:Key="DebugCategoryInteraction">Play and petting</sys:String>
     <sys:String x:Key="Licenses">Licenses</sys:String>
+    <sys:String x:Key="TutorialTitle">Getting to know Petty</sys:String>
+    <sys:String x:Key="TutorialOpen">Tutorial</sys:String>
+    <sys:String x:Key="TutorialPrevious">Previous page</sys:String>
+    <sys:String x:Key="TutorialNext">Next page</sys:String>
+    <sys:String x:Key="TutorialSkip">Skip</sys:String>
+    <sys:String x:Key="TutorialClose">Close tutorial</sys:String>
+    <sys:String x:Key="TutorialHeading1">Meet your desktop companion</sys:String>
+    <sys:String x:Key="TutorialBody1">A little friend to keep you company while you go about your day. Your pet wanders around the desktop, rests and takes naps. Other windows stay in front, so you can carry on with your work.</sys:String>
+    <sys:String x:Key="TutorialNote1">Choose a cat or dog, pick their look and give them a name.</sys:String>
+    <sys:String x:Key="TutorialHeading2">A little care goes a long way</sys:String>
+    <sys:String x:Key="TutorialBody2">Click the bowl to add food. When your pet gets hungry, they will come over and eat. You can drag the bowl to a new spot whenever your pet is not eating.</sys:String>
+    <sys:String x:Key="TutorialNote2">Your pet will never die. While Petty is closed, your pet does not get hungrier or less happy.</sys:String>
+    <sys:String x:Key="TutorialHeading3">Spend time together</sys:String>
+    <sys:String x:Key="TutorialBody3">Hover over your pet to reveal the play and petting buttons. Play with a ball or give them a gentle stroke to lift their spirits. Let them nap when they are sleepy: play is available while they are awake.</sys:String>
+    <sys:String x:Key="TutorialNote3">Even a sleeping pet can enjoy a gentle stroke.</sys:String>
+    <sys:String x:Key="TutorialHeading4">Everything is close at hand</sys:String>
+    <sys:String x:Key="TutorialBody4">Right-click the Petty icon near the clock to open Settings or exit. In Settings, you can rename your companion, create another pet, choose a language and decide whether Petty starts with Windows.</sys:String>
+    <sys:String x:Key="TutorialNote4">Closing Settings leaves your pet running. You can revisit this tutorial there at any time.</sys:String>
 </ResourceDictionary>

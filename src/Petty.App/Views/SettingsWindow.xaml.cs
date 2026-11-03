@@ -60,6 +60,10 @@ public partial class SettingsWindow : Window
 
     public event EventHandler? NewPetRequested;
 
+    public event EventHandler? TutorialRequested;
+
+    private void OnTutorial(object sender, RoutedEventArgs e) => TutorialRequested?.Invoke(this, EventArgs.Empty);
+
     private void OnNameChanged(object sender, TextChangedEventArgs e)
     {
         if (!_ready)

@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Petty.Core.Preferences;
 
-public sealed record UserPreferences(string? Language = null, bool Autostart = true)
+public sealed record UserPreferences(string? Language = null, bool Autostart = true, bool TutorialCompleted = false)
 {
     public UserPreferences Sanitized() => this with
     {
@@ -26,7 +26,17 @@ public sealed class PreferencesStore(string path)
 
         try
         {
-            return (JsonSerializer.Deserialize<UserPreferences>(File.ReadAllText(path), Options) ?? new()).Sanitized();
+            string json = File.ReadAllText(path);
+            UserPreferences preferences = (JsonSerializer.Deserialize<UserPreferences>(json, Options) ?? new()).Sanitized();
+            using var document = JsonDocument.Parse(json);
+            // Preferences from older releases belong to existing users, who do not need onboarding.
+            bool legacy = document.RootElement.ValueKind == JsonValueKind.Object &&
+                !document.RootElement.EnumerateObject().Any(property =>
+                    property.Name.Equals("tutorialCompleted", StringComparison.OrdinalIgnoreCase));
+            return legacy ? preferences with
+            {
+                TutorialCompleted = true
+            } : preferences;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
         {

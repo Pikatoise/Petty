@@ -123,4 +123,22 @@
     <sys:String x:Key="DebugCategoryMovement">Движение</sys:String>
     <sys:String x:Key="DebugCategoryInteraction">Игра и поглаживание</sys:String>
     <sys:String x:Key="Licenses">Лицензии</sys:String>
+    <sys:String x:Key="TutorialTitle">Знакомство с Petty</sys:String>
+    <sys:String x:Key="TutorialOpen">Обучение</sys:String>
+    <sys:String x:Key="TutorialPrevious">Предыдущая страница</sys:String>
+    <sys:String x:Key="TutorialNext">Следующая страница</sys:String>
+    <sys:String x:Key="TutorialSkip">Пропустить</sys:String>
+    <sys:String x:Key="TutorialClose">Закрыть обучение</sys:String>
+    <sys:String x:Key="TutorialHeading1">Ваш маленький компаньон</sys:String>
+    <sys:String x:Key="TutorialBody1">Друг, который составит компанию, пока вы занимаетесь своими делами. Питомец гуляет по рабочему столу, отдыхает и дремлет. Обычные окна остаются впереди, поэтому можно спокойно продолжать работу.</sys:String>
+    <sys:String x:Key="TutorialNote1">Можно выбрать кота или собаку, внешность и имя для своего питомца.</sys:String>
+    <sys:String x:Key="TutorialHeading2">Позаботьтесь о питомце</sys:String>
+    <sys:String x:Key="TutorialBody2">Нажмите на миску, чтобы добавить корм. Проголодавшись, питомец сам подойдёт и поест. Миску можно перетащить в другое место, пока питомец не ест.</sys:String>
+    <sys:String x:Key="TutorialNote2">Питомец никогда не погибнет. Пока Petty закрыт, он не становится голоднее или грустнее.</sys:String>
+    <sys:String x:Key="TutorialHeading3">Проводите время вместе</sys:String>
+    <sys:String x:Key="TutorialBody3">Наведите курсор на питомца — появятся кнопки игры и ласки. Поиграйте с мячиком или погладьте питомца, чтобы поднять ему настроение. Когда он задремлет, дайте ему отдохнуть: играть можно во время бодрствования.</sys:String>
+    <sys:String x:Key="TutorialNote3">Нежно погладить можно даже спящего питомца.</sys:String>
+    <sys:String x:Key="TutorialHeading4">Всё под рукой</sys:String>
+    <sys:String x:Key="TutorialBody4">Нажмите правой кнопкой на значок Petty рядом с часами, чтобы открыть настройки или выйти. В настройках можно изменить имя, создать другого питомца, выбрать язык и включить или отключить запуск вместе с Windows.</sys:String>
+    <sys:String x:Key="TutorialNote4">Закрытие настроек оставляет питомца работать. Здесь же можно снова открыть обучение.</sys:String>
 </ResourceDictionary>

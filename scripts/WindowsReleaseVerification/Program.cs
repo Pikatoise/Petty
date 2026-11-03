@@ -23,6 +23,14 @@ internal static partial class Program
     [STAThread]
     private static int Main()
     {
+        if (Environment.GetEnvironmentVariable("PETTY_VERIFY_TUTORIAL_SCENARIO") is { } tutorialScenario)
+        {
+            return CheckTutorialStartup(tutorialScenario);
+        }
+        if (Environment.GetEnvironmentVariable("PETTY_VERIFY_TUTORIAL") == "1")
+        {
+            return CheckTutorialScenarios();
+        }
         if (Environment.GetEnvironmentVariable("PETTY_PROFILE") == "1")
         {
             return Profile();

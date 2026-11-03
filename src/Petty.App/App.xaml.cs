@@ -238,6 +238,30 @@ public partial class App : Application
         }
         else
         {
+            if (load.Status == LoadStatus.Missing && !_localization!.Preferences.TutorialCompleted)
+            {
+                var tutorial = new TutorialWindow(_variants, assetDirectory, firstRun: true);
+                tutorial.CompletionRequested += () =>
+                {
+                    try
+                    {
+                        _localization.CompleteTutorial();
+                        return true;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+                    {
+                        _log.Error("Could not save tutorial completion.", ex);
+                        return false;
+                    }
+                };
+                if (tutorial.ShowDialog() != true)
+                {
+                    _log.Info("First-run tutorial was closed; exiting before pet creation.");
+                    Shutdown();
+                    return;
+                }
+            }
+
             string? warning = load.Status is LoadStatus.Corrupt or LoadStatus.UnsupportedVersion
                 ? Localization.Text("CorruptState")
                 : null;
@@ -456,6 +480,15 @@ public partial class App : Application
         _settings = new SettingsWindow(_runtime.Snapshot.PetName, _variants.FirstOrDefault(v => v.AssetId == _runtime.Snapshot.AssetId)?.SpeciesId ?? "cat", _runtime.Snapshot.BreedId, _localization!, _log!);
         _settings.RenameRequested += OnRenameRequested;
         _settings.NewPetRequested += OnNewPetRequested;
+        _settings.TutorialRequested += (_, _) =>
+        {
+            var tutorial = new TutorialWindow(_variants, _assetDirectory!, firstRun: false)
+            {
+                Owner = _settings,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+            tutorial.ShowDialog();
+        };
         _settings.Closed += (_, _) => _settings = null;
         _settings.Show();
         _settings.Activate();

@@ -11,7 +11,40 @@ public class UserPreferencesTests
         Assert.Equal("ru", preferences.EffectiveLanguage("ru-RU"));
         Assert.Equal("en", preferences.EffectiveLanguage("de-DE"));
         Assert.True(preferences.Autostart);
+        Assert.False(preferences.TutorialCompleted);
         Assert.Equal("en", new UserPreferences("en").EffectiveLanguage("ru-RU"));
+    }
+
+    [Fact]
+    public void LegacyPreferencesSkipTutorialAndExplicitCompletionSurvivesOtherChanges()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "petty-onboarding-" + Guid.NewGuid());
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string path = Path.Combine(directory, "preferences.json");
+            var store = new PreferencesStore(path);
+            Assert.False(store.Load().TutorialCompleted);
+            File.WriteAllText(path, "{\"language\":\"ru\",\"autostart\":false}");
+            UserPreferences legacy = store.Load();
+            Assert.True(legacy.TutorialCompleted);
+            Assert.Equal("ru", legacy.Language);
+            Assert.False(legacy.Autostart);
+            store.Save(legacy with
+            {
+                Language = "en",
+                Autostart = true
+            });
+            Assert.True(store.Load().TutorialCompleted);
+            store.Save(new UserPreferences(TutorialCompleted: false));
+            Assert.False(store.Load().TutorialCompleted);
+            store.Save(store.Load() with
+            {
+                TutorialCompleted = true
+            });
+            Assert.True(store.Load().TutorialCompleted);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
     }
 
     [Fact]

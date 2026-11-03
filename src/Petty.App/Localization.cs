@@ -32,6 +32,16 @@ internal sealed class Localization
 
     public static string SpeciesName(string speciesId) => Text(speciesId == "dog" ? "SpeciesDog" : "SpeciesCat");
 
+    public void CompleteTutorial()
+    {
+        UserPreferences updated = Preferences with
+        {
+            TutorialCompleted = true
+        };
+        _store.Save(updated);
+        Preferences = updated;
+    }
+
     public void SetAutostart(bool enabled)
     {
         UserPreferences updated = Preferences with

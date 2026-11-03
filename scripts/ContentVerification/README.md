@@ -16,6 +16,10 @@ Creator content is rendered without showing windows at 200% into `artifacts/veri
 Adaptive layout checks cover RU/EN dialogs and tray content at normal and compact DIP budgets,
 including creator reflow and scrolling to final actions. Interaction action previews cover
 720p, Full HD, the reference display and 4K at representative DPI scales.
+Tutorial checks exercise four independent WPF Pages in a Frame, passive scenes in RU/EN,
+first-run/replay navigation, fixed header/footer bounds, last-page Skip visibility,
+completion-save failure feedback and scrolling confined to each page. Preview frames are written
+to `artifacts/verification/content/tutorial-*.png` without showing tutorial windows.
 `artifacts/verification/content/play/` contains a contact sheet and standalone animated preview
 sampled by the real Core scene implementation, with the runtime WPF frame controller.
 This does not modify pet data, registry settings, preferences or the running pet.

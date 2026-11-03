@@ -89,7 +89,7 @@ internal static partial class Program
         Require(SpriteAssetLocator.FindSharedDirectory() is not null, "Shared props missing.");
         PlayPreview.Write(variants, output);
 
-        var app = new Petty.App.App();
+        var app = new ContentVerificationApp();
         app.InitializeComponent();
         foreach (string? language in new[] { "en", "ru" })
         {
@@ -97,6 +97,7 @@ internal static partial class Program
             app.Resources.MergedDictionaries.Add(strings);
             AdaptiveLayoutVerification.Check(variants, output, language!);
             CheckInteractionLayout(output, language!);
+            CheckTutorialLayout(variants, embedded, output, language!);
             var wizard = new CreationWizardWindow(variants, true, "Milo", null);
             var species = (ComboBox)wizard.FindName("SpeciesSelector");
             var breeds = (ComboBox)wizard.FindName("BreedSelector");
@@ -160,7 +161,7 @@ internal static partial class Program
             }
         }
 
-        Console.WriteLine($"CONTENT VERIFIED: 40 runtime atlases, {frameCount} frozen/hit-tested frames, 8 unique silhouettes, 16 localized creator previews, coat cycling/wrapping, existing-coat recreation, deterministic PNGs.");
+        Console.WriteLine($"CONTENT VERIFIED: 40 runtime atlases, {frameCount} frozen/hit-tested frames, 8 unique silhouettes, 16 localized creator previews, coat cycling/wrapping, existing-coat recreation, localized tutorial scenes/navigation/compact layout, deterministic PNGs.");
     }
 
     private static void Render(Window window, string path)
