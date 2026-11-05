@@ -118,6 +118,76 @@ namespace Petty.Server.Infrastructure.Persistence.Migrations
                     b.ToTable("UserSessions");
                 });
 
+            modelBuilder.Entity("Petty.Server.Domain.Friends.Friendship", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HigherUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LowerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RequestedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HigherUserId");
+
+                    b.HasIndex("RequestId")
+                        .IsUnique();
+
+                    b.HasIndex("RequestedById");
+
+                    b.HasIndex("LowerUserId", "HigherUserId")
+                        .IsUnique();
+
+                    b.ToTable("Friendships", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Friendships_CanonicalPair", "\"LowerUserId\" < \"HigherUserId\"");
+
+                            t.HasCheckConstraint("CK_Friendships_Requester", "\"RequestedById\" IN (\"LowerUserId\", \"HigherUserId\")");
+
+                            t.HasCheckConstraint("CK_Friendships_Status", "\"Status\" BETWEEN 0 AND 2 AND (\"Status\" = 0 OR \"RequestId\" IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Petty.Server.Domain.Friends.UserBlock", b =>
+                {
+                    b.Property<Guid>("BlockerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BlockedId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("BlockerId", "BlockedId");
+
+                    b.HasIndex("BlockedId");
+
+                    b.ToTable("UserBlocks", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_UserBlocks_DifferentUsers", "\"BlockerId\" <> \"BlockedId\"");
+                        });
+                });
+
             modelBuilder.Entity("Petty.Server.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -227,6 +297,42 @@ namespace Petty.Server.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Petty.Server.Domain.Friends.Friendship", b =>
+                {
+                    b.HasOne("Petty.Server.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("HigherUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Petty.Server.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("LowerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Petty.Server.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Petty.Server.Domain.Friends.UserBlock", b =>
+                {
+                    b.HasOne("Petty.Server.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("BlockedId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Petty.Server.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("BlockerId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 #pragma warning restore 612, 618

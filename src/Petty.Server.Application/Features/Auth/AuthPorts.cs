@@ -10,6 +10,7 @@ public interface IIdentityService
 
 public interface IAccountRepository
 {
+    Task<bool> ExistsAsync(Guid userId, CancellationToken cancellationToken);
     Task<Guid?> FindIdByLoginAsync(string login, CancellationToken cancellationToken);
     Task LockAsync(Guid userId, CancellationToken cancellationToken);
     Task<AccountProfile> GetProfileAsync(Guid userId, CancellationToken cancellationToken);

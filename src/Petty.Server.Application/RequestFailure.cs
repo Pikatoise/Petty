@@ -4,6 +4,8 @@ public enum FailureKind
 {
     Invalid,
     Unauthorized,
+    Forbidden,
+    NotFound,
     Conflict
 }
 

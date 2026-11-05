@@ -6,6 +6,9 @@ namespace Petty.Server.Infrastructure.Persistence;
 
 public sealed class AccountRepository(ServerDbContext database) : IAccountRepository
 {
+    public Task<bool> ExistsAsync(Guid userId, CancellationToken cancellationToken) =>
+        database.Users.AnyAsync(user => user.Id == userId, cancellationToken);
+
     public Task<Guid?> FindIdByLoginAsync(string login, CancellationToken cancellationToken) =>
         database.Users.Where(user => user.NormalizedUserName == login.ToUpperInvariant())
             .Select(user => (Guid?)user.Id).SingleOrDefaultAsync(cancellationToken);

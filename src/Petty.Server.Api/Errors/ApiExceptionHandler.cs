@@ -18,6 +18,8 @@ public sealed class ApiExceptionHandler : IExceptionHandler
             {
                 FailureKind.Invalid => StatusCodes.Status400BadRequest,
                 FailureKind.Unauthorized => StatusCodes.Status401Unauthorized,
+                FailureKind.Forbidden => StatusCodes.Status403Forbidden,
+                FailureKind.NotFound => StatusCodes.Status404NotFound,
                 FailureKind.Conflict => StatusCodes.Status409Conflict,
                 _ => StatusCodes.Status500InternalServerError
             };
