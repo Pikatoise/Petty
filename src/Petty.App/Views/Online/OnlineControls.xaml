@@ -1,0 +1,32 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../../Resources/CozyControls.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+    <Style TargetType="Button" BasedOn="{StaticResource CozyButton}">
+        <Setter Property="Margin" Value="0,4,8,4" />
+    </Style>
+    <Style TargetType="TextBox" BasedOn="{StaticResource CozyInput}">
+        <Setter Property="Margin" Value="0,4,0,12" />
+    </Style>
+    <Style TargetType="ComboBox" BasedOn="{StaticResource CozySelection}">
+        <Setter Property="Margin" Value="0,4,0,12" />
+    </Style>
+    <Style TargetType="PasswordBox">
+        <Setter Property="Margin" Value="0,4,0,12" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="Background" Value="{StaticResource CozyBackground}" />
+        <Setter Property="Foreground" Value="{StaticResource CozyText}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CozyBorder}" />
+    </Style>
+    <Style TargetType="TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="OnlineCard" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource CozySurface}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CozyEdge}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="14" />
+        <Setter Property="Margin" Value="0,4,0,8" />
+    </Style>
+</ResourceDictionary>

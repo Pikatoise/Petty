@@ -8,6 +8,7 @@ using Petty.App.Pet;
 using Petty.App.Sprites;
 using Petty.App.Tray;
 using Petty.App.Views;
+using Petty.App.Views.Online;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
 using Petty.Core.Persistence;
@@ -54,6 +55,7 @@ public partial class App : Application
     private bool _shutdownStarted;
     private Localization? _localization;
     private ShellRestartWatcher? _shellWatcher;
+    private OnlineWindows? _onlineWindows;
     internal OnlineCoordinator? Online
     {
         get; private set;
@@ -127,6 +129,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _onlineWindows?.Dispose();
+        _onlineWindows = null;
         // The coordinator never awaits the Dispatcher; all network awaits run off the UI thread.
         try
         {
@@ -353,6 +357,8 @@ public partial class App : Application
 #endif
         _session.ExitAnimationCompleted += OnExitAnimationCompleted;
         _session.StateChanged += OnSessionStateChanged;
+        _session.LetterRequested += OnLetterRequested;
+        _session.SetLetterAvailable(Online?.Account is not null && Online.Client.SessionId is not null);
         _session.Start();
 
         if (_autoSaveTimer is null)
@@ -373,6 +379,10 @@ public partial class App : Application
         {
             Online ??= OnlineCoordinator.FromEnvironment(_paths!.DataDirectory,
                 action => Dispatcher.BeginInvoke(action), () => _log?.Warn("Online service unavailable; local pet remains active."));
+            if (Online is not null)
+            {
+                _onlineWindows ??= new OnlineWindows(Online, available => _session?.SetLetterAvailable(available));
+            }
             Online?.UpdatePet(new PetProfile(runtime.Snapshot.PetName, runtime.Snapshot.AssetId));
             _ = Online?.StartAsync();
         }
@@ -454,6 +464,7 @@ public partial class App : Application
         string iconPath = Path.Combine(_assetDirectory!, TrayService.TrayIconFileName);
         _tray = new TrayService(iconPath, _log!);
         _tray.SettingsRequested += (_, _) => ShowSettings();
+        _tray.AccountRequested += (_, _) => ShowOnlineAccount();
         _tray.ExitRequested += (_, _) => RequestExitFromTray();
 #if DEBUG
         _tray.DebugRequested += (_, _) => ShowDebugWindow();
@@ -504,6 +515,7 @@ public partial class App : Application
         _settings = new SettingsWindow(_runtime.Snapshot.PetName, _variants.FirstOrDefault(v => v.AssetId == _runtime.Snapshot.AssetId)?.SpeciesId ?? "cat", _runtime.Snapshot.BreedId, _localization!, _log!);
         _settings.RenameRequested += OnRenameRequested;
         _settings.NewPetRequested += OnNewPetRequested;
+        _settings.AccountRequested += (_, _) => ShowOnlineAccount();
         _settings.TutorialRequested += (_, _) =>
         {
             var tutorial = new TutorialWindow(_variants, _assetDirectory!, firstRun: false)
@@ -516,6 +528,18 @@ public partial class App : Application
         _settings.Closed += (_, _) => _settings = null;
         _settings.Show();
         _settings.Activate();
+    }
+
+    private void ShowOnlineAccount()
+    {
+        if (_onlineWindows is not null)
+        {
+            _onlineWindows.ShowAccount();
+        }
+        else
+        {
+            MessageBox.Show(Localization.Text("OnlineNotConfigured"), Localization.Text("OnlineAccount"));
+        }
     }
 
     private bool OnRenameRequested(string name)
@@ -683,6 +707,7 @@ public partial class App : Application
     }
 
     private void OnSessionStateChanged(object? sender, string reason) => SaveState(reason);
+    private void OnLetterRequested(object? sender, EventArgs e) => _onlineWindows?.ShowCompose();
 
     private void StopSession()
     {
@@ -693,6 +718,7 @@ public partial class App : Application
 
         _session.ExitAnimationCompleted -= OnExitAnimationCompleted;
         _session.StateChanged -= OnSessionStateChanged;
+        _session.LetterRequested -= OnLetterRequested;
         _session.Dispose();
         _session = null;
     }

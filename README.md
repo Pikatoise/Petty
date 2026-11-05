@@ -416,8 +416,23 @@ Until production hosting is configured, online startup is opt-in through
 `PETTY_SERVER_URL`, an HTTPS origin without credentials, path or query. HTTP is
 accepted only for loopback development. Without this variable Petty starts locally
 without creating an online client. There is no built-in public service address.
-Account/friends/mail windows and user-facing entry points arrive in the next UI
-stage; this stage is infrastructure only.
+Open **Account and friends** from Settings or the tray menu. Registration is
+optional, without email or password recovery. The account window provides friends,
+letter composition and paginated sent/read-received histories. Signed-in users can
+also open composition through the pet's Letter action. Network failures leave the
+local pet running. Online windows close when their session is replaced or revoked.
+
+Composition shows the recipient's server quota and rechecks it before the first
+send. After an uncertain send, the text, recipient and request ID remain fixed;
+Retry replays that same letter, including when a lost success response filled the
+quota. A success message requires the server acknowledgement. Closing a draft
+discards its in-memory retry key; sent letters remain in server history.
+
+The incoming window retains the original visit snapshot across closing/reopening,
+acknowledges expansion/read-all only after server success, and never reads later
+arrivals implicitly. Until the postman stage, its preview entry exists only in
+Debug builds inside the account window. Release has no temporary incoming-mail
+entry; the final delivery flow still requires visitor assets and animation.
 
 `Petty.App.Online.OnlineCoordinator` starts after the local pet is restored, sends
 pet profile changes after login/create/rename, and publishes account/friends/mailbox

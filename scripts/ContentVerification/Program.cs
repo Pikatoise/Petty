@@ -97,6 +97,7 @@ internal static partial class Program
             app.Resources.MergedDictionaries.Add(strings);
             AdaptiveLayoutVerification.Check(variants, output, language!);
             CheckInteractionLayout(output, language!);
+            CheckOnlineLayout(output, language!);
             CheckTutorialLayout(variants, embedded, output, language!);
             var wizard = new CreationWizardWindow(variants, true, "Milo", null);
             var species = (ComboBox)wizard.FindName("SpeciesSelector");
@@ -161,7 +162,7 @@ internal static partial class Program
             }
         }
 
-        Console.WriteLine($"CONTENT VERIFIED: 40 runtime atlases, {frameCount} frozen/hit-tested frames, 8 unique silhouettes, 16 localized creator previews, coat cycling/wrapping, existing-coat recreation, localized tutorial scenes/navigation/compact layout, deterministic PNGs.");
+        Console.WriteLine($"CONTENT VERIFIED: 40 runtime atlases, {frameCount} frozen/hit-tested frames, 8 unique silhouettes, 16 localized creator previews, coat cycling/wrapping, existing-coat recreation, localized tutorial and online windows, quota recovery and snapshot reads, deterministic PNGs.");
     }
 
     private static void Render(Window window, string path)

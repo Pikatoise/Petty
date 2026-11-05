@@ -20,6 +20,11 @@ Tutorial checks exercise four independent WPF Pages in a Frame, passive scenes i
 first-run/replay navigation, fixed header/footer bounds, last-page Skip visibility,
 completion-save failure feedback and scrolling confined to each page. Preview frames are written
 to `artifacts/verification/content/tutorial-*.png` without showing tutorial windows.
+Online window checks use an in-memory token store and fake HTTP responses, without
+starting SignalR or contacting a server. They render account/friends/composition/history/
+incoming views in RU/EN, verify compact friends scrolling, quota refresh after 10/10,
+and closing/reopening and acknowledging an incoming snapshot. They do not establish
+live network behavior or replace the two-account Desktop acceptance check.
 `artifacts/verification/content/play/` contains a contact sheet and standalone animated preview
 sampled by the real Core scene implementation, with the runtime WPF frame controller.
 This does not modify pet data, registry settings, preferences or the running pet.

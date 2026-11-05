@@ -34,6 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="ContentVerification" />
     <Resource Include="..\..\assets\sprites\tray-cat.png" Link="Resources\AppIcon.png" />
     <ProjectReference Include="..\Petty.Core\Petty.Core.csproj" />
     <ProjectReference Include="..\Petty.Online.Client\Petty.Online.Client.csproj" />

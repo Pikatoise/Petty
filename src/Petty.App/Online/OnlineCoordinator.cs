@@ -27,6 +27,10 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
     }
 
     public OnlineClient Client => _client;
+    public Guid? PublishedSessionId
+    {
+        get; private set;
+    }
     public AccountProfile? Account
     {
         get; private set;
@@ -68,6 +72,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
     }
     // D2 calls only after the previous visitor has physically exited.
     public void VisitCompleted() => Wake();
+    public void Refresh() => Wake();
     private void Wake() => _wakeups.Writer.TryWrite(true);
 
     private async Task RunAsync(CancellationToken ct)
@@ -187,6 +192,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
                 return;
             }
             Account = account;
+            PublishedSessionId = session;
             Friends = friends;
             Mailbox = mailbox;
             AccountChanged?.Invoke();

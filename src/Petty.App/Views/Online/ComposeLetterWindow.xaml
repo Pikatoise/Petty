@@ -1,0 +1,62 @@
+﻿<online:OnlineWindow
+    x:Class="Petty.App.Views.Online.ComposeLetterWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:online="clr-namespace:Petty.App.Views.Online"
+    Title="{DynamicResource OnlineCompose}">
+    <Border Padding="24">
+        <DockPanel>
+            <TextBlock
+                x:Name="StatusText"
+                DockPanel.Dock="Bottom"
+                Margin="0,12,0,0"
+                AutomationProperties.LiveSetting="Polite" />
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
+                    <TextBlock
+                        Text="{DynamicResource OnlineCompose}"
+                        FontSize="22"
+                        FontWeight="SemiBold"
+                        Margin="0,0,0,16" />
+                    <Label Content="{DynamicResource OnlineRecipient}" Target="{Binding ElementName=FriendSelector}" />
+                    <ComboBox
+                        x:Name="FriendSelector"
+                        DisplayMemberPath="Login"
+                        SelectedValuePath="UserId"
+                        SelectionChanged="OnRecipientChanged"
+                        AutomationProperties.Name="{DynamicResource OnlineRecipient}" />
+                    <TextBlock x:Name="QuotaText" Margin="0,0,0,12" />
+                    <Button
+                        x:Name="RefreshButton"
+                        Content="{DynamicResource OnlineRefresh}"
+                        Click="OnRefresh"
+                        HorizontalAlignment="Left" />
+                    <Label Content="{DynamicResource OnlineLetterBody}" Target="{Binding ElementName=BodyBox}" />
+                    <TextBox
+                        x:Name="BodyBox"
+                        AcceptsReturn="True"
+                        Height="200"
+                        VerticalScrollBarVisibility="Auto"
+                        TextWrapping="Wrap"
+                        TextChanged="OnBodyChanged"
+                        AutomationProperties.Name="{DynamicResource OnlineLetterBody}" />
+                    <TextBlock
+                        Text="{DynamicResource OnlineLetterNotice}"
+                        Foreground="{StaticResource CozyMuted}"
+                        Margin="0,0,0,12" />
+                    <Button
+                        x:Name="SendButton"
+                        Content="{DynamicResource OnlineSend}"
+                        HorizontalAlignment="Left"
+                        Click="OnSend"
+                        IsEnabled="False" />
+                    <TextBlock
+                        x:Name="RetryText"
+                        Text="{DynamicResource OnlineSendRetry}"
+                        Visibility="Collapsed"
+                        Margin="0,12,0,0" />
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</online:OnlineWindow>

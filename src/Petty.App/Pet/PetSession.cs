@@ -64,6 +64,7 @@ public sealed class PetSession : IDisposable
     private bool _exitRequested;
     private bool _exitCompleted;
     private bool _disposed;
+    private bool _letterAvailable;
 
     public PetSession(
         PetRuntime runtime,
@@ -145,6 +146,13 @@ public sealed class PetSession : IDisposable
 #endif
 
     public event EventHandler? ExitAnimationCompleted;
+    public event EventHandler? LetterRequested;
+
+    public void SetLetterAvailable(bool available)
+    {
+        _letterAvailable = available;
+        _menu?.SetLetterEnabled(available);
+    }
 
     /// <summary>Raised with a short reason whenever the saved state should be written now.</summary>
     public event EventHandler<string>? StateChanged;
@@ -176,6 +184,7 @@ public sealed class PetSession : IDisposable
         _props.ApplyBowlPosition(_runtime.Snapshot.Placement);
 
         _menu = new InteractionMenuWindow(_log);
+        _menu.SetLetterEnabled(_letterAvailable);
         _menu.ActionRequested += OnActionRequested;
         _menu.PointerChanged += OnPointerChanged;
         _menu.Show();
@@ -574,6 +583,11 @@ public sealed class PetSession : IDisposable
         {
             _runtime.RequestPet();
         }
+        else if (action is PetInteraction.Letter && _letterAvailable && !_exitRequested &&
+            _runtime.Behavior.State is not (PetActivity.Eating or PetActivity.Playing or PetActivity.Petting or PetActivity.Exiting))
+        {
+            LetterRequested?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private void OnPointerChanged(object? sender, EventArgs e) => UpdatePointer();
@@ -663,7 +677,7 @@ public sealed class PetSession : IDisposable
         double dpi = _window.DpiScale;
         double menuScale = InteractionMenuPlacement.ScaleForDisplay(SpriteDisplayScale.ForDisplay(display.Bounds), dpi);
         _menu.Place(InteractionMenuPlacement.Place(usable, x, y,
-            InteractionMenuWindow.MenuWidth * dpi * menuScale, InteractionMenuWindow.MenuHeight * dpi * menuScale));
+            _menu.ContentWidth * dpi * menuScale, InteractionMenuWindow.MenuHeight * dpi * menuScale));
     }
 
     private void OnBowlClicked(object? sender, EventArgs e)
