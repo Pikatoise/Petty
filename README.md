@@ -390,9 +390,61 @@ the same valid session can receive the same zero-payload signals.
 REST remains the source of truth. Client startup, successful login, reconnect and
 guest completion must fetch the mailbox. Coalesce wakeups; after a lost signal,
 recover with a low-frequency reconciliation roughly every 10–15 minutes with
-jitter. These client lifecycle/synchronization behaviors belong to the upcoming
-Desktop client stage. There is no five-second polling loop, transactional outbox,
+jitter. The client infrastructure implements these synchronization hooks; the
+visitor UI and animation stages will consume them. There is no five-second polling loop, transactional outbox,
 broker or multi-server backplane. Delivery is best effort, with recovery from REST.
+
+### Desktop online infrastructure
+
+`Petty.Online.Client` is a platform-neutral .NET 10 library, independent of server,
+WPF and the local pet model. It provides typed REST operations for accounts,
+profiles, friends, blocks, letters, quota, histories and mailbox snapshots.
+`OnlineClient` owns its HTTP client with a 12-second timeout and cancellation.
+Session changes, HTTP calls and refresh rotation are serialized. Expiring access
+tokens refresh before use; an authentication challenge gets at most one refresh
+and replay. Revoked/invalid refresh sessions clear local credentials.
+
+GETs and idempotent letter sends retry a transient transport failure/502/503/504
+once with jitter. Other mutations and refresh/login are not automatically retried.
+The caller supplies `SendLetter.ClientRequestId` and retains it across uncertain
+responses and explicit retries. Success requires the server's response. Exceptions
+expose a machine code and quota fields rather than echoing server diagnostics.
+Offline logout clears local credentials even if server revocation fails; callers
+must surface that failure rather than claim a confirmed remote logout.
+
+Until production hosting is configured, online startup is opt-in through
+`PETTY_SERVER_URL`, an HTTPS origin without credentials, path or query. HTTP is
+accepted only for loopback development. Without this variable Petty starts locally
+without creating an online client. There is no built-in public service address.
+Account/friends/mail windows and user-facing entry points arrive in the next UI
+stage; this stage is infrastructure only.
+
+`Petty.App.Online.OnlineCoordinator` starts after the local pet is restored, sends
+pet profile changes after login/create/rename, and publishes account/friends/mailbox
+updates through the WPF Dispatcher. The coordinator owns the connection/retry and
+shutdown tasks; networking never participates in local simulation or state saves.
+It coalesces server wakeups, fetches REST on startup/login/reconnect/visit completion,
+and reconciles every randomized 10–15 minutes. Connection failures retry with capped
+exponential backoff and jitter. The three SignalR events carry no letter contents.
+`SessionRevoked` clears only the matching session, preserving a newer login.
+
+On Windows, `ProtectedTokenStore` encrypts session tokens with DPAPI CurrentUser in
+an origin-specific `online-session-*.bin` under the resolved Petty data directory.
+Isolated `--data-dir`/`PETTY_DATA_DIR` runs use that directory too. Writes replace an
+encrypted temporary file atomically; corrupt/unreadable DPAPI payloads are discarded.
+Passwords are never persisted. Pet-state schema v1 stays unchanged, and letters
+have no filesystem cache. DPAPI requires the same Windows user; it is not a portable
+account backup.
+
+The coordinator's mailbox is a candidate snapshot, not an active visitor. C2/D2 must
+retain their own original visit snapshot, recheck friendship changes, acknowledge
+only confirmed read IDs, and call `VisitCompleted` after the guest has exited.
+
+`dotnet test tests/Petty.Online.Tests -c Release` checks refresh serialization,
+idempotent retry, revocation, cancellation, coordinator shutdown and isolated Windows
+DPAPI storage. Server integration tests additionally exercise the typed client
+against PostgreSQL and SignalR transport reconnects. DPAPI verification requires
+Windows; real Desktop window/lifecycle acceptance remains an owner check.
 
 ### PostgreSQL integration tests
 

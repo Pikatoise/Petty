@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
 using Petty.App.Desktop;
+using Petty.App.Online;
 using Petty.App.Pet;
 using Petty.App.Sprites;
 using Petty.App.Tray;
@@ -12,6 +13,7 @@ using Petty.Core.Domain;
 using Petty.Core.Persistence;
 using Petty.Core.Preferences;
 using Petty.Core.Runtime;
+using Petty.Online.Client;
 
 namespace Petty.App;
 
@@ -52,6 +54,10 @@ public partial class App : Application
     private bool _shutdownStarted;
     private Localization? _localization;
     private ShellRestartWatcher? _shellWatcher;
+    internal OnlineCoordinator? Online
+    {
+        get; private set;
+    }
 #if DEBUG
     private DebugTuningStore? _debugStore;
     private DebugTuning _debugTuning = new();
@@ -121,6 +127,13 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // The coordinator never awaits the Dispatcher; all network awaits run off the UI thread.
+        try
+        {
+            Online?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+        catch (Exception) { _log?.Warn("Online shutdown did not complete."); }
+        Online = null;
         _shellWatcher?.Dispose();
         _shellWatcher = null;
         StopAppTimers();
@@ -356,6 +369,17 @@ public partial class App : Application
 
         _shellWatcher ??= new ShellRestartWatcher(RestoreShell,
             () => _options.DesktopLayer == DesktopLayerMode.AboveDesktop ? _window?.Handle ?? IntPtr.Zero : IntPtr.Zero);
+        try
+        {
+            Online ??= OnlineCoordinator.FromEnvironment(_paths!.DataDirectory,
+                action => Dispatcher.BeginInvoke(action), () => _log?.Warn("Online service unavailable; local pet remains active."));
+            Online?.UpdatePet(new PetProfile(runtime.Snapshot.PetName, runtime.Snapshot.AssetId));
+            _ = Online?.StartAsync();
+        }
+        catch (Exception)
+        {
+            _log?.Warn("Online configuration unavailable; local pet remains active.");
+        }
     }
 
     private void SynchronizeAutostart()
@@ -509,6 +533,7 @@ public partial class App : Application
             return false;
         }
         _log?.Info($"Renamed the pet to '{name}'.");
+        Online?.UpdatePet(new PetProfile(name, _runtime.Snapshot.AssetId));
         return true;
     }
 
