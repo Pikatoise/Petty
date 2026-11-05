@@ -9,7 +9,8 @@
 - Keep changes focused. Report what changed, checks run and remaining uncertainty.
 - Keep durable user/developer guidance in README.md and these instructions;
   sprite-format details belong in assets/sprites/README.md. Do not recreate session
-  specifications, handoff archives, progress logs or a docs directory.
+  handoff archives or progress logs. docs/ is temporary, git-ignored specification
+  input; keep it out of commits and release artifacts.
 - Use artifacts/ for disposable verification output; remove it after the task.
   Retain only the newest requested portable release under artifacts/portable/.
 - Routine visual and desktop acceptance belongs to the owner. Automated or simulated
@@ -20,8 +21,20 @@
 Petty is a Windows 11 x64 desktop pet; Windows 10 is best effort. One active pet,
 primary monitor only, four cat breeds and four dog breeds with five coats each.
 Breed/coat definitions live in assets/breed-designs.json and external PNG/JSON packs.
-The current UI is Cozy Home, Russian/English, with a custom tray popup. No sounds,
-networking, accounts, runtime AI or automatic updater.
+The current UI is Cozy Home, Russian/English, with a custom tray popup. The next
+version adds optional online accounts, friends and letters; local simulation stays
+independent of network availability. No sounds, runtime AI or automatic updater.
+
+- Petty.Desktop.slnx builds the Windows client; Petty.Server.slnx builds the backend
+  independently on Windows/Linux. Server projects never reference Desktop, Core,
+  Assets, WPF or Win32. Keep server configuration and credentials out of pet-state.
+- Backend uses ASP.NET Core Controllers, PostgreSQL/EF Core and scoped Mediator.
+  Domain is platform-free; Application owns use cases; Infrastructure owns storage;
+  Api owns transport and composition. Add online features one specification stage
+  at a time. Backend startup does not apply migrations automatically.
+- Use EF Core with feature-specific repositories and Unit of Work for business
+  persistence. Repositories share the scoped ServerDbContext; handlers commit via
+  IUnitOfWork.
 
 - Petty.Core: WPF/Win32-free domain, FSM, motion, clocks, scene math and persistence.
 - Petty.App: WPF/Win32 integration, rendering, windows, input and composition.
@@ -88,9 +101,11 @@ networking, accounts, runtime AI or automatic updater.
 Run from the repository root on Windows with .NET SDK 10:
 
 ```powershell
-dotnet build Petty.slnx -c Release
-dotnet test Petty.slnx -c Debug
-dotnet test Petty.slnx -c Release
+dotnet build Petty.Desktop.slnx -c Release
+dotnet test Petty.Desktop.slnx -c Debug
+dotnet test Petty.Desktop.slnx -c Release
+dotnet build Petty.Server.slnx -c Release
+dotnet test Petty.Server.slnx -c Release
 dotnet run --project scripts/ContentVerification -c Release
 dotnet run --project src/Petty.Assets -c Release -- --verify
 ```
