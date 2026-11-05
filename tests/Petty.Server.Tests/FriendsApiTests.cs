@@ -305,29 +305,7 @@ public sealed class FriendsApiTests(PostgreSqlDatabase database)
         Assert.Equal(HttpStatusCode.BadRequest, auth.StatusCode);
     }
 
-    private async Task<TestUser> CreateUser()
-    {
-        string login = "friend_" + Guid.NewGuid().ToString("N")[..20];
-        const string password = "TestPassword12345";
-        HttpClient client = database.Factory.CreateClient();
-        using HttpResponseMessage registered = await client.PostAsJsonAsync("/api/v1/auth/register", new
-        {
-            login,
-            password,
-            confirmPassword = password
-        });
-        Assert.Equal(HttpStatusCode.Created, registered.StatusCode);
-        Guid userId = (await registered.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("userId").GetGuid();
-        using HttpResponseMessage signedIn = await client.PostAsJsonAsync("/api/v1/auth/login", new
-        {
-            login,
-            password
-        });
-        Assert.Equal(HttpStatusCode.OK, signedIn.StatusCode);
-        TokenResponse token = (await signedIn.Content.ReadFromJsonAsync<TokenResponse>())!;
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-        return new TestUser(userId, login, client);
-    }
+    private Task<TestUser> CreateUser() => database.CreateUserAsync();
 
     private static async Task<Guid> Request(TestUser sender, TestUser recipient)
     {
@@ -355,8 +333,4 @@ public sealed class FriendsApiTests(PostgreSqlDatabase database)
     private static async Task<string?> ErrorCode(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString();
 
-    private sealed record TestUser(Guid Id, string Login, HttpClient Client) : IDisposable
-    {
-        public void Dispose() => Client.Dispose();
-    }
 }

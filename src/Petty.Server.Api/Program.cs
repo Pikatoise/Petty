@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Petty.Server.Api.Auth;
 using Petty.Server.Api.Errors;
 using Petty.Server.Application.Features.Friends;
+using Petty.Server.Application.Features.Letters;
 using Petty.Server.Application.Health;
 using Petty.Server.Application.Persistence;
 using Petty.Server.Infrastructure.Persistence;
@@ -31,6 +32,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddOnlineAuthentication(builder.Configuration);
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
+builder.Services.AddScoped<ILetterRepository, LetterRepository>();
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
@@ -46,6 +48,14 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = Math.Clamp(builder.Configuration.GetValue("Friends:RequestsPerMinute", 20), 1, 1000),
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+    options.AddPolicy("letters", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst("sub")?.Value ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = Math.Clamp(builder.Configuration.GetValue("Letters:RequestsPerMinute", 30), 1, 1000),
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         }));

@@ -188,6 +188,58 @@ namespace Petty.Server.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Petty.Server.Domain.Letters.Letter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ClientRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ReadAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("SentAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderId", "ClientRequestId")
+                        .IsUnique();
+
+                    b.HasIndex("SenderId", "RecipientId")
+                        .HasFilter("\"ReadAtUtc\" IS NULL");
+
+                    b.HasIndex("RecipientId", "ReadAtUtc", "Id")
+                        .IsDescending(false, true, true);
+
+                    b.HasIndex("RecipientId", "SentAtUtc", "Id")
+                        .HasFilter("\"ReadAtUtc\" IS NULL");
+
+                    b.HasIndex("SenderId", "SentAtUtc", "Id")
+                        .IsDescending(false, true, true);
+
+                    b.ToTable("Letters", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Letters_BodyLength", "char_length(\"Body\") BETWEEN 1 AND 500");
+
+                            t.HasCheckConstraint("CK_Letters_ClientRequestId", "\"ClientRequestId\" <> '00000000-0000-0000-0000-000000000000'::uuid");
+
+                            t.HasCheckConstraint("CK_Letters_DifferentUsers", "\"SenderId\" <> \"RecipientId\"");
+                        });
+                });
+
             modelBuilder.Entity("Petty.Server.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -332,6 +384,21 @@ namespace Petty.Server.Infrastructure.Persistence.Migrations
                     b.HasOne("Petty.Server.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("BlockerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Petty.Server.Domain.Letters.Letter", b =>
+                {
+                    b.HasOne("Petty.Server.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Petty.Server.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

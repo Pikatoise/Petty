@@ -9,8 +9,9 @@ public enum FailureKind
     Conflict
 }
 
-public sealed class RequestFailure(FailureKind kind, string code) : Exception(code)
+public sealed class RequestFailure(FailureKind kind, string code, IReadOnlyDictionary<string, object?>? details = null) : Exception(code)
 {
     public FailureKind Kind { get; } = kind;
     public string Code { get; } = code;
+    public IReadOnlyDictionary<string, object?>? Details { get; } = details;
 }

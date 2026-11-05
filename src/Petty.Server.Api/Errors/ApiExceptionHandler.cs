@@ -28,11 +28,11 @@ public sealed class ApiExceptionHandler : IExceptionHandler
         else if (exception is DbUpdateException
         {
             InnerException: PostgresException
-            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "UserNameIndex" }
-        })
+            { SqlState: PostgresErrorCodes.UniqueViolation } postgres
+        } && postgres.ConstraintName is "UserNameIndex" or "IX_Letters_SenderId_ClientRequestId")
         {
             status = StatusCodes.Status409Conflict;
-            code = "USERNAME_TAKEN";
+            code = postgres.ConstraintName == "UserNameIndex" ? "USERNAME_TAKEN" : "IDEMPOTENCY_KEY_REUSED";
         }
         else if (IsDatabaseUnavailable(exception))
         {
@@ -45,12 +45,21 @@ public sealed class ApiExceptionHandler : IExceptionHandler
         }
 
         context.Response.StatusCode = status;
-        await context.Response.WriteAsJsonAsync(new ProblemDetails
+        var problem = new ProblemDetails
         {
             Status = status,
             Title = "Request failed",
             Extensions = { ["code"] = code }
-        }, options: null, contentType: "application/problem+json", cancellationToken: cancellationToken);
+        };
+        if (exception is RequestFailure { Details: { } details })
+        {
+            foreach (KeyValuePair<string, object?> detail in details)
+            {
+                problem.Extensions[detail.Key] = detail.Value;
+            }
+        }
+
+        await context.Response.WriteAsJsonAsync(problem, options: null, contentType: "application/problem+json", cancellationToken: cancellationToken);
         return true;
     }
 

@@ -14,7 +14,7 @@ public sealed class FriendshipRepository(ServerDbContext database) : IFriendship
         }
 
         (Guid lower, Guid higher) = Friendship.OrderPair(actorId, otherUserId);
-        // The persistent pair row also serializes blocking and future mail quota checks.
+        // The persistent pair row also serializes blocking and mail quota checks.
         await database.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "Friendships" ("Id", "LowerUserId", "HigherUserId", "RequestedById", "Status", "CreatedAtUtc", "UpdatedAtUtc")
             VALUES ({Guid.NewGuid()}, {lower}, {higher}, {actorId}, {(int)FriendshipStatus.Removed}, {now}, {now})

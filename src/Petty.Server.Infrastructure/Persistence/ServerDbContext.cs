@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Petty.Server.Application.Persistence;
 using Petty.Server.Domain.Accounts;
 using Petty.Server.Domain.Friends;
+using Petty.Server.Domain.Letters;
 using Petty.Server.Infrastructure.Identity;
 
 namespace Petty.Server.Infrastructure.Persistence;
@@ -14,10 +15,29 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options)
     public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
+    public DbSet<Letter> Letters => Set<Letter>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<Letter>(letter =>
+        {
+            letter.HasKey(value => value.Id);
+            letter.Property(value => value.Body).HasColumnType("text").IsRequired();
+            letter.HasOne<ApplicationUser>().WithMany().HasForeignKey(value => value.SenderId).OnDelete(DeleteBehavior.Restrict);
+            letter.HasOne<ApplicationUser>().WithMany().HasForeignKey(value => value.RecipientId).OnDelete(DeleteBehavior.Restrict);
+            letter.HasIndex(value => new { value.SenderId, value.ClientRequestId }).IsUnique();
+            letter.HasIndex(value => new { value.SenderId, value.RecipientId }).HasFilter("\"ReadAtUtc\" IS NULL");
+            letter.HasIndex(value => new { value.RecipientId, value.SentAtUtc, value.Id }).HasFilter("\"ReadAtUtc\" IS NULL");
+            letter.HasIndex(value => new { value.SenderId, value.SentAtUtc, value.Id }).IsDescending(false, true, true);
+            letter.HasIndex(value => new { value.RecipientId, value.ReadAtUtc, value.Id }).IsDescending(false, true, true);
+            letter.ToTable("Letters", table =>
+            {
+                table.HasCheckConstraint("CK_Letters_DifferentUsers", "\"SenderId\" <> \"RecipientId\"");
+                table.HasCheckConstraint("CK_Letters_BodyLength", "char_length(\"Body\") BETWEEN 1 AND 500");
+                table.HasCheckConstraint("CK_Letters_ClientRequestId", "\"ClientRequestId\" <> '00000000-0000-0000-0000-000000000000'::uuid");
+            });
+        });
         builder.Entity<Friendship>(friendship =>
         {
             friendship.HasKey(value => value.Id);
