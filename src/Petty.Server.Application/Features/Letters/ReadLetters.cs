@@ -1,5 +1,6 @@
 using Mediator;
 using Petty.Server.Application.Features.Friends;
+using Petty.Server.Application.Notifications;
 using Petty.Server.Application.Persistence;
 using Petty.Server.Domain.Friends;
 using Petty.Server.Domain.Letters;
@@ -9,7 +10,7 @@ namespace Petty.Server.Application.Features.Letters;
 public sealed record ReadLetters(Guid UserId, Guid[] LetterIds) : ICommand<ReadLettersResult>;
 
 public sealed class ReadLettersHandler(IFriendshipRepository friendships, ILetterRepository letters, IUnitOfWork unitOfWork,
-    TimeProvider clock) : ICommandHandler<ReadLetters, ReadLettersResult>
+    TimeProvider clock, IMailNotifier notifier) : ICommandHandler<ReadLetters, ReadLettersResult>
 {
     public async ValueTask<ReadLettersResult> Handle(ReadLetters command, CancellationToken cancellationToken)
     {
@@ -40,6 +41,7 @@ public sealed class ReadLettersHandler(IFriendshipRepository friendships, ILette
         }
 
         var now = DateTimeOffset.FromUnixTimeMilliseconds(clock.GetUtcNow().ToUnixTimeMilliseconds());
+        bool changed = selected.Any(letter => letter.ReadAtUtc is null);
         foreach (Letter letter in selected)
         {
             letter.ReadAtUtc ??= now;
@@ -48,6 +50,11 @@ public sealed class ReadLettersHandler(IFriendshipRepository friendships, ILette
         await unitOfWork.SaveChangesAsync(cancellationToken);
         int unread = await letters.CountUnreadAsync(sender, command.UserId, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        if (changed)
+        {
+            await notifier.MailboxChangedAsync(command.UserId, cancellationToken);
+        }
+
         return new ReadLettersResult(selected.Select(letter => new ReadLetterConfirmation(letter.Id, letter.ReadAtUtc!.Value)).ToArray(), unread);
     }
 }

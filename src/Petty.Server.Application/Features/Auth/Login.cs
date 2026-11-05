@@ -1,4 +1,5 @@
 using Mediator;
+using Petty.Server.Application.Notifications;
 using Petty.Server.Application.Persistence;
 using Petty.Server.Domain.Accounts;
 
@@ -8,7 +9,7 @@ public sealed record Login(string UserName, string Password) : ICommand<TokenRes
 public sealed record TokenResponse(string AccessToken, string RefreshToken, Guid SessionId, DateTimeOffset ExpiresAtUtc);
 
 public sealed class LoginHandler(IIdentityService identity, IAccountRepository accounts, ISessionRepository sessions,
-    IUnitOfWork unitOfWork, IAccessTokenIssuer tokens, TimeProvider clock) : ICommandHandler<Login, TokenResponse>
+    IUnitOfWork unitOfWork, IAccessTokenIssuer tokens, TimeProvider clock, IMailNotifier notifier) : ICommandHandler<Login, TokenResponse>
 {
     public async ValueTask<TokenResponse> Handle(Login command, CancellationToken cancellationToken)
     {
@@ -49,6 +50,11 @@ public sealed class LoginHandler(IIdentityService identity, IAccountRepository a
         string accessToken = tokens.Issue(userId, sessionId, now, now.AddMinutes(15));
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        if (previous is not null)
+        {
+            await notifier.SessionRevokedAsync(previous.Id, cancellationToken);
+        }
+
         return new TokenResponse(accessToken, refreshToken, sessionId, now.AddMinutes(15));
     }
 }

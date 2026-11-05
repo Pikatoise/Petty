@@ -1,5 +1,6 @@
 using Mediator;
 using Petty.Server.Application.Features.Auth;
+using Petty.Server.Application.Notifications;
 using Petty.Server.Application.Persistence;
 using Petty.Server.Domain.Friends;
 
@@ -8,7 +9,7 @@ namespace Petty.Server.Application.Features.Friends;
 public sealed record RequestFriend(Guid UserId, string Login) : ICommand<Guid>;
 
 public sealed class RequestFriendHandler(IAccountRepository accounts, IFriendshipRepository friendships,
-    IUnitOfWork unitOfWork, TimeProvider clock) : ICommandHandler<RequestFriend, Guid>
+    IUnitOfWork unitOfWork, TimeProvider clock, IMailNotifier notifier) : ICommandHandler<RequestFriend, Guid>
 {
     public async ValueTask<Guid> Handle(RequestFriend command, CancellationToken cancellationToken)
     {
@@ -41,6 +42,7 @@ public sealed class RequestFriendHandler(IAccountRepository accounts, IFriendshi
         friendship.UpdatedAtUtc = now;
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await notifier.FriendshipsChangedAsync(command.UserId, target, refreshMailbox: false, cancellationToken);
         return requestId;
     }
 }

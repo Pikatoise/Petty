@@ -1,6 +1,7 @@
 using Mediator;
 using Petty.Server.Application.Features.Auth;
 using Petty.Server.Application.Features.Friends;
+using Petty.Server.Application.Notifications;
 using Petty.Server.Application.Persistence;
 using Petty.Server.Domain.Friends;
 using Petty.Server.Domain.Letters;
@@ -10,7 +11,7 @@ namespace Petty.Server.Application.Features.Letters;
 public sealed record SendLetter(Guid UserId, Guid RecipientUserId, string Body, Guid ClientRequestId) : ICommand<SentLetter>;
 
 public sealed class SendLetterHandler(IAccountRepository accounts, IFriendshipRepository friendships, ILetterRepository letters,
-    IUnitOfWork unitOfWork, TimeProvider clock) : ICommandHandler<SendLetter, SentLetter>
+    IUnitOfWork unitOfWork, TimeProvider clock, IMailNotifier notifier) : ICommandHandler<SendLetter, SentLetter>
 {
     public async ValueTask<SentLetter> Handle(SendLetter command, CancellationToken cancellationToken)
     {
@@ -70,6 +71,7 @@ public sealed class SendLetterHandler(IAccountRepository accounts, IFriendshipRe
         letters.Add(letter);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await notifier.MailboxChangedAsync(command.RecipientUserId, cancellationToken);
         return new SentLetter(letter.Id, letter.SentAtUtc, unread + 1);
     }
 

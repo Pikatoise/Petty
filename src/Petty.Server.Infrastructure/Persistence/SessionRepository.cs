@@ -6,6 +6,10 @@ namespace Petty.Server.Infrastructure.Persistence;
 
 public sealed class SessionRepository(ServerDbContext database) : ISessionRepository
 {
+    public Task<Guid?> GetActiveIdAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken) =>
+        database.UserSessions.Where(session => session.UserId == userId && session.RevokedAtUtc == null && session.RefreshExpiresAtUtc > now)
+            .Select(session => (Guid?)session.Id).SingleOrDefaultAsync(cancellationToken);
+
     public Task<Guid?> FindUserIdAsync(Guid sessionId, CancellationToken cancellationToken) =>
         database.UserSessions.Where(session => session.Id == sessionId).Select(session => (Guid?)session.UserId)
             .SingleOrDefaultAsync(cancellationToken);

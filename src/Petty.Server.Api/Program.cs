@@ -1,12 +1,16 @@
 using System.Threading.RateLimiting;
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Petty.Server.Api.Auth;
 using Petty.Server.Api.Errors;
+using Petty.Server.Api.Realtime;
+using Petty.Server.Application.Features.Delivery;
 using Petty.Server.Application.Features.Friends;
 using Petty.Server.Application.Features.Letters;
 using Petty.Server.Application.Health;
+using Petty.Server.Application.Notifications;
 using Petty.Server.Application.Persistence;
 using Petty.Server.Infrastructure.Persistence;
 
@@ -33,6 +37,14 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddOnlineAuthentication(builder.Configuration);
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<ILetterRepository, LetterRepository>();
+builder.Services.AddScoped<IMailboxRepository, MailboxRepository>();
+builder.Services.AddScoped<IMailNotifier, SignalRMailNotifier>();
+builder.Services.AddSingleton<IUserIdProvider, SessionUserIdProvider>();
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 4096;
+    options.AddFilter<SessionHubFilter>();
+});
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
@@ -86,6 +98,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers();
+app.MapHub<MailHub>("/hubs/mail", options => options.CloseOnAuthenticationExpiration = true);
 app.Run();
 
 public partial class Program;

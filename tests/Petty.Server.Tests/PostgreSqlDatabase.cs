@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Petty.Server.Application.Features.Auth;
+using Petty.Server.Application.Features.Letters;
 using Petty.Server.Infrastructure.Persistence;
 
 namespace Petty.Server.Tests;
@@ -53,6 +54,44 @@ public sealed class PostgreSqlDatabase : IAsyncLifetime
     }
 
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
+
+    public async Task<TokenResponse> LoginAsync(TestUser user)
+    {
+        using HttpClient client = Factory.CreateClient();
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            login = user.Login,
+            password = "TestPassword12345"
+        });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        TokenResponse tokens = (await response.Content.ReadFromJsonAsync<TokenResponse>())!;
+        user.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+        return tokens;
+    }
+
+    public async Task BefriendAsync(TestUser first, TestUser second)
+    {
+        using HttpResponseMessage request = await first.Client.PostAsJsonAsync("/api/v1/friends/requests", new
+        {
+            login = second.Login
+        });
+        Assert.Equal(HttpStatusCode.Created, request.StatusCode);
+        Guid requestId = (await request.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("requestId").GetGuid();
+        using HttpResponseMessage accepted = await second.Client.PostAsync($"/api/v1/friends/requests/{requestId}/accept", null);
+        Assert.Equal(HttpStatusCode.NoContent, accepted.StatusCode);
+    }
+
+    public async Task<SentLetter> SendAsync(TestUser sender, TestUser recipient, string body)
+    {
+        using HttpResponseMessage response = await sender.Client.PostAsJsonAsync("/api/v1/letters", new
+        {
+            recipientUserId = recipient.Id,
+            body,
+            clientRequestId = Guid.NewGuid()
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<SentLetter>())!;
+    }
 
     public async Task InitializeAsync()
     {

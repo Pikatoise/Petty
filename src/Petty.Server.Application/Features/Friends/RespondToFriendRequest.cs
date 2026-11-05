@@ -1,4 +1,5 @@
 using Mediator;
+using Petty.Server.Application.Notifications;
 using Petty.Server.Application.Persistence;
 using Petty.Server.Domain.Friends;
 
@@ -7,7 +8,7 @@ namespace Petty.Server.Application.Features.Friends;
 public sealed record RespondToFriendRequest(Guid UserId, Guid RequestId, bool Accept) : ICommand<Unit>;
 
 public sealed class RespondToFriendRequestHandler(IFriendshipRepository friendships, IUnitOfWork unitOfWork,
-    TimeProvider clock) : ICommandHandler<RespondToFriendRequest, Unit>
+    TimeProvider clock, IMailNotifier notifier) : ICommandHandler<RespondToFriendRequest, Unit>
 {
     public async ValueTask<Unit> Handle(RespondToFriendRequest command, CancellationToken cancellationToken)
     {
@@ -33,7 +34,8 @@ public sealed class RespondToFriendRequestHandler(IFriendshipRepository friendsh
         }
 
         FriendshipStatus desired = command.Accept ? FriendshipStatus.Accepted : FriendshipStatus.Removed;
-        if (friendship.Status != desired)
+        bool changed = friendship.Status != desired;
+        if (changed)
         {
             if (friendship.Status != FriendshipStatus.Pending)
             {
@@ -46,6 +48,11 @@ public sealed class RespondToFriendRequestHandler(IFriendshipRepository friendsh
         }
 
         await transaction.CommitAsync(cancellationToken);
+        if (changed)
+        {
+            await notifier.FriendshipsChangedAsync(command.UserId, other, refreshMailbox: command.Accept, cancellationToken);
+        }
+
         return Unit.Value;
     }
 }

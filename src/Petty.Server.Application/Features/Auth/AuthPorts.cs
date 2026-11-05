@@ -19,6 +19,7 @@ public interface IAccountRepository
 
 public interface ISessionRepository
 {
+    Task<Guid?> GetActiveIdAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken);
     Task<Guid?> FindUserIdAsync(Guid sessionId, CancellationToken cancellationToken);
     Task<UserSession?> GetAsync(Guid sessionId, CancellationToken cancellationToken);
     Task<UserSession?> GetUnrevokedAsync(Guid userId, CancellationToken cancellationToken);
