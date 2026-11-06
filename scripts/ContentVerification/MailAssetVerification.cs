@@ -1,8 +1,10 @@
 using System.IO;
 using System.Security.Cryptography;
+using Petty.App.Delivery;
 using Petty.App.Sprites;
 using Petty.Assets;
 using Petty.Core.Assets;
+using Petty.Core.Domain;
 
 internal static partial class Program
 {
@@ -11,6 +13,11 @@ internal static partial class Program
         string mailRoot = Path.Combine(embedded, "mail-packs");
         Require(Directory.GetFiles(mailRoot, "*.json", SearchOption.AllDirectories).Length == 40,
             "Embedded release must contain forty mail atlases.");
+        foreach (string? appearance in new[] { null, "unknown-custom-appearance", "../../outside", PetCatalog.DefaultAssetId })
+        {
+            Require(PostmanCoordinator.LoadMailSheet(appearance).Metadata.Character == PetCatalog.DefaultAssetId + "-mail",
+                "Missing or unsafe visitor appearance must use the bundled fallback.");
+        }
         var hashes = new HashSet<string>();
         int count = 0;
         foreach (BreedDesign breed in BreedDesign.Load(Path.Combine(root, "assets", "breed-designs.json")))

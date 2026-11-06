@@ -20,12 +20,7 @@ public partial class AccountWindow : OnlineWindow
             ConfirmBox.Clear();
         };
         UpdateAccount();
-#if DEBUG
-        var incoming = new System.Windows.Controls.Button();
-        incoming.SetResourceReference(System.Windows.Controls.ContentControl.ContentProperty, "OnlineDebugIncoming");
-        incoming.Click += (_, _) => _windows.ShowIncoming();
-        AccountActions.Children.Add(incoming);
-#endif
+
     }
 
     private void UpdateAccount()

@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
+using Petty.App.Delivery;
 using Petty.App.Desktop;
 using Petty.App.Online;
 using Petty.App.Pet;
@@ -56,6 +57,7 @@ public partial class App : Application
     private Localization? _localization;
     private ShellRestartWatcher? _shellWatcher;
     private OnlineWindows? _onlineWindows;
+    private PostmanCoordinator? _postman;
     internal OnlineCoordinator? Online
     {
         get; private set;
@@ -129,6 +131,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _postman?.Dispose();
+        _postman = null;
         _onlineWindows?.Dispose();
         _onlineWindows = null;
         // The coordinator never awaits the Dispatcher; all network awaits run off the UI thread.
@@ -162,6 +166,7 @@ public partial class App : Application
     {
         _log?.Info($"Windows session ending ({e.ReasonSessionEnding}); saving without departure animation.");
         _shutdownStarted = true;
+        _postman?.SetHomeReady(false);
         StopAppTimers();
         SaveState("session-ending");
         // WPF calls Shutdown after this non-cancelled event; OnExit disposes resources.
@@ -358,6 +363,7 @@ public partial class App : Application
         _session.ExitAnimationCompleted += OnExitAnimationCompleted;
         _session.StateChanged += OnSessionStateChanged;
         _session.LetterRequested += OnLetterRequested;
+        _session.EnteringCompleted += OnHomeEntered;
         _session.SetLetterAvailable(Online?.Account is not null && Online.Client.SessionId is not null);
         _session.Start();
 
@@ -382,6 +388,16 @@ public partial class App : Application
             if (Online is not null)
             {
                 _onlineWindows ??= new OnlineWindows(Online, available => _session?.SetLetterAvailable(available));
+                _postman ??= new PostmanCoordinator(Online, _displayService, _options.DesktopLayer, _log!, () =>
+                {
+                    if (_bowlWindow is null)
+                    {
+                        return [];
+                    }
+                    (int Left, int Top, int Width, int Height) rect = _bowlWindow.ScreenRect;
+                    return [new ScreenRect(rect.Left, rect.Top, rect.Width, rect.Height)];
+                });
+                _postman.SetHomeReady(_session.HasEntered);
             }
             Online?.UpdatePet(new PetProfile(runtime.Snapshot.PetName, runtime.Snapshot.AssetId));
             _ = Online?.StartAsync();
@@ -429,6 +445,7 @@ public partial class App : Application
         }
 
         _session?.RestoreShell();
+        _postman?.RestoreShell();
         _log?.Info("Shell recovery: desktop windows reattached; tray icon restoration is handled by NotifyIcon.");
     }
 
@@ -607,6 +624,7 @@ public partial class App : Application
 
     private void RequestExitFromTray()
     {
+        _postman?.SetHomeReady(false);
         _settings?.Close();
 
         if (_session is null || !_session.RequestExit())
@@ -618,6 +636,7 @@ public partial class App : Application
     private void OnExitTimerTick(object? sender, EventArgs e)
     {
         _exitTimer?.Stop();
+        _postman?.SetHomeReady(false);
 
         if (_session is null || !_session.RequestExit())
         {
@@ -657,6 +676,7 @@ public partial class App : Application
         }
 
         _shutdownStarted = true;
+        _postman?.SetHomeReady(false);
 
         StopAppTimers();
         _log?.Info("Shutdown requested.");
@@ -708,9 +728,11 @@ public partial class App : Application
 
     private void OnSessionStateChanged(object? sender, string reason) => SaveState(reason);
     private void OnLetterRequested(object? sender, EventArgs e) => _onlineWindows?.ShowCompose();
+    private void OnHomeEntered(object? sender, EventArgs e) => _postman?.SetHomeReady(true);
 
     private void StopSession()
     {
+        _postman?.SetHomeReady(false);
         if (_session is null)
         {
             return;
@@ -719,6 +741,7 @@ public partial class App : Application
         _session.ExitAnimationCompleted -= OnExitAnimationCompleted;
         _session.StateChanged -= OnSessionStateChanged;
         _session.LetterRequested -= OnLetterRequested;
+        _session.EnteringCompleted -= OnHomeEntered;
         _session.Dispose();
         _session = null;
     }

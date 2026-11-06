@@ -45,7 +45,6 @@
     <sys:String x:Key="OnlineIncomingLetters">Letters from this visit</sys:String>
     <sys:String x:Key="OnlineReadAll">Read all</sys:String>
     <sys:String x:Key="OnlineConfirmRead">Confirm read / retry</sys:String>
-    <sys:String x:Key="OnlineDebugIncoming">Preview incoming letters (Debug)</sys:String>
     <sys:String x:Key="OnlineWorking">Please wait…</sys:String>
     <sys:String x:Key="OnlineInvalidCredentials">Incorrect login or password.</sys:String>
     <sys:String x:Key="OnlineRegistrationInvalid">Check your login (3–32 Latin letters, digits or underscores), password (12–128 characters) and confirmation.</sys:String>

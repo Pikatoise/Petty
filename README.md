@@ -390,9 +390,9 @@ the same valid session can receive the same zero-payload signals.
 REST remains the source of truth. Client startup, successful login, reconnect and
 guest completion must fetch the mailbox. Coalesce wakeups; after a lost signal,
 recover with a low-frequency reconciliation roughly every 10–15 minutes with
-jitter. The client infrastructure implements these synchronization hooks; the
-visitor UI and animation stages will consume them. There is no five-second polling loop, transactional outbox,
-broker or multi-server backplane. Delivery is best effort, with recovery from REST.
+jitter. The client and postman share these synchronization hooks. There is no
+five-second polling loop, transactional outbox, broker or multi-server backplane.
+Delivery is best effort, with recovery from REST.
 
 ### Desktop online infrastructure
 
@@ -430,9 +430,9 @@ discards its in-memory retry key; sent letters remain in server history.
 
 The incoming window retains the original visit snapshot across closing/reopening,
 acknowledges expansion/read-all only after server success, and never reads later
-arrivals implicitly. Until the postman stage, its preview entry exists only in
-Debug builds inside the account window. Release has no temporary incoming-mail
-entry; the final delivery flow still requires visitor assets and animation.
+arrivals implicitly. Click the waiting visitor to open its letters. Closing the
+window leaves the visitor waiting indefinitely; only server-confirmed reading of
+all original IDs starts departure. Later arrivals belong to a subsequent visit.
 
 `Petty.App.Online.OnlineCoordinator` starts after the local pet is restored, sends
 pet profile changes after login/create/rename, and publishes account/friends/mailbox
@@ -451,9 +451,26 @@ Passwords are never persisted. Pet-state schema v1 stays unchanged, and letters
 have no filesystem cache. DPAPI requires the same Windows user; it is not a portable
 account backup.
 
-The coordinator's mailbox is a candidate snapshot, not an active visitor. C2/D2 must
-retain their own original visit snapshot, recheck friendship changes, acknowledge
-only confirmed read IDs, and call `VisitCompleted` after the guest has exited.
+`Petty.App.Delivery.PostmanCoordinator` owns one visitor and its original letter
+snapshot. It waits for the home pet's entry to finish and fetches the next visit
+through REST. The guest walks in from a primary-monitor edge away from the bowl,
+sits and waits without a timeout. It reuses `PetWindow` alpha hit-testing and desktop
+placement, with no second local pet, needs, props or persistent visitor state.
+After all snapshot IDs are confirmed, the guest rises and walks fully off screen;
+only then is the next visit fetched. Refresh signals never replace an active visit.
+
+Removing/blocking the sender closes its reading window and starts departure without
+acknowledging remaining letters. Logout, session replacement, pet recreation and
+shutdown immediately dispose the guest. Offline reading failures leave it waiting;
+restarting reconstructs unread visits from the server. Shell recovery reattaches the
+visitor; display/taskbar changes reuse the existing primary-monitor geometry and
+eased floor. No local pet save or autostart setting depends on online delivery.
+
+All 40 prebuilt mail appearances are embedded. Unknown or missing sender appearances
+use the standard British Shorthair mail atlas; no remote images are downloaded.
+Sprite format and regeneration instructions are in `assets/sprites/README.md`.
+Live click-through, DPI, layering and shell/lifecycle acceptance remains an owner
+check; headless scene tests do not establish these Windows behaviors.
 
 `dotnet test tests/Petty.Online.Tests -c Release` checks refresh serialization,
 idempotent retry, revocation, cancellation, coordinator shutdown and isolated Windows

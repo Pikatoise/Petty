@@ -147,6 +147,11 @@ public sealed class PetSession : IDisposable
 
     public event EventHandler? ExitAnimationCompleted;
     public event EventHandler? LetterRequested;
+    public event EventHandler? EnteringCompleted;
+    public bool HasEntered
+    {
+        get; private set;
+    }
 
     public void SetLetterAvailable(bool available)
     {
@@ -555,6 +560,11 @@ public sealed class PetSession : IDisposable
 
         ApplyPosition();
         SyncFrameInterval();
+        if (transition.From is PetActivity.Entering && transition.To is not PetActivity.Exiting)
+        {
+            HasEntered = true;
+            EnteringCompleted?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private void OnFrameChanged(object? sender, EventArgs e)
