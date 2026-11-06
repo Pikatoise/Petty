@@ -12,6 +12,8 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
     private readonly Action _unavailable;
     private readonly Channel<bool> _wakeups = Channel.CreateBounded<bool>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
     private readonly CancellationTokenSource _stop = new();
+    private int _pending;
+    private long _requestedMailboxVersion;
     private Task? _worker;
     private Task? _fallback;
     private PetProfile? _pet;
@@ -23,7 +25,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
         _client = client;
         _dispatch = dispatch;
         _unavailable = unavailable;
-        _client.SessionChanged += Wake;
+        _client.SessionChanged += Refresh;
     }
 
     public OnlineClient Client => _client;
@@ -40,6 +42,13 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
     {
         get; private set;
     }
+    public FriendRequests Requests { get; private set; } = new([], []);
+    public long MailboxVersion
+    {
+        get; private set;
+    }
+    public event Action? FriendsChanged;
+    public event Action<bool>? FriendsRefreshCompleted;
     public event Action? AccountChanged;
     public event Action? MailboxChanged;
 
@@ -68,12 +77,28 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
     public void UpdatePet(PetProfile profile)
     {
         Volatile.Write(ref _pet, profile);
-        Wake();
+        Wake(RefreshKind.Account);
     }
     // D2 calls only after the previous visitor has physically exited.
-    public void VisitCompleted() => Wake();
-    public void Refresh() => Wake();
-    private void Wake() => _wakeups.Writer.TryWrite(true);
+    public long VisitCompleted() => Wake(RefreshKind.Mailbox);
+    public void Refresh() => Wake(RefreshKind.All);
+    public void RefreshFriends() => Wake(RefreshKind.Friends | RefreshKind.Mailbox);
+
+    [Flags]
+    private enum RefreshKind
+    {
+        Account = 1, Friends = 2, Mailbox = 4, All = Account | Friends | Mailbox
+    }
+
+    private long Wake(RefreshKind kind)
+    {
+        long version = (kind & RefreshKind.Mailbox) != 0
+            ? Interlocked.Increment(ref _requestedMailboxVersion)
+            : Volatile.Read(ref _requestedMailboxVersion);
+        Interlocked.Or(ref _pending, (int)kind);
+        _wakeups.Writer.TryWrite(true);
+        return version;
+    }
 
     private async Task RunAsync(CancellationToken ct)
     {
@@ -83,6 +108,10 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
         Guid? connectedSession = null;
         PetProfile? syncedPet = null;
         int failures = 0;
+        AccountProfile? account = null;
+        Friend[] friends = [];
+        FriendRequests requests = new([], []);
+        MailboxVisit? mailbox = null;
         try
         {
             try
@@ -90,13 +119,14 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
                 await _client.RestoreAsync(ct).ConfigureAwait(false);
             }
             catch (Exception) when (!ct.IsCancellationRequested) { NotifyUnavailable(); }
-            Wake();
+            Refresh();
             while (await _wakeups.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
             {
+                await Task.Delay(150, ct).ConfigureAwait(false);
                 while (_wakeups.Reader.TryRead(out _))
                 {
                 }
-                await Task.Delay(150, ct).ConfigureAwait(false);
+                var kind = (RefreshKind)Interlocked.Exchange(ref _pending, 0);
                 try
                 {
                     while (_revoked.TryDequeue(out Guid revoked))
@@ -123,19 +153,28 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
                         connectionTask = null;
                         connectedSession = session;
                         syncedPet = null;
+                        account = null;
+                        friends = [];
+                        requests = new([], []);
+                        mailbox = null;
+                        kind = RefreshKind.All;
                         if (session is { } id)
                         {
                             connectionStop = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                            connection = new MailConnection(_client, Wake, () => { _revoked.Enqueue(id); Wake(); });
-                            connectionTask = connection.RunAsync(Wake, connectionStop.Token);
+                            connection = new MailConnection(_client, () => Wake(RefreshKind.Mailbox), RefreshFriends,
+                                () => { _revoked.Enqueue(id); Refresh(); });
+                            connectionTask = connection.RunAsync(Refresh, connectionStop.Token);
                         }
                     }
                     if (session is null)
                     {
-                        Publish(null, [], null, null);
+                        Publish(null, [], new([], []), null, null, mailboxRefreshed: true);
                         continue;
                     }
-                    AccountProfile account = await _client.GetMeAsync(ct).ConfigureAwait(false);
+                    if ((kind & RefreshKind.Account) != 0 || account is null)
+                    {
+                        account = await _client.GetMeAsync(ct).ConfigureAwait(false);
+                    }
                     PetProfile? pet = Volatile.Read(ref _pet);
                     if (pet is not null && pet != syncedPet)
                     {
@@ -143,23 +182,37 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
                         syncedPet = pet;
                         account = await _client.GetMeAsync(ct).ConfigureAwait(false);
                     }
-                    Friend[] friends = await _client.GetFriendsAsync(ct).ConfigureAwait(false);
-                    MailboxVisit? mailbox = await _client.GetNextVisitAsync(ct).ConfigureAwait(false);
-                    Publish(account, friends, mailbox, session);
+                    if ((kind & RefreshKind.Friends) != 0)
+                    {
+                        friends = await _client.GetFriendsAsync(ct).ConfigureAwait(false);
+                        requests = await _client.GetFriendRequestsAsync(ct).ConfigureAwait(false);
+                    }
+                    bool mailboxRefreshed = (kind & RefreshKind.Mailbox) != 0;
+                    long mailboxVersion = Volatile.Read(ref _requestedMailboxVersion);
+                    if (mailboxRefreshed)
+                    {
+                        mailbox = await _client.GetNextVisitAsync(ct).ConfigureAwait(false);
+                    }
+                    Publish(account, friends, requests, mailbox, session, mailboxRefreshed, mailboxVersion,
+                        friendsRefreshed: (kind & RefreshKind.Friends) != 0);
                     failures = 0;
                 }
                 catch (Exception) when (!ct.IsCancellationRequested)
                 {
+                    if ((kind & RefreshKind.Friends) != 0)
+                    {
+                        NotifyFriendsRefresh(false, connectedSession);
+                    }
                     if (_client.SessionId is null)
                     {
-                        Publish(null, [], null, null);
+                        Publish(null, [], new([], []), null, null, mailboxRefreshed: true);
                     }
                     NotifyUnavailable();
                     if (_client.SessionId is not null)
                     {
                         double seconds = Math.Min(60, Math.Pow(2, Math.Min(failures++, 6)));
                         await Task.Delay(TimeSpan.FromSeconds(seconds + Random.Shared.NextDouble()), ct).ConfigureAwait(false);
-                        Wake();
+                        Wake(kind);
                     }
                 }
             }
@@ -183,7 +236,8 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
         }
     }
 
-    private void Publish(AccountProfile? account, IReadOnlyList<Friend> friends, MailboxVisit? mailbox, Guid? session)
+    internal void Publish(AccountProfile? account, IReadOnlyList<Friend> friends, FriendRequests requests,
+        MailboxVisit? mailbox, Guid? session, bool mailboxRefreshed, long mailboxVersion = 0, bool friendsRefreshed = false)
     {
         _dispatch(() =>
         {
@@ -191,16 +245,46 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
             {
                 return;
             }
+            bool sessionChanged = PublishedSessionId != session;
+            bool accountChanged = sessionChanged || Account != account;
+            bool friendsChanged = sessionChanged || !Friends.SequenceEqual(friends) ||
+                !Requests.Incoming.SequenceEqual(requests.Incoming) || !Requests.Outgoing.SequenceEqual(requests.Outgoing);
             Account = account;
             PublishedSessionId = session;
             Friends = friends;
+            Requests = requests;
             Mailbox = mailbox;
-            AccountChanged?.Invoke();
-            MailboxChanged?.Invoke();
+            if (mailboxRefreshed)
+            {
+                MailboxVersion = mailboxVersion;
+            }
+            if (accountChanged)
+            {
+                AccountChanged?.Invoke();
+            }
+            if (friendsChanged)
+            {
+                FriendsChanged?.Invoke();
+            }
+            if (mailboxRefreshed || friendsChanged || sessionChanged)
+            {
+                MailboxChanged?.Invoke();
+            }
+            if (friendsRefreshed)
+            {
+                FriendsRefreshCompleted?.Invoke(true);
+            }
         });
     }
-
     private void NotifyUnavailable() => _dispatch(() => { if (!_stop.IsCancellationRequested) { _unavailable(); } });
+
+    private void NotifyFriendsRefresh(bool success, Guid? session) => _dispatch(() =>
+    {
+        if (!_stop.IsCancellationRequested && session == _client.SessionId)
+        {
+            FriendsRefreshCompleted?.Invoke(success);
+        }
+    });
 
     private async Task FallbackAsync(CancellationToken ct)
     {
@@ -209,7 +293,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
             while (!ct.IsCancellationRequested)
             {
                 await Task.Delay(TimeSpan.FromMinutes(10 + Random.Shared.NextDouble() * 5), ct).ConfigureAwait(false);
-                Wake();
+                Refresh();
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
@@ -244,7 +328,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
             return;
         }
         _disposed = true;
-        _client.SessionChanged -= Wake;
+        _client.SessionChanged -= Refresh;
         await StopAsync().ConfigureAwait(false);
         await _client.DisposeAsync().ConfigureAwait(false);
         _stop.Dispose();

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using Petty.App.Online;
@@ -10,10 +11,12 @@ public partial class LettersHistoryWindow : OnlineWindow
     private readonly bool _incoming;
     private string? _cursor;
     private readonly HashSet<Guid> _shown = [];
+    private readonly ObservableCollection<HistoryRow> _letters = [];
 
     internal LettersHistoryWindow(OnlineCoordinator online, bool incoming)
     {
         InitializeComponent();
+        LettersList.ItemsSource = _letters;
         InitializeOnline(online);
         _incoming = incoming;
         SetResourceReference(TitleProperty, incoming ? "OnlineReceived" : "OnlineSent");
@@ -31,32 +34,16 @@ public partial class LettersHistoryWindow : OnlineWindow
         Lifetime.ThrowIfCancellationRequested();
         if (reset)
         {
-            LettersPanel.Children.Clear();
+            _letters.Clear();
             _shown.Clear();
         }
         foreach (LetterHistoryItem letter in page.Items.Where(letter => _shown.Add(letter.Id)))
         {
-            var row = new StackPanel();
-            row.Children.Add(new TextBlock { Text = $"{letter.OtherUser.Login} · {letter.SentAtUtc.ToLocalTime():g}", FontWeight = FontWeights.SemiBold });
-            row.Children.Add(new TextBlock { Text = letter.Body, Margin = new Thickness(0, 8, 0, 8) });
-            var read = new TextBlock();
-            if (letter.ReadAtUtc is { } at)
-            {
-                read.Text = string.Format(Localization.Text("OnlineReadAtFormat"), at.ToLocalTime());
-            }
-            else
-            {
-                read.SetResourceReference(TextBlock.TextProperty, "OnlineUnread");
-            }
-            row.Children.Add(read);
-            LettersPanel.Children.Add(new Border { Child = row, Style = (Style)FindResource("OnlineCard") });
+            _letters.Add(new HistoryRow($"{letter.OtherUser.Login} · {letter.SentAtUtc.ToLocalTime():g}", letter.Body,
+                letter.ReadAtUtc is { } at ? string.Format(Localization.Text("OnlineReadAtFormat"), at.ToLocalTime()) : null));
         }
         _cursor = page.NextCursor;
-        if (_shown.Count == 0)
-        {
-            var empty = new TextBlock();
-            empty.SetResourceReference(TextBlock.TextProperty, "OnlineEmpty");
-            LettersPanel.Children.Add(empty);
-        }
     }
+
+    private sealed record HistoryRow(string Heading, string Body, string? ReadAtText);
 }

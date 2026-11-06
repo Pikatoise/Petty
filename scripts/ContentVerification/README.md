@@ -25,6 +25,11 @@ starting SignalR or contacting a server. They render account/friends/composition
 incoming views in RU/EN, verify compact friends scrolling, quota refresh after 10/10,
 and closing/reopening and acknowledging an incoming snapshot. They do not establish
 live network behavior or replace the two-account Desktop acceptance check.
+Additional regressions hold a friend mutation in flight while publishing newer
+snapshots, verify unchanged mailbox publications retain friend rows, and load 1000
+history letters while checking bounded/recycled visual rows and cursor/reset behavior.
+A hidden native pet window counts placement messages to verify identical rounded
+geometry skips positioning while movement, floor, scale and reattachment still apply.
 `artifacts/verification/content/play/` contains a contact sheet and standalone animated preview
 sampled by the real Core scene implementation, with the runtime WPF frame controller.
 This does not modify pet data, registry settings, preferences or the running pet.

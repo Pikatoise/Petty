@@ -326,6 +326,13 @@ It coalesces server wakeups, fetches REST on startup/login/reconnect/visit compl
 and reconciles every randomized 10–15 minutes. Connection failures retry with capped
 exponential backoff and jitter. The three SignalR events carry no letter contents.
 `SessionRevoked` clears only the matching session, preserving a newer login.
+Mailbox wakeups refresh only the mailbox. Friendship wakeups refresh friends,
+pending requests and the mailbox; the friends window consumes that published snapshot
+without issuing duplicate reads. Account/friend events fire only when their data
+changes, so a mailbox-only update retains existing friend rows, including during a
+pending mutation. Invalidations arriving during a fetch remain queued for another pass.
+Letter history uses WPF recycling virtualization: loaded letter data remains available
+while the window is open, but visual rows are realized only around the viewport.
 
 On Windows, `ProtectedTokenStore` encrypts session tokens with DPAPI CurrentUser in
 an origin-specific `online-session-*.bin` under the resolved Petty data directory.
@@ -336,13 +343,17 @@ have no filesystem cache. DPAPI requires the same Windows user; it is not a port
 account backup.
 
 `Petty.App.Delivery.PostmanCoordinator` owns one visitor and its original letter
-snapshot. It waits for the home pet's entry to finish and fetches the next visit
-through REST. The guest walks in from a primary-monitor edge away from the bowl,
+snapshot. It waits for the home pet's entry to finish and requests a fresh mailbox
+snapshot from the online coordinator. The guest walks in from a primary-monitor edge away from the bowl,
 sits and waits without a timeout. It reuses `PetWindow` alpha hit-testing and desktop
 placement, with no second local pet, needs, props or persistent visitor state.
 After all snapshot IDs are confirmed and the reading window is closed, the guest
 rises and walks fully off screen;
 only then is the next visit fetched. Refresh signals never replace an active visit.
+A mailbox request generation prevents an older in-flight response from starting
+the next visit after departure. The postman does not issue a second mailbox read.
+Unchanged rounded pet-window geometry skips native placement; display, DPI,
+external geometry changes and shell reattachment invalidate the cached placement.
 
 Removing/blocking the sender closes its reading window and starts departure without
 acknowledging remaining letters. Logout, session replacement, pet recreation and

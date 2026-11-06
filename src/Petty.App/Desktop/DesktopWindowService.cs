@@ -239,7 +239,7 @@ public static class DesktopWindowService
     /// space, which keeps monitor offsets correct (including monitors left of or
     /// above the primary monitor).
     /// </summary>
-    public static void PlaceAt(IntPtr hwnd, int screenX, int screenY, int width, int height)
+    public static bool PlaceAt(IntPtr hwnd, int screenX, int screenY, int width, int height)
     {
         var point = new NativeMethods.Point { X = screenX, Y = screenY };
         nint parent = ShellParent(hwnd);
@@ -249,7 +249,7 @@ public static class DesktopWindowService
             NativeMethods.MapWindowPoints(IntPtr.Zero, parent, ref point, 1);
         }
 
-        NativeMethods.SetWindowPos(
+        return NativeMethods.SetWindowPos(
             hwnd,
             IntPtr.Zero,
             point.X,

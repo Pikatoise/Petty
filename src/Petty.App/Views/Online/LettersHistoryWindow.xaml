@@ -25,9 +25,66 @@
                         IsEnabled="False" />
                 </WrapPanel>
             </StackPanel>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel x:Name="LettersPanel" />
-            </ScrollViewer>
+            <Grid>
+                <ListBox
+                    x:Name="LettersList"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ScrollViewer.CanContentScroll="True"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                    VirtualizingPanel.IsVirtualizing="True"
+                    VirtualizingPanel.VirtualizationMode="Recycling"
+                    VirtualizingPanel.ScrollUnit="Pixel">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="0" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource OnlineCard}">
+                                <StackPanel>
+                                    <TextBlock
+                                        Text="{Binding Heading}"
+                                        FontWeight="SemiBold"
+                                        TextWrapping="Wrap" />
+                                    <TextBlock
+                                        Text="{Binding Body}"
+                                        Margin="0,8,0,8"
+                                        TextWrapping="Wrap" />
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                                <Setter Property="Text" Value="{Binding ReadAtText}" />
+                                                <Setter Property="TextWrapping" Value="Wrap" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ReadAtText}" Value="{x:Null}">
+                                                        <Setter Property="Text" Value="{DynamicResource OnlineUnread}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock Text="{DynamicResource OnlineEmpty}" IsHitTestVisible="False">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Items.Count, ElementName=LettersList}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
         </DockPanel>
     </Border>
 </online:OnlineWindow>

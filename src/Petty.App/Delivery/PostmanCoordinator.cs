@@ -20,15 +20,12 @@ internal sealed class PostmanCoordinator : IDisposable
     private readonly IAppLog _log;
     private readonly Func<IReadOnlyList<ScreenRect>> _obstacles;
     private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
-    private readonly CancellationTokenSource _stop = new();
-    private CancellationTokenSource? _fetchStop;
+    private long _minimumMailboxVersion;
     private VisitorSession? _visitor;
     private IncomingVisit? _visit;
     private IncomingLettersWindow? _letters;
     private Guid? _session;
     private bool _homeReady;
-    private bool _fetching;
-    private bool _refreshPending;
     private bool _disposed;
 
     public PostmanCoordinator(OnlineCoordinator online, DisplayService displays, DesktopLayerMode layer,
@@ -52,12 +49,11 @@ internal sealed class PostmanCoordinator : IDisposable
         _homeReady = ready;
         if (!ready)
         {
-            _fetchStop?.Cancel();
             CloseVisit();
         }
         else
         {
-            Published();
+            _minimumMailboxVersion = _online.VisitCompleted();
         }
     }
 
@@ -71,8 +67,8 @@ internal sealed class PostmanCoordinator : IDisposable
         }
         if (_session != _online.Client.SessionId)
         {
-            _fetchStop?.Cancel();
             CloseVisit();
+            _minimumMailboxVersion = _online.VisitCompleted();
         }
         Published();
     });
@@ -100,39 +96,24 @@ internal sealed class PostmanCoordinator : IDisposable
                 return;
             }
         }
-        if (_fetching)
-        {
-            _refreshPending = true;
-            return;
-        }
-        _ = FetchVisitAsync();
-    }
-
-    private async Task FetchVisitAsync()
-    {
         Guid? session = _online.Client.SessionId;
-        if (_disposed || !_homeReady || session is null || _online.PublishedSessionId != session || _online.Account is null)
+        if (session is null || _online.PublishedSessionId != session || _online.Account is null ||
+            _online.MailboxVersion < _minimumMailboxVersion)
         {
             return;
         }
-        _fetching = true;
-        _refreshPending = false;
-        using var fetch = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
-        _fetchStop = fetch;
+        MailboxVisit? snapshot = _online.Mailbox;
+        if (snapshot is null || snapshot.Letters.Count == 0)
+        {
+            return;
+        }
+        if (!_online.Friends.Any(friend => friend.UserId == snapshot.Sender.UserId))
+        {
+            _online.RefreshFriends();
+            return;
+        }
         try
         {
-            // Never consume the coordinator's cached candidate after a guest has exited.
-            MailboxVisit? snapshot = await _online.Client.GetNextVisitAsync(fetch.Token);
-            fetch.Token.ThrowIfCancellationRequested();
-            if (_disposed || !_homeReady || _online.Client.SessionId != session || _visitor is not null || snapshot is null || snapshot.Letters.Count == 0)
-            {
-                return;
-            }
-            if (!_online.Friends.Any(friend => friend.UserId == snapshot.Sender.UserId))
-            {
-                _online.Refresh();
-                return;
-            }
             _session = session;
             _visit = new IncomingVisit(snapshot);
             _visitor = new VisitorSession(LoadMailSheet(snapshot.Sender.PetAssetId), _displays, _layer, _log, _obstacles);
@@ -140,23 +121,12 @@ internal sealed class PostmanCoordinator : IDisposable
             _visitor.Finished += Finished;
             _visitor.Start();
         }
-        catch (OperationCanceledException) when (fetch.IsCancellationRequested) { }
         catch (Exception)
         {
             CloseVisit();
             _log.Warn("Postman unavailable; unread mail stays on the server.");
         }
-        finally
-        {
-            _fetchStop = null;
-            _fetching = false;
-            if (_refreshPending && !_disposed && _homeReady)
-            {
-                Published();
-            }
-        }
     }
-
     internal static SpriteSheet LoadMailSheet(string? appearance)
     {
         const string fallback = PetCatalog.DefaultAssetId;
@@ -206,8 +176,7 @@ internal sealed class PostmanCoordinator : IDisposable
     private void Finished()
     {
         CloseVisit();
-        _online.VisitCompleted();
-        Published();
+        _minimumMailboxVersion = _online.VisitCompleted();
     }
 
     private void CloseLetters()
@@ -239,8 +208,6 @@ internal sealed class PostmanCoordinator : IDisposable
         _disposed = true;
         _online.MailboxChanged -= Published;
         _online.Client.SessionChanged -= SessionChanged;
-        _stop.Cancel();
         CloseVisit();
-        _stop.Dispose();
     }
 }

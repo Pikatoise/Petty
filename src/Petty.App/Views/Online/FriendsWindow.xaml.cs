@@ -15,18 +15,45 @@ public partial class FriendsWindow : OnlineWindow
         InitializeComponent();
         InitializeOnline(online);
         Loaded += OnRefresh;
-        online.AccountChanged += OnAccountChanged;
-        Closed += (_, _) => online.AccountChanged -= OnAccountChanged;
+        online.FriendsChanged += RenderFriends;
+        online.FriendsRefreshCompleted += RefreshCompleted;
+        Closed += (_, _) =>
+        {
+            online.FriendsChanged -= RenderFriends;
+            online.FriendsRefreshCompleted -= RefreshCompleted;
+        };
     }
 
-    private async void OnRefresh(object sender, RoutedEventArgs e) => await RunAsync(LoadAsync);
-    private void OnAccountChanged() => _ = RunAsync(LoadAsync);
-
-    private async Task LoadAsync()
+    private void OnRefresh(object sender, RoutedEventArgs e)
     {
-        Friend[] friends = await Online.Client.GetFriendsAsync(Lifetime);
-        FriendRequests requests = await Online.Client.GetFriendRequestsAsync(Lifetime);
-        Lifetime.ThrowIfCancellationRequested();
+        RenderFriends();
+        Status("OnlineWorking");
+        Online.RefreshFriends();
+    }
+
+    private void RefreshCompleted(bool success)
+    {
+        if (!IsClosed && !Busy)
+        {
+            if (success)
+            {
+                StatusText.Text = string.Empty;
+            }
+            else
+            {
+                Status("OnlineRequestFailed");
+            }
+        }
+    }
+
+    private void RenderFriends()
+    {
+        if (IsClosed || Online.PublishedSessionId != Online.Client.SessionId)
+        {
+            return;
+        }
+        IReadOnlyList<Friend> friends = Online.Friends;
+        FriendRequests requests = Online.Requests;
         FriendsPanel.Children.Clear();
         IncomingPanel.Children.Clear();
         OutgoingPanel.Children.Clear();
@@ -75,8 +102,7 @@ public partial class FriendsWindow : OnlineWindow
         button.Click += async (_, _) => await RunAsync(async () =>
         {
             await action();
-            await LoadAsync();
-            Online.Refresh();
+            Online.RefreshFriends();
         });
         row.Children.Add(button);
     }
@@ -85,7 +111,6 @@ public partial class FriendsWindow : OnlineWindow
     {
         await Online.Client.RequestFriendAsync(LoginBox.Text.Trim(), Lifetime);
         LoginBox.Clear();
-        await LoadAsync();
-        Online.Refresh();
+        Online.RefreshFriends();
     });
 }

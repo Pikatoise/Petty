@@ -92,6 +92,7 @@ internal static partial class Program
 
         var app = new ContentVerificationApp();
         app.InitializeComponent();
+        CheckPetWindowPlacement();
         foreach (string? language in new[] { "en", "ru" })
         {
             var strings = new ResourceDictionary { Source = new Uri($"/Petty;component/Resources/Strings.{language}.xaml", UriKind.Relative) };
@@ -99,6 +100,8 @@ internal static partial class Program
             AdaptiveLayoutVerification.Check(variants, output, language!);
             CheckInteractionLayout(output, language!);
             CheckOnlineLayout(output, language!);
+            CheckOnlineSynchronization();
+            CheckHistoryVirtualization(output, language!);
             CheckTutorialLayout(variants, embedded, output, language!);
             var wizard = new CreationWizardWindow(variants, true, "Milo", null);
             var species = (ComboBox)wizard.FindName("SpeciesSelector");

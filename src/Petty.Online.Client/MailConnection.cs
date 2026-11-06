@@ -9,9 +9,15 @@ public sealed class MailConnection : IAsyncDisposable
     private readonly HubConnection _hub;
     private TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public MailConnection(OnlineClient client, Action changed, Action revoked) : this(client, changed, revoked, _ => { }) { }
+    public MailConnection(OnlineClient client, Action changed, Action revoked) : this(client, changed, changed, revoked) { }
+
+    public MailConnection(OnlineClient client, Action mailboxChanged, Action friendshipsChanged, Action revoked)
+        : this(client, mailboxChanged, friendshipsChanged, revoked, _ => { }) { }
 
     internal MailConnection(OnlineClient client, Action changed, Action revoked, Action<HttpConnectionOptions> configure)
+        : this(client, changed, changed, revoked, configure) { }
+
+    private MailConnection(OnlineClient client, Action mailboxChanged, Action friendshipsChanged, Action revoked, Action<HttpConnectionOptions> configure)
     {
         _hub = new HubConnectionBuilder().WithUrl(new Uri(client.Server, "hubs/mail"), options =>
         {
@@ -26,8 +32,8 @@ public sealed class MailConnection : IAsyncDisposable
             };
             configure(options);
         }).Build();
-        _hub.On("MailboxChanged", changed);
-        _hub.On("FriendshipsChanged", changed);
+        _hub.On("MailboxChanged", mailboxChanged);
+        _hub.On("FriendshipsChanged", friendshipsChanged);
         _hub.On("SessionRevoked", revoked);
         _hub.Closed += _ => { _closed.TrySetResult(); return Task.CompletedTask; };
     }

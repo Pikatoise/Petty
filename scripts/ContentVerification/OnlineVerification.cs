@@ -66,6 +66,9 @@ internal static partial class Program
         Render(account, Path.Combine(output, $"online-{language}-account.png"));
         account.Close();
         client.RestoreAsync().GetAwaiter().GetResult();
+        coordinator.Publish(new AccountProfile(Guid.NewGuid(), "verification", "Milo", "british-shorthair-blue", null),
+            [friend], new FriendRequests([new FriendRequest(Guid.NewGuid(), friend, DateTimeOffset.UtcNow)], []),
+            null, client.SessionId, mailboxRefreshed: true);
         var visit = new IncomingVisit(new MailboxVisit(friend, [letter]));
         var compose = new ComposeLetterWindow(coordinator, friend.UserId);
         var incoming = new IncomingLettersWindow(coordinator, visit);
@@ -76,6 +79,11 @@ internal static partial class Program
             foreach (Window window in social)
             {
                 window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+                if (window is FriendsWindow)
+                {
+                    coordinator.Publish(coordinator.Account, coordinator.Friends, coordinator.Requests, null,
+                        client.SessionId, mailboxRefreshed: false, friendsRefreshed: true);
+                }
                 PumpUntil(() => ((UIElement)window.Content).IsEnabled);
                 Require(string.IsNullOrEmpty(((TextBlock)window.FindName("StatusText")).Text), $"{window.GetType().Name} failed to load.");
                 string preview = $"online-{language}-{Array.IndexOf(social, window)}-{window.GetType().Name}";
