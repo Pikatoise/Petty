@@ -12,7 +12,6 @@ coverage*/
 
 # IDE and local files
 .vs/
-docs/
 .idea/
 _ReSharper*/
 .vscode/
