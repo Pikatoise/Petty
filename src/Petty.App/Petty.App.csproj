@@ -49,6 +49,11 @@
                       LogicalName="Sprites/%(RecursiveDir)%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\..\assets\sprites\packs\**\*.png;..\..\assets\sprites\packs\**\*.json"
                       LogicalName="Sprites/packs/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\assets\sprites\mail-packs\**\*.png;..\..\assets\sprites\mail-packs\**\*.json"
+                      LogicalName="Sprites/mail-packs/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Content Include="..\..\assets\sprites\mail-packs\**\*.png;..\..\assets\sprites\mail-packs\**\*.json"
+             Link="Assets\Sprites\mail-packs\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
     <Content Include="..\..\assets\sprites\*.png;..\..\assets\sprites\*.json"
              Exclude="..\..\assets\sprites\catalog.json"
              Link="Assets\Sprites\%(Filename)%(Extension)"

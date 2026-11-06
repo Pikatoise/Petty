@@ -26,6 +26,26 @@ public class SpriteMetadataTests
     };
 
     [Fact]
+    public void MailClipsHaveTheirOwnContractAndCannotReplaceLocalPets()
+    {
+        SpriteSheetMetadata metadata = Valid();
+        metadata.Animations = SpriteMetadataValidator.RequiredMailClips.Select((name, i) => new AnimationClipMetadata
+        {
+            Name = name,
+            StartIndex = i * 8,
+            FrameCount = 8,
+            Loop = name is "mail-walk" or "mail-idle",
+        }).ToList();
+        Assert.Empty(SpriteMetadataValidator.Validate(metadata, mail: true));
+        Assert.NotEmpty(SpriteMetadataValidator.Validate(metadata));
+        metadata.Animations[^1].Loop = true;
+        Assert.NotEmpty(SpriteMetadataValidator.Validate(metadata, mail: true));
+        metadata.Animations[^1].Loop = false;
+        metadata.Animations.RemoveAt(0);
+        Assert.Contains(SpriteMetadataValidator.Validate(metadata, mail: true), error => error.Contains("mail-walk"));
+    }
+
+    [Fact]
     public void ValidMetadataHasNoErrors() => Assert.Empty(SpriteMetadataValidator.Validate(Valid()));
 
     [Theory]

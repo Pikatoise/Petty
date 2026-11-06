@@ -34,7 +34,7 @@ sprites requiring visual review, rather than artist-finished anatomical studies.
 
 Props and icons remain separate root PNGs: five bowl levels (24×24), six pouring frames
 (24×32), ball and hand (16×16), tray icon (32×32), plus `petty.ico`.
-No prop is baked into a pet frame. Shared prop pixels and interaction behavior are unchanged.
+No interaction prop is baked into a regular pet frame. Shared prop pixels and interaction behavior are unchanged.
 
 ## Reproduce and verify
 
@@ -73,3 +73,30 @@ The original `cat-orange-white` art and its generator were retired at the owner'
 Old saved appearances explicitly migrate to `british-shorthair-blue` after that atlas
 successfully loads; name, needs, bowl and identity timestamps are retained. Normal atomic
 saving keeps the previous JSON backup. Other missing appearances retain the recovery flow.
+
+## Mail sprite packs
+
+`mail-packs/<breed-id>/<asset-id>-mail.png` and matching JSON contain the 40
+prebuilt visitor appearances. These compact 512?320 atlases use the same 64?64
+cells, 2? logical pixel grid, binary alpha and ground row 53 as regular pets.
+They contain 36 frames; the four unused cells remain transparent.
+
+| Clip | Frames | FPS | Loop |
+|---|---:|---:|---|
+| mail-walk | 8 | 10 | yes |
+| mail-sit | 8 | 10 | no |
+| mail-idle | 8 | 6 | yes |
+| mail-exit | 12 | 10 | no |
+
+The leather satchel and envelope emblem are baked into each breed's body pose
+at asset generation time. Sitting folds the rear legs; exit first rises from the
+seated pose, then walks. No runtime composition or image generation is needed.
+The normal generation/verification commands cover both regular and mail packs.
+`--preview` also writes `mail-overview.png` and `mail-preview.html`.
+
+Mail packs are embedded in Desktop by the existing extraction scheme, but kept
+outside `packs/` so they never appear in the creator or replace a local pet.
+Load an explicit mail atlas through `SpriteSheetLoader.Load(directory, assetId +
+"-mail", mail: true)`; this validates the four mail clips and retains the existing
+frozen-frame and alpha-mask behavior. The next visitor stage owns lookup/fallback
+for unknown sender appearances, guest windows and visit scheduling.

@@ -27,6 +27,7 @@ internal static partial class Program
             SpriteSheet bundled = SpriteSheetLoader.Load(Path.GetDirectoryName(metadata)!, Path.GetFileNameWithoutExtension(metadata));
             Require(bundled.Clips.Count == 9, "Embedded atlas could not be loaded.");
         }
+        CheckMailAssets(root, embedded);
         Require(File.Exists(Path.Combine(embedded, "ball.png")) && File.Exists(Path.Combine(embedded, "bowl-empty.png")),
             "Embedded props are missing.");
         Require(EmbeddedContent.Licenses.Contains("WPF UI Contributors", StringComparison.Ordinal) &&
@@ -162,7 +163,7 @@ internal static partial class Program
             }
         }
 
-        Console.WriteLine($"CONTENT VERIFIED: 40 runtime atlases, {frameCount} frozen/hit-tested frames, 8 unique silhouettes, 16 localized creator previews, coat cycling/wrapping, existing-coat recreation, localized tutorial and online windows, quota recovery and snapshot reads, deterministic PNGs.");
+        Console.WriteLine($"CONTENT VERIFIED: 40 mail atlases / 1440 mail frames, 40 runtime atlases, {frameCount} frozen/hit-tested frames, 8 unique silhouettes, 16 localized creator previews, coat cycling/wrapping, existing-coat recreation, localized tutorial and online windows, quota recovery and snapshot reads, deterministic PNGs.");
     }
 
     private static void Render(Window window, string path)

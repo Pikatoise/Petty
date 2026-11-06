@@ -104,7 +104,12 @@ public static class SpriteMetadataValidator
         "idle", "walk", "run", "eat", "sleep", "play", "tired", "exit",
     ];
 
-    public static IReadOnlyList<string> Validate(SpriteSheetMetadata? metadata, bool requirePet = false)
+    public static readonly string[] RequiredMailClips =
+    [
+        "mail-walk", "mail-sit", "mail-idle", "mail-exit",
+    ];
+
+    public static IReadOnlyList<string> Validate(SpriteSheetMetadata? metadata, bool requirePet = false, bool mail = false)
     {
         var errors = new List<string>();
         if (metadata is null)
@@ -210,12 +215,18 @@ public static class SpriteMetadataValidator
             }
         }
 
-        foreach (string required in RequiredClips)
+        foreach (string required in mail ? RequiredMailClips : RequiredClips)
         {
             if (!names.Contains(required))
             {
                 errors.Add($"Required animation '{required}' is missing.");
             }
+        }
+
+        if (mail && (names.Count != RequiredMailClips.Length ||
+            metadata.Animations.Any(a => a.Loop != (a.Name is "mail-walk" or "mail-idle"))))
+        {
+            errors.Add("Mail atlases require exactly four clips; only walk and idle may loop.");
         }
 
         if (requirePet && !names.Contains("pet"))

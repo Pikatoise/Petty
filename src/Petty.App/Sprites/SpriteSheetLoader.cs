@@ -115,7 +115,7 @@ public static class SpriteSheetLoader
         PropertyNameCaseInsensitive = true,
     };
 
-    public static SpriteSheet Load(string directory, string assetId)
+    public static SpriteSheet Load(string directory, string assetId, bool mail = false)
     {
         if (!SpriteMetadataValidator.IsValidId(assetId))
         {
@@ -126,7 +126,7 @@ public static class SpriteSheetLoader
         SpriteSheetMetadata metadata = JsonSerializer.Deserialize<SpriteSheetMetadata>(File.ReadAllText(metadataPath), JsonOptions)
                        ?? throw new InvalidDataException($"Sprite metadata '{metadataPath}' is empty.");
 
-        IReadOnlyList<string> errors = SpriteMetadataValidator.Validate(metadata);
+        IReadOnlyList<string> errors = SpriteMetadataValidator.Validate(metadata, mail: mail);
         if (metadata.Character != assetId || Path.GetFileName(metadata.Image) != metadata.Image)
         {
             throw new InvalidDataException("Sprite metadata has an invalid character or image path.");
