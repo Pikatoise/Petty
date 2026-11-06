@@ -16,6 +16,13 @@ public partial class IncomingLettersWindow : OnlineWindow
         InitializeComponent();
         InitializeOnline(online);
         _visit = visit;
+        Closed += (_, _) =>
+        {
+            if (_visit.Complete)
+            {
+                AllRead?.Invoke();
+            }
+        };
         SenderText.Text = visit.Snapshot.Sender.Login;
         int number = 0;
         foreach (DeliveryLetter letter in visit.Snapshot.Letters.OrderBy(letter => letter.SentAtUtc).ThenBy(letter => letter.Id))
@@ -28,11 +35,6 @@ public partial class IncomingLettersWindow : OnlineWindow
             row.Children.Add(new TextBlock { Text = letter.Body, Margin = new Thickness(0, 8, 0, 0) });
             var expander = new Expander { Header = $"{++number} · {letter.SentAtUtc.ToLocalTime():g}", Content = row };
             expander.Expanded += async (_, _) => await AcknowledgeAsync([letter.Id]);
-            // Explicit retry also works when the body is already expanded after an offline failure.
-            var retry = new Button();
-            retry.SetResourceReference(ContentControl.ContentProperty, "OnlineConfirmRead");
-            retry.Click += async (_, _) => await AcknowledgeAsync([letter.Id]);
-            row.Children.Add(retry);
             LettersPanel.Children.Add(new Border { Child = expander, Style = (Style)FindResource("OnlineCard") });
         }
     }
@@ -47,11 +49,6 @@ public partial class IncomingLettersWindow : OnlineWindow
             foreach (KeyValuePair<Guid, TextBlock> pair in _states)
             {
                 pair.Value.SetResourceReference(TextBlock.TextProperty, _visit.IsRead(pair.Key) ? "OnlineRead" : "OnlineUnread");
-            }
-            if (_visit.Complete)
-            {
-                AllRead?.Invoke();
-                Close();
             }
         });
     }

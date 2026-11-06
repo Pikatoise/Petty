@@ -109,10 +109,17 @@ internal static partial class Program
             var reopened = new IncomingLettersWindow(coordinator, visit);
             bool completed = false;
             reopened.AllRead += () => completed = true;
+            bool incomingClosed = false;
+            reopened.Closed += (_, _) => incomingClosed = true;
             var cards = (StackPanel)reopened.FindName("LettersPanel");
+            Require(((StackPanel)((Expander)((Border)cards.Children[0]).Child).Content).Children.OfType<Button>().Count() == 0,
+                "Expanded mail still contains a redundant read button.");
             ((Expander)((Border)cards.Children[0]).Child).IsExpanded = true;
-            PumpUntil(() => completed);
+            PumpUntil(() => visit.Complete);
             Require(visit.Complete, "Expanding mail failed to acknowledge its snapshot.");
+            Require(!incomingClosed && !completed, "Reading the last letter closed the window or completed the visit before the window closed.");
+            reopened.Close();
+            Require(incomingClosed && completed, "Closing fully read mail did not complete its visit.");
             bool sessionClosed = false;
             social[0].Closed += (_, _) => sessionClosed = true;
             client.InvalidateAsync(client.SessionId!.Value).GetAwaiter().GetResult();
