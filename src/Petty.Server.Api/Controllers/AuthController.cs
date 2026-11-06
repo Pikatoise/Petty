@@ -11,6 +11,7 @@ namespace Petty.Server.Api.Controllers;
 [ApiController]
 [Route("api/v1/auth")]
 [EnableRateLimiting("auth")]
+[ServiceFilter(typeof(LoginRateLimitFilter))]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AuthController(ISender sender) : ControllerBase
 {

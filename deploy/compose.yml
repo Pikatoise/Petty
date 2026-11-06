@@ -1,0 +1,131 @@
+name: petty
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-api: &api
+  image: ${PETTY_SERVER_IMAGE:?Set an immutable server image tag or digest}
+  read_only: true
+  tmpfs:
+    - /tmp:rw,nosuid,size=64m
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging: *logging
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: petty
+      POSTGRES_USER: petty_owner
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-owner-password
+    secrets:
+      - source: db_owner_password
+        target: db-owner-password
+      - source: db_app_password
+        target: db-app-password
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/10-petty.sh:ro
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - max_connections=40
+      - -c
+      - max_wal_size=256MB
+      - -c
+      - log_statement=none
+      - -c
+      - log_min_error_statement=panic
+      - -c
+      - log_parameter_max_length_on_error=0
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U petty_owner -d petty"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 256m
+    logging: *logging
+
+  api:
+    <<: *api
+    restart: unless-stopped
+    environment:
+      AllowedHosts: ${PETTY_DOMAIN:?Set the API domain}
+      Hosting__RequireHttps: "true"
+      Hosting__KnownProxies__0: ${PETTY_PROXY_IP:-172.30.10.2}
+      Hosting__MaxConnections: "256"
+      Hosting__MaxWebSockets: "128"
+      Hosting__RequestTimeoutSeconds: "15"
+      Auth__RequestsPerMinute: "20"
+      Auth__LoginRequestsPerMinute: "10"
+      Friends__RequestsPerMinute: "20"
+      Letters__RequestsPerMinute: "30"
+    volumes:
+      - ./secrets/api:/run/petty:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      frontend:
+        ipv4_address: ${PETTY_API_IP:-172.30.10.3}
+      database:
+    mem_limit: 256m
+
+  migrations:
+    <<: *api
+    profiles: [maintenance]
+    entrypoint: [/app/efbundle]
+    volumes:
+      - ./secrets/migrations:/run/petty:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [database]
+    mem_limit: 256m
+
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      PETTY_DOMAIN: ${PETTY_DOMAIN:?Set the API domain}
+      ACME_EMAIL: ${ACME_EMAIL:?Set the TLS certificate contact}
+    ports:
+      - "${PETTY_BIND_ADDRESS:-0.0.0.0}:80:80"
+      - "${PETTY_BIND_ADDRESS:-0.0.0.0}:443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - certificates:/data
+      - proxy_config:/config
+    depends_on: [api]
+    networks:
+      frontend:
+        ipv4_address: ${PETTY_PROXY_IP:-172.30.10.2}
+    mem_limit: 128m
+    logging: *logging
+
+networks:
+  frontend:
+    ipam:
+      config:
+        - subnet: ${PETTY_PROXY_SUBNET:-172.30.10.0/24}
+  database:
+    internal: true
+
+volumes:
+  database:
+  certificates:
+  proxy_config:
+
+secrets:
+  db_owner_password:
+    file: ./secrets/db-owner-password
+  db_app_password:
+    file: ./secrets/db-app-password

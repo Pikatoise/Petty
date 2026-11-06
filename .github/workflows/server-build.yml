@@ -1,0 +1,63 @@
+name: Server build
+
+on:
+  push:
+    branches: [master]
+    paths: ["src/Petty.Server.*/**", "src/Petty.Online.Client/**", "tests/Petty.Server.Tests/**", "deploy/**", ".dockerignore", "Directory.Build.props", "Petty.Server.slnx", ".github/workflows/server-build.yml"]
+  pull_request:
+    branches: [master]
+    paths: ["src/Petty.Server.*/**", "src/Petty.Online.Client/**", "tests/Petty.Server.Tests/**", "deploy/**", ".dockerignore", "Directory.Build.props", "Petty.Server.slnx", ".github/workflows/server-build.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: petty_test_ci
+          POSTGRES_USER: petty_test
+          POSTGRES_PASSWORD: ci-only-disposable
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U petty_test -d petty_test_ci" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      PETTY_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Database=petty_test_ci;Username=petty_test;Password=ci-only-disposable;GSS Encryption Mode=Disable
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build Petty.Server.slnx -c Release
+      - run: dotnet test Petty.Server.slnx -c Release --no-build
+
+  package:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Build runtime-only server image
+        run: |
+          docker build --file deploy/Dockerfile --tag "petty-server:${GITHUB_SHA}" .
+          mkdir -p artifacts
+          docker save "petty-server:${GITHUB_SHA}" | gzip > artifacts/petty-server-image.tar.gz
+          cd artifacts
+          sha256sum petty-server-image.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: petty-server-${{ github.sha }}
+          path: |
+            artifacts/petty-server-image.tar.gz
+            artifacts/SHA256SUMS
+          retention-days: 7
+          if-no-files-found: error
+    # Deployment is an explicit operator step; this workflow holds no VPS credentials.

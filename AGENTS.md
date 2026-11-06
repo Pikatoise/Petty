@@ -2,7 +2,6 @@
 
 ## Working agreement
 
-- Reply briefly in Russian. Write code, comments and documentation in English.
 - Follow .editorconfig for C# and Settings.XamlStyler for XAML. Use
   scripts/format.ps1 to format and scripts/format.ps1 -Check to verify the agreed style.
 - Commit, push and build distribution ZIPs only when explicitly requested.

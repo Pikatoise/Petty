@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Petty.Server.Api.Auth;
 using Petty.Server.Api.Errors;
+using Petty.Server.Api.Hosting;
 using Petty.Server.Api.Realtime;
 using Petty.Server.Application.Features.Delivery;
 using Petty.Server.Application.Features.Friends;
@@ -15,6 +16,7 @@ using Petty.Server.Application.Persistence;
 using Petty.Server.Infrastructure.Persistence;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+builder.AddServerHosting();
 
 string? connectionString = builder.Configuration.GetConnectionString("Petty");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -22,7 +24,6 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("Configure ConnectionStrings__Petty before starting the server.");
 }
 
-builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 16 * 1024);
 builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
 {
     options.InvalidModelStateResponseFactory = context => new BadRequestObjectResult(new ProblemDetails
@@ -35,6 +36,7 @@ builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddOnlineAuthentication(builder.Configuration);
+builder.Services.AddSingleton<LoginRateLimitFilter>();
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<ILetterRepository, LetterRepository>();
 builder.Services.AddScoped<IMailboxRepository, MailboxRepository>();
@@ -94,10 +96,11 @@ builder.Services.AddMediator(options =>
 WebApplication app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseServerHosting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
-app.MapControllers();
+app.MapControllers().WithRequestTimeout("rest");
 app.MapHub<MailHub>("/hubs/mail", options => options.CloseOnAuthenticationExpiration = true);
 app.Run();
 

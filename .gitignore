@@ -31,3 +31,7 @@ Desktop.ini
 
 # Generated asset cache
 /assets/sprites/.asset-stamps.json
+
+# Deployment credentials and database backups
+deploy/secrets/
+deploy/backups/

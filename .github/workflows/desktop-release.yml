@@ -1,0 +1,62 @@
+name: Desktop release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing project version as vMAJOR.MINOR.PATCH
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/master'
+    runs-on: windows-latest
+    timeout-minutes: 25
+    environment: desktop-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Validate release tag
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$') { throw 'Invalid version tag.' }
+          [xml]$project = Get-Content src/Petty.App/Petty.App.csproj -Raw
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if ($env:RELEASE_TAG -ne "v$version") { throw 'Tag must match the Desktop project version.' }
+          git ls-remote --exit-code --tags origin "refs/tags/$env:RELEASE_TAG"
+          if ($LASTEXITCODE -eq 0) { throw 'Release requires a new tag.' }
+          if ($LASTEXITCODE -ne 2) { throw 'Cannot verify remote tag availability.' }
+          exit 0
+      - run: dotnet build Petty.Desktop.slnx -c Release
+      - run: dotnet test Petty.Desktop.slnx -c Debug
+      - run: dotnet test Petty.Desktop.slnx -c Release
+      - run: dotnet run --project src/Petty.Assets -c Release -- --verify
+      - run: dotnet run --project scripts/ContentVerification -c Release
+      - name: Publish single EXE
+        shell: pwsh
+        run: ./scripts/publish-portable.ps1
+      - name: Create draft GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $exe = @(Get-ChildItem artifacts/portable -Filter Petty.exe -Recurse -File)
+          if ($exe.Count -ne 1) { throw 'Expected exactly one portable EXE.' }
+          # Atomically reserve a new tag at the exact built commit; never reuse an existing tag.
+          gh api "repos/$env:GITHUB_REPOSITORY/git/refs" --method POST -f "ref=refs/tags/$env:RELEASE_TAG" -f "sha=$env:GITHUB_SHA" --silent
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create a new tag at the built commit.' }
+          gh release create $env:RELEASE_TAG $exe[0].FullName --verify-tag --title "Petty $env:RELEASE_TAG" --generate-notes --draft
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed.' }

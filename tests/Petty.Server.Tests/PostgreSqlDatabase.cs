@@ -128,6 +128,7 @@ public sealed class PostgreSqlDatabase : IAsyncLifetime
             builder.UseSetting("ConnectionStrings:Petty", connectionString);
             builder.UseSetting("Auth:SigningKey", Convert.ToBase64String(Enumerable.Range(1, 32).Select(value => (byte)value).ToArray()));
             builder.UseSetting("Auth:RequestsPerMinute", "1000");
+            builder.UseSetting("Auth:LoginRequestsPerMinute", "1000");
             builder.UseSetting("Friends:RequestsPerMinute", "1000");
             builder.UseSetting("Letters:RequestsPerMinute", "1000");
         }
