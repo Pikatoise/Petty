@@ -55,7 +55,12 @@ public sealed class MailConnection : IAsyncDisposable
                 reconnected();
                 await _closed.Task.WaitAsync(ct).ConfigureAwait(false);
             }
-            catch (Exception) when (!ct.IsCancellationRequested)
+            catch (Exception) when (ct.IsCancellationRequested)
+            {
+                // Transport startup can wrap cancellation in an AggregateException.
+                break;
+            }
+            catch (Exception)
             {
                 // No exception text: transports can include URLs or authentication information.
             }

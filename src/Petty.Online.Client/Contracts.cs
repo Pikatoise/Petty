@@ -4,6 +4,7 @@ namespace Petty.Online.Client;
 public sealed record AccountProfile(Guid UserId, string Login, string? PetName, string? PetAssetId, DateTimeOffset? ProfileUpdatedUtc);
 public sealed record PetProfile(string PetName, string AssetId);
 public sealed record Friend(Guid UserId, string Login, string? PetName, string? PetAssetId);
+public sealed record BlockedUser(Guid UserId, string Login);
 public sealed record FriendRequest(Guid RequestId, Friend User, DateTimeOffset RequestedAtUtc);
 public sealed record FriendRequests(IReadOnlyList<FriendRequest> Incoming, IReadOnlyList<FriendRequest> Outgoing);
 public sealed record MailQuota(int UnreadCount, int Limit);

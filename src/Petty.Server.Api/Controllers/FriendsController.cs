@@ -56,6 +56,14 @@ public sealed class FriendsController(ISender sender) : ControllerBase
         await sender.Send(new RemoveFriend(UserId, friendUserId), cancellationToken);
         return NoContent();
     }
+
+    [HttpDelete("requests/{requestId:guid}")]
+    [EnableRateLimiting("friends")]
+    public async Task<IActionResult> Cancel(Guid requestId, CancellationToken cancellationToken)
+    {
+        await sender.Send(new CancelFriendRequest(UserId, requestId), cancellationToken);
+        return NoContent();
+    }
 }
 
 public sealed record FriendRequestBody([Required] string Login);

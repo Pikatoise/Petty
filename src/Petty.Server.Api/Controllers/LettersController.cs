@@ -35,6 +35,11 @@ public sealed class LettersController(ISender sender) : ControllerBase
     public async Task<MailQuota> Quota(Guid recipientUserId, CancellationToken cancellationToken) =>
         await sender.Send(new GetMailQuota(UserId, recipientUserId), cancellationToken);
 
+    [HttpGet("conversations/{otherUserId:guid}")]
+    public async Task<LetterHistoryPage> Conversation(Guid otherUserId, CancellationToken cancellationToken, string? cursor = null, int limit = 50) =>
+        await sender.Send(new GetLetterHistory(UserId, Incoming: false, cursor, limit, otherUserId), cancellationToken);
+
+
     [HttpPost("{letterId:guid}/read")]
     public async Task<ReadLettersResult> Read(Guid letterId, CancellationToken cancellationToken) =>
         await sender.Send(new ReadLetters(UserId, [letterId]), cancellationToken);

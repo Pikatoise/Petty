@@ -15,6 +15,62 @@ namespace Petty.Server.Tests;
 public sealed class LettersApiTests(PostgreSqlDatabase database)
 {
     [PostgreSqlFact]
+    public async Task ConversationFiltersUnreadAtDatabaseAndSurvivesRelationshipChanges()
+    {
+        using TestUser first = await database.CreateUserAsync();
+        using TestUser second = await database.CreateUserAsync();
+        using TestUser stranger = await database.CreateUserAsync();
+        await Befriend(first, second);
+        SentLetter outgoing = await Send(first, second, "Outgoing unread");
+        SentLetter incoming = await Send(second, first, "Read incoming");
+        SentLetter hidden = await Send(second, first, "Unread incoming");
+        await Read(first, [incoming.LetterId]);
+        // Identical timestamps exercise PostgreSQL UUID tie-breaking across page boundaries.
+        using (IServiceScope scope = database.Factory.Services.CreateScope())
+        {
+            ServerDbContext context = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+            DateTimeOffset timestamp = DateTimeOffset.UtcNow.AddDays(-1);
+            await context.Letters.Where(l => l.SenderId == first.Id || l.RecipientId == first.Id)
+                .ExecuteUpdateAsync(update => update.SetProperty(l => l.SentAtUtc, timestamp));
+        }
+        async Task<List<LetterHistoryItem>> Conversation(TestUser actor)
+        {
+            var result = new List<LetterHistoryItem>();
+            string? cursor = null;
+            do
+            {
+                LetterHistoryPage page = (await actor.Client.GetFromJsonAsync<LetterHistoryPage>(
+                    $"/api/v1/letters/conversations/{second.Id}?limit=1&cursor={Uri.EscapeDataString(cursor ?? string.Empty)}"))!;
+                result.AddRange(page.Items);
+                cursor = page.NextCursor;
+            } while (cursor is not null);
+            return result;
+        }
+        List<LetterHistoryItem> history = await Conversation(first);
+        Assert.Equal(2, history.Count);
+        Assert.Equal(new[] { outgoing.LetterId, incoming.LetterId }.OrderByDescending(id => id), history.Select(l => l.Id));
+        Assert.DoesNotContain(history, l => l.Id == hidden.LetterId);
+        Assert.Empty(await Conversation(stranger));
+        Assert.Equal(1, (await Quota(second, first)).UnreadCount);
+        using HttpResponseMessage removed = await first.Client.DeleteAsync($"/api/v1/friends/{second.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
+        Assert.Empty(await Conversation(first));
+        await Befriend(first, second);
+        Assert.Equal(history.Select(l => l.Id), (await Conversation(first)).Select(l => l.Id));
+        using HttpResponseMessage blocked = await first.Client.PostAsync($"/api/v1/users/{second.Id}/block", null);
+        Assert.Equal(HttpStatusCode.NoContent, blocked.StatusCode);
+        Assert.Empty(await Conversation(first));
+        using HttpResponseMessage unblocked = await first.Client.DeleteAsync($"/api/v1/users/{second.Id}/block");
+        Assert.Equal(HttpStatusCode.NoContent, unblocked.StatusCode);
+        Assert.Empty(await Conversation(first));
+        await Befriend(first, second);
+        Assert.Equal(history.Select(l => l.Id), (await Conversation(first)).Select(l => l.Id));
+        Assert.Equal(1, (await Quota(second, first)).UnreadCount);
+        using HttpResponseMessage invalid = await first.Client.GetAsync($"/api/v1/letters/conversations/{second.Id}?cursor=invalid");
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+    }
+
+    [PostgreSqlFact]
     public async Task ConcurrentTenthSendAndSnapshotReadKeepQuotaAtomic()
     {
         using TestUser sender = await database.CreateUserAsync();

@@ -44,9 +44,9 @@ public class OnlineWindow : Window
         };
     }
 
-    private protected void InitializeOnline(OnlineCoordinator online, bool requiresAccount = true)
+    private protected void InitializeOnline(OnlineCoordinator online, bool requiresAccount = true, Func<double>? preferredWidth = null)
     {
-        AdaptiveWindowLayout.Attach(this);
+        AdaptiveWindowLayout.Attach(this, preferredWidth);
         _online = online;
         _requiresAccount = requiresAccount;
         _session = online.Client.SessionId;

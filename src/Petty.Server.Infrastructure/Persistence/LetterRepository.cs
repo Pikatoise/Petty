@@ -24,10 +24,28 @@ public sealed class LetterRepository(ServerDbContext database) : ILetterReposito
     public void Add(Letter letter) => database.Letters.Add(letter);
 
     public async Task<IReadOnlyList<LetterHistoryItem>> GetHistoryAsync(Guid userId, bool incoming, LetterCursor? cursor, int count,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Guid? otherUserId = null)
     {
         IQueryable<Letter> history = database.Letters.AsNoTracking();
-        if (incoming)
+        if (otherUserId is { } otherId)
+        {
+            history = history.Where(letter => (letter.SenderId == userId && letter.RecipientId == otherId) ||
+                (letter.RecipientId == userId && letter.SenderId == otherId && letter.ReadAtUtc != null));
+            // Keep correspondence stored when friendship changes, but expose this page only to current friends.
+            history = history.Where(_ => database.Friendships.Any(friendship =>
+                friendship.Status == Petty.Server.Domain.Friends.FriendshipStatus.Accepted &&
+                ((friendship.LowerUserId == userId && friendship.HigherUserId == otherId) ||
+                 (friendship.HigherUserId == userId && friendship.LowerUserId == otherId))) &&
+                !database.UserBlocks.Any(block => (block.BlockerId == userId && block.BlockedId == otherId) ||
+                    (block.BlockerId == otherId && block.BlockedId == userId)));
+            if (cursor is not null)
+            {
+                history = history.Where(letter => EF.Functions.LessThan(ValueTuple.Create(letter.SentAtUtc, letter.Id),
+                    ValueTuple.Create(cursor.Timestamp, cursor.LetterId)));
+            }
+            history = history.OrderByDescending(letter => letter.SentAtUtc).ThenByDescending(letter => letter.Id);
+        }
+        else if (incoming)
         {
             history = history.Where(letter => letter.RecipientId == userId && letter.ReadAtUtc != null);
             if (cursor is not null)
@@ -51,7 +69,8 @@ public sealed class LetterRepository(ServerDbContext database) : ILetterReposito
         }
 
         return await (from letter in history.Take(count)
-                      join other in database.Users.AsNoTracking() on (incoming ? letter.SenderId : letter.RecipientId) equals other.Id
+                      join other in database.Users.AsNoTracking() on (otherUserId ?? (incoming ? letter.SenderId : letter.RecipientId)) equals other.Id
+                      orderby (incoming && otherUserId == null ? letter.ReadAtUtc : letter.SentAtUtc) descending, letter.Id descending
                       select new LetterHistoryItem(letter.Id, letter.SenderId, letter.RecipientId, letter.Body, letter.SentAtUtc,
                           letter.ReadAtUtc, new FriendDto(other.Id, other.UserName!, other.PetName, other.PetAssetId))).ToListAsync(cancellationToken);
     }

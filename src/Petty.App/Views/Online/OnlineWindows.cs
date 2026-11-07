@@ -18,10 +18,8 @@ internal sealed class OnlineWindows : IDisposable
         online.AccountChanged += AccountChanged;
     }
 
-    public void ShowAccount() => Show("account", () => new AccountWindow(_online, this));
-    public void ShowFriends() => Authenticated(() => Show("friends", () => new FriendsWindow(_online, this)));
+    public void ShowAccount() => Show("account", () => new AccountWindow(_online));
     public void ShowCompose(Guid? recipient = null) => Authenticated(() => Show("compose", () => new ComposeLetterWindow(_online, recipient)));
-    public void ShowHistory(bool incoming) => Authenticated(() => Show(incoming ? "received" : "sent", () => new LettersHistoryWindow(_online, incoming)));
 
     private void Authenticated(Action action)
     {

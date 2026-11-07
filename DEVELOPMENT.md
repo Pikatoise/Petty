@@ -130,6 +130,8 @@ All routes require a valid bearer session. Actor IDs come from validated claims.
 | DELETE | `/api/v1/friends/{friendUserId}` | Remove an accepted friendship -> 204; repeated removal is idempotent |
 | POST | `/api/v1/users/{userId}/block` | Add own directional block and remove the relationship/pending request -> 204 |
 | DELETE | `/api/v1/users/{userId}/block` | Remove only own block -> 204 |
+| GET | `/api/v1/users/blocked` | Own blocked users as `{userId,login}` |
+| DELETE | `/api/v1/friends/requests/{requestId}` | Original sender cancels a pending request -> 204 |
 
 Friend requests use exact, case-insensitive login matching with the same normalization
 as authentication. There is no user directory, prefix search or online status.
@@ -168,6 +170,7 @@ All routes require a valid bearer session and return private, non-cacheable data
 | GET | `/api/v1/letters/quota/{recipientUserId}` | Own directional `{unreadCount,limit:10}`, even after friendship removal/blocking |
 | GET | `/api/v1/letters/outgoing?cursor=&limit=50` | `{items,nextCursor}` for all own sent letters |
 | GET | `/api/v1/letters/incoming?cursor=&limit=50` | `{items,nextCursor}` for own **read** received letters |
+| GET | `/api/v1/letters/conversations/{otherUserId}?cursor=&limit=50` | Combined outgoing and read incoming history with a current friend, ordered by `(sentAtUtc DESC,id DESC)` |
 | POST | `/api/v1/letters/{letterId}/read` | Confirm one received letter -> `{letters:[{letterId,readAtUtc}],unreadCount,limit:10}` |
 | POST | `/api/v1/letters/read` | `{letterIds:[...]}` -> the same response shape, confirming exactly those IDs atomically |
 
@@ -298,10 +301,13 @@ Until production hosting is configured, online startup is opt-in through
 accepted only for loopback development. Without this variable Petty starts locally
 without creating an online client. There is no built-in public service address.
 Open **Account and friends** from Settings or the tray menu. Registration is
-optional, without email or password recovery. The account window provides friends,
-letter composition and paginated sent/read-received histories. Signed-in users can
-also open composition through the pet's Letter action. Network failures leave the
-local pet running. Online windows close when their session is replaced or revoked.
+optional, without email or password recovery. One account window contains authentication,
+the social dashboard and read-only conversations. Four independent sections show friends,
+incoming requests, outgoing requests and own blocks. Older conversation pages load when
+scrolling upward; Back restores dashboard expansion and scroll state. History never
+acknowledges incoming letters, and correspondence is retained across removal/blocking.
+Composition opens only through the pet's Letter action. Network failures leave the
+local pet running. Session changes clear account pages and close contextual online windows.
 
 Composition shows the recipient's server quota and rechecks it before the first
 send. After an uncertain send, the text, recipient and request ID remain fixed;

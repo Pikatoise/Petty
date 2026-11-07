@@ -101,6 +101,7 @@ internal static partial class Program
             CheckInteractionLayout(output, language!);
             CheckOnlineLayout(output, language!);
             CheckOnlineSynchronization();
+            CheckLoginSynchronization();
             CheckHistoryVirtualization(output, language!);
             CheckTutorialLayout(variants, embedded, output, language!);
             var wizard = new CreationWizardWindow(variants, true, "Milo", null);

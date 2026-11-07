@@ -12,6 +12,12 @@ namespace Petty.Server.Api.Controllers;
 [Route("api/v1/users/{userId:guid}/block")]
 public sealed class UserBlocksController(ISender sender) : ControllerBase
 {
+    [HttpGet("~/api/v1/users/blocked")]
+    [DisableRateLimiting]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IReadOnlyList<BlockedUserDto>> GetBlocked(CancellationToken cancellationToken) =>
+        await sender.Send(new GetBlockedUsers(Guid.Parse(User.FindFirst("sub")!.Value)), cancellationToken);
+
     [HttpPost]
     public async Task<IActionResult> Block(Guid userId, CancellationToken cancellationToken)
     {

@@ -38,6 +38,13 @@ public sealed class FriendshipRepository(ServerDbContext database) : IFriendship
     public void AddBlock(UserBlock block) => database.UserBlocks.Add(block);
     public void RemoveBlock(UserBlock block) => database.UserBlocks.Remove(block);
 
+    public async Task<IReadOnlyList<BlockedUserDto>> GetBlockedAsync(Guid userId, CancellationToken cancellationToken) =>
+        await (from block in database.UserBlocks.AsNoTracking()
+               where block.BlockerId == userId
+               join user in database.Users.AsNoTracking() on block.BlockedId equals user.Id
+               orderby user.NormalizedUserName, user.Id
+               select new BlockedUserDto(user.Id, user.UserName!)).ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<FriendDto>> GetFriendsAsync(Guid userId, CancellationToken cancellationToken) =>
         await (from friendship in VisibleTo(userId)
                where friendship.Status == FriendshipStatus.Accepted

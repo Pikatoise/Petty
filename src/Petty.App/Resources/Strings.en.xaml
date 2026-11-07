@@ -1,11 +1,21 @@
-﻿<ResourceDictionary
+<ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <sys:String x:Key="OnlineConversation">Conversation history</sys:String>
+    <sys:String x:Key="OnlineBlockedUsers">Blocked users</sys:String>
+    <sys:String x:Key="OnlineCancelRequest">Cancel request</sys:String>
+    <sys:String x:Key="OnlineUnblock">Unblock</sys:String>
+    <sys:String x:Key="OnlineAdd">Add</sys:String>
+    <sys:String x:Key="OnlineClose">Close</sys:String>
+    <sys:String x:Key="OnlineCancel">Cancel</sys:String>
+    <sys:String x:Key="OnlineBack">Back</sys:String>
+    <sys:String x:Key="OnlineDone">Done.</sys:String>
+    <sys:String x:Key="OnlineConfirmBlock">Block {0}?</sys:String>
+    <sys:String x:Key="OnlineConfirmRemove">Remove {0} from friends?</sys:String>
     <sys:String x:Key="OnlineAccountAndFriends">Account and friends</sys:String>
     <sys:String x:Key="OnlineAccount">Petty account</sys:String>
     <sys:String x:Key="OnlineNotConfigured">The online service is not configured yet. Your pet will continue living locally.</sys:String>
-    <sys:String x:Key="OnlineSignedOut">An account is optional. Sign in to add friends and send letters.</sys:String>
     <sys:String x:Key="OnlineLogin">Login</sys:String>
     <sys:String x:Key="OnlinePassword">Password</sys:String>
     <sys:String x:Key="OnlineConfirmPassword">Confirm password</sys:String>
@@ -20,7 +30,7 @@
     <sys:String x:Key="OnlineRegistered">Account created. Enter your password to sign in.</sys:String>
     <sys:String x:Key="OnlineFriends">Friends</sys:String>
     <sys:String x:Key="OnlineExactLogin">Friend’s exact login</sys:String>
-    <sys:String x:Key="OnlineAddFriend">Send friend request</sys:String>
+    <sys:String x:Key="OnlineAddFriend">Add friend</sys:String>
     <sys:String x:Key="OnlineIncomingRequests">Incoming requests</sys:String>
     <sys:String x:Key="OnlineOutgoingRequests">Outgoing requests</sys:String>
     <sys:String x:Key="OnlineAccept">Accept</sys:String>
@@ -40,9 +50,6 @@
     <sys:String x:Key="OnlineRetry">Retry</sys:String>
     <sys:String x:Key="OnlineSendRetry">The result is not confirmed. Retry sends the same letter safely, without creating a duplicate. The text and recipient stay locked.</sys:String>
     <sys:String x:Key="OnlineLetterSent">Letter sent.</sys:String>
-    <sys:String x:Key="OnlineSent">Sent letters</sys:String>
-    <sys:String x:Key="OnlineReceived">Received letters (read)</sys:String>
-    <sys:String x:Key="OnlineMore">Load more</sys:String>
     <sys:String x:Key="OnlineReadAtFormat">Read: {0:g}</sys:String>
     <sys:String x:Key="OnlineUnread">Unread</sys:String>
     <sys:String x:Key="OnlineRead">Read</sys:String>

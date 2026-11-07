@@ -17,6 +17,36 @@ namespace Petty.Server.Tests;
 public sealed class FriendsApiTests(PostgreSqlDatabase database)
 {
     [PostgreSqlFact]
+    public async Task OnlySenderCancelsPendingRequestsAndBlocksArePrivate()
+    {
+        using TestUser first = await CreateUser();
+        using TestUser second = await CreateUser();
+        using TestUser stranger = await CreateUser();
+        Guid requestId = await Request(first, second);
+        using HttpResponseMessage recipientDenied = await second.Client.DeleteAsync($"/api/v1/friends/requests/{requestId}");
+        Assert.Equal(HttpStatusCode.Forbidden, recipientDenied.StatusCode);
+        using HttpResponseMessage unrelated = await stranger.Client.DeleteAsync($"/api/v1/friends/requests/{requestId}");
+        Assert.Equal(HttpStatusCode.NotFound, unrelated.StatusCode);
+        using HttpResponseMessage cancelled = await first.Client.DeleteAsync($"/api/v1/friends/requests/{requestId}");
+        Assert.Equal(HttpStatusCode.NoContent, cancelled.StatusCode);
+        Assert.Empty((await first.Client.GetFromJsonAsync<FriendRequestsDto>("/api/v1/friends/requests"))!.Outgoing);
+        Guid replacement = await Request(first, second);
+        using HttpResponseMessage stale = await first.Client.DeleteAsync($"/api/v1/friends/requests/{requestId}");
+        Assert.Equal(HttpStatusCode.NotFound, stale.StatusCode);
+        await Accept(second, replacement);
+        using HttpResponseMessage accepted = await first.Client.DeleteAsync($"/api/v1/friends/requests/{replacement}");
+        Assert.Equal(HttpStatusCode.Conflict, accepted.StatusCode);
+        await SetBlock(first, second, true);
+        BlockedUserDto blocked = Assert.Single((await first.Client.GetFromJsonAsync<BlockedUserDto[]>("/api/v1/users/blocked"))!);
+        Assert.Equal(second.Id, blocked.UserId);
+        Assert.Equal(second.Login, blocked.Login);
+        Assert.Empty((await second.Client.GetFromJsonAsync<BlockedUserDto[]>("/api/v1/users/blocked"))!);
+        await SetBlock(first, second, false);
+        Assert.Empty((await first.Client.GetFromJsonAsync<BlockedUserDto[]>("/api/v1/users/blocked"))!);
+        Assert.Empty((await first.Client.GetFromJsonAsync<FriendDto[]>("/api/v1/friends"))!);
+    }
+
+    [PostgreSqlFact]
     public async Task RequestsRequireRecipientConsentAndExposeOnlyPublicParticipantData()
     {
         using TestUser first = await CreateUser();

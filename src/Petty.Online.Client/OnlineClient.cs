@@ -122,6 +122,11 @@ public sealed class OnlineClient : IAsyncDisposable
     public Task UpdatePetAsync(PetProfile profile, CancellationToken ct = default) => RequestAsync<object>(HttpMethod.Put, "api/v1/me/pet", profile, true, false, ct);
     public Task<Friend[]> GetFriendsAsync(CancellationToken ct = default) => RequiredAsync<Friend[]>(HttpMethod.Get, "api/v1/friends", null, ct);
     public Task<FriendRequests> GetFriendRequestsAsync(CancellationToken ct = default) => RequiredAsync<FriendRequests>(HttpMethod.Get, "api/v1/friends/requests", null, ct);
+    public Task<BlockedUser[]> GetBlockedUsersAsync(CancellationToken ct = default) => RequiredAsync<BlockedUser[]>(HttpMethod.Get, "api/v1/users/blocked", null, ct);
+    public Task CancelFriendRequestAsync(Guid id, CancellationToken ct = default) =>
+        RequestAsync<object>(HttpMethod.Delete, $"api/v1/friends/requests/{id:D}", null, true, false, ct);
+    public Task<LetterHistoryPage> GetConversationAsync(Guid userId, string? cursor = null, int limit = 50, CancellationToken ct = default) =>
+        RequiredAsync<LetterHistoryPage>(HttpMethod.Get, $"api/v1/letters/conversations/{userId:D}?limit={limit}&cursor={Uri.EscapeDataString(cursor ?? string.Empty)}", null, ct);
     public async Task<Guid> RequestFriendAsync(string login, CancellationToken ct = default) =>
         (await RequiredAsync<CreatedRequest>(HttpMethod.Post, "api/v1/friends/requests", new
         {

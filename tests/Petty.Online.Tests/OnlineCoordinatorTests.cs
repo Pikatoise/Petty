@@ -36,6 +36,7 @@ public sealed class OnlineCoordinatorTests
                 "/api/v1/me" => OnlineClientTests.Json(new AccountProfile(Guid.NewGuid(), "owner", null, null, null)),
                 "/api/v1/friends" => OnlineClientTests.Json(Array.Empty<Friend>()),
                 "/api/v1/friends/requests" => OnlineClientTests.Json(new FriendRequests([], [])),
+                "/api/v1/users/blocked" => OnlineClientTests.Json(Array.Empty<BlockedUser>()),
                 _ => throw new InvalidOperationException(path)
             };
         });
@@ -56,6 +57,7 @@ public sealed class OnlineCoordinatorTests
         Assert.Equal(1, requests["/api/v1/me"]);
         Assert.Equal(1, requests["/api/v1/friends"]);
         Assert.Equal(1, requests["/api/v1/friends/requests"]);
+        Assert.Equal(1, requests["/api/v1/users/blocked"]);
     }
 
     [Fact]

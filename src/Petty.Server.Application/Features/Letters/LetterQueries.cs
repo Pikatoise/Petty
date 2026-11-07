@@ -12,7 +12,7 @@ public sealed class GetMailQuotaHandler(ILetterRepository letters) : IQueryHandl
         new(await letters.CountUnreadAsync(query.UserId, query.RecipientUserId, cancellationToken));
 }
 
-public sealed record GetLetterHistory(Guid UserId, bool Incoming, string? Cursor, int Limit) : IQuery<LetterHistoryPage>;
+public sealed record GetLetterHistory(Guid UserId, bool Incoming, string? Cursor, int Limit, Guid? OtherUserId = null) : IQuery<LetterHistoryPage>;
 
 public sealed class GetLetterHistoryHandler(ILetterRepository letters) : IQueryHandler<GetLetterHistory, LetterHistoryPage>
 {
@@ -24,13 +24,13 @@ public sealed class GetLetterHistoryHandler(ILetterRepository letters) : IQueryH
         }
 
         LetterCursor? cursor = DecodeCursor(query.Cursor);
-        IReadOnlyList<LetterHistoryItem> fetched = await letters.GetHistoryAsync(query.UserId, query.Incoming, cursor, query.Limit + 1, cancellationToken);
+        IReadOnlyList<LetterHistoryItem> fetched = await letters.GetHistoryAsync(query.UserId, query.Incoming, cursor, query.Limit + 1, cancellationToken, query.OtherUserId);
         LetterHistoryItem[] items = fetched.Take(query.Limit).ToArray();
         string? next = null;
         if (fetched.Count > query.Limit)
         {
             LetterHistoryItem last = items[^1];
-            DateTimeOffset timestamp = query.Incoming ? last.ReadAtUtc!.Value : last.SentAtUtc;
+            DateTimeOffset timestamp = query.Incoming && query.OtherUserId is null ? last.ReadAtUtc!.Value : last.SentAtUtc;
             next = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{timestamp.ToString("O", CultureInfo.InvariantCulture)}|{last.Id:N}"))
                 .TrimEnd('=').Replace('+', '-').Replace('/', '_');
         }

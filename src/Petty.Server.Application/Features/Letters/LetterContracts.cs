@@ -20,5 +20,5 @@ public interface ILetterRepository
     Task<IReadOnlyList<Letter>> GetReceivedAsync(Guid recipientId, Guid[] letterIds, CancellationToken cancellationToken);
     void Add(Letter letter);
     Task<IReadOnlyList<LetterHistoryItem>> GetHistoryAsync(Guid userId, bool incoming, LetterCursor? cursor, int count,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken, Guid? otherUserId = null);
 }

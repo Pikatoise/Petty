@@ -43,6 +43,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
         get; private set;
     }
     public FriendRequests Requests { get; private set; } = new([], []);
+    public IReadOnlyList<BlockedUser> BlockedUsers { get; private set; } = [];
     public long MailboxVersion
     {
         get; private set;
@@ -111,6 +112,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
         AccountProfile? account = null;
         Friend[] friends = [];
         FriendRequests requests = new([], []);
+        BlockedUser[] blocked = [];
         MailboxVisit? mailbox = null;
         try
         {
@@ -156,6 +158,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
                         account = null;
                         friends = [];
                         requests = new([], []);
+                        blocked = [];
                         mailbox = null;
                         kind = RefreshKind.All;
                         if (session is { } id)
@@ -186,6 +189,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
                     {
                         friends = await _client.GetFriendsAsync(ct).ConfigureAwait(false);
                         requests = await _client.GetFriendRequestsAsync(ct).ConfigureAwait(false);
+                        blocked = await _client.GetBlockedUsersAsync(ct).ConfigureAwait(false);
                     }
                     bool mailboxRefreshed = (kind & RefreshKind.Mailbox) != 0;
                     long mailboxVersion = Volatile.Read(ref _requestedMailboxVersion);
@@ -194,7 +198,7 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
                         mailbox = await _client.GetNextVisitAsync(ct).ConfigureAwait(false);
                     }
                     Publish(account, friends, requests, mailbox, session, mailboxRefreshed, mailboxVersion,
-                        friendsRefreshed: (kind & RefreshKind.Friends) != 0);
+                        friendsRefreshed: (kind & RefreshKind.Friends) != 0, blockedUsers: blocked);
                     failures = 0;
                 }
                 catch (Exception) when (!ct.IsCancellationRequested)
@@ -237,7 +241,8 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
     }
 
     internal void Publish(AccountProfile? account, IReadOnlyList<Friend> friends, FriendRequests requests,
-        MailboxVisit? mailbox, Guid? session, bool mailboxRefreshed, long mailboxVersion = 0, bool friendsRefreshed = false)
+        MailboxVisit? mailbox, Guid? session, bool mailboxRefreshed, long mailboxVersion = 0, bool friendsRefreshed = false,
+        IReadOnlyList<BlockedUser>? blockedUsers = null)
     {
         _dispatch(() =>
         {
@@ -247,12 +252,14 @@ internal sealed class OnlineCoordinator : IAsyncDisposable
             }
             bool sessionChanged = PublishedSessionId != session;
             bool accountChanged = sessionChanged || Account != account;
-            bool friendsChanged = sessionChanged || !Friends.SequenceEqual(friends) ||
+            IReadOnlyList<BlockedUser> nextBlocked = blockedUsers ?? (sessionChanged ? [] : BlockedUsers);
+            bool friendsChanged = sessionChanged || !BlockedUsers.SequenceEqual(nextBlocked) || !Friends.SequenceEqual(friends) ||
                 !Requests.Incoming.SequenceEqual(requests.Incoming) || !Requests.Outgoing.SequenceEqual(requests.Outgoing);
             Account = account;
             PublishedSessionId = session;
             Friends = friends;
             Requests = requests;
+            BlockedUsers = nextBlocked;
             Mailbox = mailbox;
             if (mailboxRefreshed)
             {

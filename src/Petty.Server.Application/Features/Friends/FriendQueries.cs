@@ -2,6 +2,14 @@ using Mediator;
 
 namespace Petty.Server.Application.Features.Friends;
 
+public sealed record GetBlockedUsers(Guid UserId) : IQuery<IReadOnlyList<BlockedUserDto>>;
+
+public sealed class GetBlockedUsersHandler(IFriendshipRepository friendships) : IQueryHandler<GetBlockedUsers, IReadOnlyList<BlockedUserDto>>
+{
+    public async ValueTask<IReadOnlyList<BlockedUserDto>> Handle(GetBlockedUsers query, CancellationToken cancellationToken) =>
+        await friendships.GetBlockedAsync(query.UserId, cancellationToken);
+}
+
 public sealed record GetFriends(Guid UserId) : IQuery<IReadOnlyList<FriendDto>>;
 
 public sealed class GetFriendsHandler(IFriendshipRepository friendships) : IQueryHandler<GetFriends, IReadOnlyList<FriendDto>>

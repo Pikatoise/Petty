@@ -35,7 +35,7 @@ internal static partial class Program
             {
                 "/api/v1/friends" => new[] { friend },
                 "/api/v1/friends/requests" => new FriendRequests([new FriendRequest(Guid.NewGuid(), friend, DateTimeOffset.UtcNow)], []),
-                "/api/v1/letters/incoming" or "/api/v1/letters/outgoing" => new LetterHistoryPage([
+                _ when path.StartsWith("/api/v1/letters/conversations/", StringComparison.Ordinal) => new LetterHistoryPage([
                     new LetterHistoryItem(letter.Id, friend.UserId, Guid.NewGuid(), letter.Body, letter.SentAtUtc, letter.SentAtUtc, friend)], null),
                 _ when path.Contains("/quota/") => new MailQuota(UnreadCount, 10),
                 "/api/v1/letters/read" => await ReadAsync(request, ct),
@@ -61,21 +61,33 @@ internal static partial class Program
         var handler = new OnlineVerificationHandler(friend, letter);
         var client = new OnlineClient(new Uri("https://example.test"), new OnlineMemoryStore(), handler);
         var coordinator = new OnlineCoordinator(client, action => action(), () => { });
-        using var windows = new OnlineWindows(coordinator, _ => { });
-        var account = new AccountWindow(coordinator, windows);
+        var account = new AccountWindow(coordinator);
         Render(account, Path.Combine(output, $"online-{language}-account.png"));
-        Require(account.ResizeMode == ResizeMode.NoResize && account.Width <= 380,
+        CheckAuthenticationControls(account, "SignInButton");
+        Require(account.ResizeMode == ResizeMode.NoResize && account.Width == 380 && account.Height == 480 &&
+            ((FrameworkElement)account.FindName("AuthPage")).ActualWidth <= 380,
             "Authentication window is resizable or too wide.");
         Require(((FrameworkElement)account.FindName("ConfirmationPanel")).Visibility == Visibility.Collapsed,
             "Sign-in page shows password confirmation.");
         account.Close();
-        account = new AccountWindow(coordinator, windows);
+        account = new AccountWindow(coordinator);
         ((RadioButton)account.FindName("RegistrationTab")).IsChecked = true;
+        Require(account.Width == 380 && account.Height == 480, "Registration did not retain compact window dimensions.");
         Require(((FrameworkElement)account.FindName("ConfirmationPanel")).Visibility == Visibility.Visible &&
             ((Button)account.FindName("RegisterButton")).IsDefault &&
             ((Button)account.FindName("SignInButton")).Visibility == Visibility.Collapsed,
             "Registration navigation did not switch the form and default action.");
+        ((PasswordBox)account.FindName("PasswordBox")).Password = "test-password";
+        ((PasswordBox)account.FindName("ConfirmBox")).Password = "test-password";
         Render(account, Path.Combine(output, $"online-{language}-registration.png"));
+        CheckAuthenticationControls(account, "RegisterButton");
+        foreach (string field in new[] { "PasswordBox", "ConfirmBox" })
+        {
+            var password = (PasswordBox)account.FindName(field);
+            var host = (ScrollViewer)password.Template.FindName("PART_ContentHost", password);
+            Require(host.ViewportHeight >= host.ExtentHeight && host.ViewportHeight > 0,
+                $"{field} clips password glyphs: viewport {host.ViewportHeight}, content {host.ExtentHeight}.");
+        }
         var navigation = (FrameworkElement)account.FindName("AuthNavigation");
         Require(navigation.ActualHeight > 0 && navigation.TranslatePoint(new Point(0, navigation.ActualHeight), (UIElement)account.Content).Y <=
             ((FrameworkElement)account.Content).ActualHeight + 1,
@@ -83,6 +95,7 @@ internal static partial class Program
         ((PasswordBox)account.FindName("PasswordBox")).Password = "test-password";
         ((PasswordBox)account.FindName("ConfirmBox")).Password = "test-password";
         ((RadioButton)account.FindName("SignInTab")).IsChecked = true;
+        Require(account.Height == 480, "Switching authentication pages changed the window height.");
         Require(((PasswordBox)account.FindName("PasswordBox")).Password.Length == 0 &&
             ((PasswordBox)account.FindName("ConfirmBox")).Password.Length == 0 &&
             ((Button)account.FindName("SignInButton")).IsDefault,
@@ -95,14 +108,13 @@ internal static partial class Program
         var visit = new IncomingVisit(new MailboxVisit(friend, [letter]));
         var compose = new ComposeLetterWindow(coordinator, friend.UserId);
         var incoming = new IncomingLettersWindow(coordinator, visit);
-        Window[] social = [new FriendsWindow(coordinator, windows), compose,
-            new LettersHistoryWindow(coordinator, false), new LettersHistoryWindow(coordinator, true), incoming];
+        Window[] social = [new AccountWindow(coordinator), compose, incoming];
         try
         {
             foreach (Window window in social)
             {
                 window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
-                if (window is FriendsWindow)
+                if (window is AccountWindow)
                 {
                     coordinator.Publish(coordinator.Account, coordinator.Friends, coordinator.Requests, null,
                         client.SessionId, mailboxRefreshed: false, friendsRefreshed: true);
@@ -114,13 +126,33 @@ internal static partial class Program
                 window.Width = 340;
                 window.Height = 260;
                 Render(window, Path.Combine(output, preview + "-compact.png"));
-                if (window is FriendsWindow)
+                if (window is AccountWindow management)
                 {
-                    var scroll = (ScrollViewer)window.FindName("FriendsScroll");
+                    var dashboard = (SocialDashboard)management.FindName("DashboardPage");
+                    foreach (string name in new[] { "FriendsSection", "IncomingSection", "OutgoingSection", "BlockedSection" })
+                    {
+                        ((Expander)dashboard.FindName(name)).IsExpanded = true;
+                    }
+                    ((FrameworkElement)window.Content).UpdateLayout();
+                    var scroll = (ScrollViewer)dashboard.FindName("DashboardScroll");
                     Require(scroll.ScrollableHeight > 0, "Compact friends window cannot scroll its form and lists.");
                     scroll.ScrollToEnd();
                     ((FrameworkElement)window.Content).UpdateLayout();
                     Require(scroll.VerticalOffset > 0, "Compact friends lists are unreachable.");
+                    ((Expander)dashboard.FindName("OutgoingSection")).IsExpanded = false;
+                    ((FrameworkElement)management.Content).UpdateLayout();
+                    double position = scroll.VerticalOffset;
+                    management.GetType().GetMethod("ShowConversation", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                        .Invoke(management, [friend]);
+                    PumpUntil(() => ((UIElement)management.Content).IsEnabled);
+                    var conversation = (ConversationView)management.FindName("ConversationPage");
+                    conversation.GetType().GetMethod("OnBack", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                        .Invoke(conversation, [null, new RoutedEventArgs()]);
+                    PumpUntil(() => dashboard.Visibility == Visibility.Visible && Math.Abs(scroll.VerticalOffset - position) < 2);
+                    Require(((Expander)dashboard.FindName("IncomingSection")).IsExpanded &&
+                        !((Expander)dashboard.FindName("OutgoingSection")).IsExpanded &&
+                        ((Expander)dashboard.FindName("BlockedSection")).IsExpanded,
+                        "Conversation navigation changed independent dashboard expansion states.");
                 }
             }
             ((TextBox)compose.FindName("BodyBox")).Text = "A valid letter 🐈";
@@ -152,9 +184,12 @@ internal static partial class Program
             reopened.Close();
             Require(incomingClosed && completed, "Closing fully read mail did not complete its visit.");
             bool sessionClosed = false;
-            social[0].Closed += (_, _) => sessionClosed = true;
+            compose.Closed += (_, _) => sessionClosed = true;
             client.InvalidateAsync(client.SessionId!.Value).GetAwaiter().GetResult();
             PumpUntil(() => sessionClosed);
+            Require(((FrameworkElement)social[0].FindName("AuthPage")).Visibility == Visibility.Visible &&
+                ((FrameworkElement)social[0].FindName("DashboardPage")).Visibility == Visibility.Collapsed,
+                "Session replacement retained the previous account's social page.");
         }
         finally
         {
@@ -165,6 +200,32 @@ internal static partial class Program
             coordinator.DisposeAsync().AsTask().GetAwaiter().GetResult();
             SynchronizationContext.SetSynchronizationContext(previousContext);
         }
+    }
+
+    private static void CheckAuthenticationControls(AccountWindow window, string actionName)
+    {
+        var content = (FrameworkElement)window.Content;
+        var navigation = (FrameworkElement)window.FindName("AuthNavigation");
+        var action = (FrameworkElement)window.FindName(actionName);
+        var status = (TextBlock)window.FindName("StatusText");
+        foreach (string message in new[] { string.Empty, new string('x', 300) })
+        {
+            status.Text = message;
+            // Reserve space for native window chrome instead of testing against the outer window size.
+            var client = new Size(window.Width - 16, window.Height - 40);
+            content.Measure(client);
+            content.Arrange(new Rect(new Point(), client));
+            content.UpdateLayout();
+            double navigationTop = navigation.TranslatePoint(new Point(), content).Y;
+            double navigationBottom = navigation.TranslatePoint(new Point(0, navigation.ActualHeight), content).Y;
+            double actionBottom = action.TranslatePoint(new Point(0, action.ActualHeight), content).Y;
+            Require(Math.Abs(navigationBottom - content.ActualHeight) < 1,
+                "Authentication navigation is not pinned to the client area's bottom edge.");
+            Require(action.ActualHeight > 0 && actionBottom <= navigationTop &&
+                action.TranslatePoint(new Point(), content).Y >= 0,
+                "Authentication submit action is clipped, including when feedback is visible.");
+        }
+        status.Text = string.Empty;
     }
 
     private static void PumpUntil(Func<bool> ready)

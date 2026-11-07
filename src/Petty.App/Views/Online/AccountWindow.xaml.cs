@@ -5,7 +5,9 @@ namespace Petty.App.Views.Online;
 
 public partial class AccountWindow : OnlineWindow
 {
-    private readonly OnlineWindows _windows;
+    internal void ShowFeedback(string key) => Status(key);
+    private Guid? _displayedSession;
+    private double _dashboardOffset;
 
     private void OnAuthPageChanged(object sender, RoutedEventArgs e)
     {
@@ -27,15 +29,25 @@ public partial class AccountWindow : OnlineWindow
         LoginBox.Focus();
     }
 
-    internal AccountWindow(OnlineCoordinator online, OnlineWindows windows)
+    internal AccountWindow(OnlineCoordinator online)
     {
-        _windows = windows;
         InitializeComponent();
-        InitializeOnline(online, requiresAccount: false);
+        InitializeOnline(online, requiresAccount: false, preferredWidth: () => online.Client.SessionId is null ? 380 : 520);
+        DashboardPage.Initialize(online, RunAsync, Lifetime);
+        ConversationPage.Initialize(online, RunAsync, Lifetime);
+        DashboardPage.OpenConversation += ShowConversation;
+        DashboardPage.Logout += OnLogout;
+        ConversationPage.Back += ShowDashboard;
         online.AccountChanged += UpdateAccount;
+        online.FriendsChanged += CheckConversation;
+        online.Client.SessionChanged += SessionChanged;
         Closed += (_, _) =>
         {
             online.AccountChanged -= UpdateAccount;
+            online.FriendsChanged -= CheckConversation;
+            online.Client.SessionChanged -= SessionChanged;
+            DashboardPage.Dispose();
+            ConversationPage.Reset();
             PasswordBox.Clear();
             ConfirmBox.Clear();
         };
@@ -45,27 +57,73 @@ public partial class AccountWindow : OnlineWindow
 
     private void UpdateAccount()
     {
-        bool signedIn = Online.Client.SessionId is not null;
-        CredentialsPanel.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
-        AccountActions.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
-        AuthNavigation.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
-        AccountText.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
+        Guid? session = Online.Client.SessionId;
+        if (_displayedSession != session)
+        {
+            _displayedSession = session;
+            ConversationPage.Reset();
+            DashboardPage.Reset();
+            _dashboardOffset = 0;
+            ShowDashboard();
+            PasswordBox.Clear();
+            ConfirmBox.Clear();
+            LoginBox.Clear();
+        }
+        bool signedIn = session is not null;
         if (signedIn)
         {
-            PageTitle.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "OnlineAccount");
+            DashboardPage.RefreshSnapshot();
         }
-        else
+        AuthPage.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
+        AuthNavigation.Visibility = AuthPage.Visibility;
+        if (!signedIn)
         {
+            DashboardPage.Visibility = Visibility.Collapsed;
+            ConversationPage.Visibility = Visibility.Collapsed;
             OnAuthPageChanged(this, new RoutedEventArgs());
         }
-        if (signedIn && Online.PublishedSessionId == Online.Client.SessionId && Online.Account is { } account)
+        UpdateWindowSize();
+    }
+
+    private void UpdateWindowSize()
+    {
+        bool signedIn = Online.Client.SessionId is not null;
+        Width = Math.Min(signedIn ? 520 : 380, MaxWidth);
+        Height = Math.Min(signedIn ? 580 : 480, MaxHeight);
+    }
+
+    private void SessionChanged() => Dispatcher.BeginInvoke(() => { if (!IsClosed) { UpdateAccount(); } });
+
+    private void CheckConversation()
+    {
+        if (ConversationPage.CorrespondentId is { } id && !Online.Friends.Any(friend => friend.UserId == id))
         {
-            AccountText.Text = account.Login;
+            ConversationPage.Reset();
+            ShowDashboard();
         }
-        else
+    }
+
+    private void ShowDashboard()
+    {
+        ConversationPage.Visibility = Visibility.Collapsed;
+        DashboardPage.Visibility = Online.Client.SessionId is null ? Visibility.Collapsed : Visibility.Visible;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
         {
-            AccountText.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, signedIn ? "OnlineWorking" : "OnlineSignedOut");
-        }
+            if (DashboardPage.Visibility == Visibility.Visible)
+            {
+                DashboardPage.UpdateLayout();
+                DashboardPage.ScrollOffset = _dashboardOffset;
+            }
+        });
+        StatusText.Text = string.Empty;
+    }
+
+    private async void ShowConversation(Petty.Online.Client.Friend friend)
+    {
+        _dashboardOffset = DashboardPage.ScrollOffset;
+        DashboardPage.Visibility = Visibility.Collapsed;
+        ConversationPage.Visibility = Visibility.Visible;
+        await ConversationPage.OpenAsync(friend);
     }
 
     private async void OnLogin(object sender, RoutedEventArgs e)
@@ -111,8 +169,4 @@ public partial class AccountWindow : OnlineWindow
         }
     }
 
-    private void OnFriends(object sender, RoutedEventArgs e) => _windows.ShowFriends();
-    private void OnCompose(object sender, RoutedEventArgs e) => _windows.ShowCompose();
-    private void OnSent(object sender, RoutedEventArgs e) => _windows.ShowHistory(false);
-    private void OnReceived(object sender, RoutedEventArgs e) => _windows.ShowHistory(true);
 }

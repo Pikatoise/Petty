@@ -1,0 +1,117 @@
+﻿<UserControl
+    x:Class="Petty.App.Views.Online.ConversationView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Foreground="{DynamicResource CozyText}">
+    <UserControl.Resources>
+        <ResourceDictionary Source="/Petty;component/Resources/OnlineControls.xaml" />
+    </UserControl.Resources>
+    <DockPanel Margin="18">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button
+                Style="{StaticResource OnlineIconButton}"
+                ToolTip="{DynamicResource OnlineBack}"
+                AutomationProperties.Name="{DynamicResource OnlineBack}"
+                Click="OnBack">
+                <ui:SymbolIcon Symbol="ArrowLeft24" FontSize="20" />
+            </Button>
+            <TextBlock
+                x:Name="FriendLogin"
+                FontSize="22"
+                FontWeight="SemiBold"
+                Margin="8,0"
+                VerticalAlignment="Center"
+                TextTrimming="CharacterEllipsis"
+                TextWrapping="NoWrap"
+                ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+        </DockPanel>
+        <Button
+            x:Name="RetryButton"
+            DockPanel.Dock="Top"
+            Visibility="Collapsed"
+            Content="{DynamicResource OnlineRetry}"
+            Click="OnRetry" />
+        <Grid>
+            <ListBox
+                x:Name="LettersList"
+                Background="Transparent"
+                BorderThickness="0"
+                ScrollViewer.CanContentScroll="True"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                VirtualizingPanel.IsVirtualizing="True"
+                VirtualizingPanel.VirtualizationMode="Recycling"
+                VirtualizingPanel.ScrollUnit="Pixel"
+                ScrollViewer.ScrollChanged="OnScroll"
+                PreviewMouseWheel="OnMouseWheel">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Focusable" Value="False" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border
+                            CornerRadius="14"
+                            Padding="12,8"
+                            Margin="0,4"
+                            MaxWidth="360">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="HorizontalAlignment" Value="Left" />
+                                    <Setter Property="Background" Value="{StaticResource CozySurface}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Outgoing}" Value="True">
+                                            <Setter Property="HorizontalAlignment" Value="Right" />
+                                            <Setter Property="Background" Value="{StaticResource CozyEdge}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Body}" TextWrapping="Wrap" />
+                                <TextBlock
+                                    Text="{Binding Timestamp}"
+                                    Foreground="{StaticResource CozyMuted}"
+                                    FontSize="11"
+                                    Margin="0,6,0,0" />
+                                <TextBlock
+                                    Text="{Binding ReadStatus}"
+                                    FontSize="11"
+                                    Foreground="{StaticResource CozyMuted}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Outgoing}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock
+                x:Name="EmptyText"
+                Text="{DynamicResource OnlineEmpty}"
+                Foreground="{StaticResource CozyMuted}"
+                Visibility="Collapsed"
+                IsHitTestVisible="False"
+                Margin="12" />
+        </Grid>
+    </DockPanel>
+</UserControl>
