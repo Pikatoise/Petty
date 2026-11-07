@@ -22,7 +22,7 @@ public static class SpritePixels
         }
 
         var occupied = new HashSet<int>();
-        var standing = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "idle", "walk", "eat", "tired", "exit" };
+        var standing = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "idle", "walk", "eat", "tired", "exit", "mail-walk", "mail-sit", "mail-idle", "mail-exit" };
         foreach (AnimationClipMetadata clip in metadata.Animations)
         {
             int clipBottom = -1;

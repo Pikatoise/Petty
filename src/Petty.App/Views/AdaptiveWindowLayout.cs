@@ -13,9 +13,9 @@ internal static class AdaptiveWindowLayout
 {
     private const int Edge = 8;
 
-    public static void Attach(Window window)
+    public static void Attach(Window window, Func<double>? preferredWidth = null)
     {
-        double preferredWidth = window.Width;
+        double initialWidth = window.Width;
         bool updating = false;
         bool closed = false;
         void Refresh(bool center = false)
@@ -32,14 +32,14 @@ internal static class AdaptiveWindowLayout
                 if (handle == IntPtr.Zero)
                 {
                     Fit(window, new Size(SystemParameters.WorkArea.Width - Edge * 2,
-                        SystemParameters.WorkArea.Height - Edge * 2), preferredWidth);
+                        SystemParameters.WorkArea.Height - Edge * 2), preferredWidth?.Invoke() ?? initialWidth);
                     return;
                 }
 
                 Forms.Screen screen = center ? Forms.Screen.PrimaryScreen! : Forms.Screen.FromHandle(handle);
                 Rectangle work = screen.WorkingArea;
                 double scale = Math.Max(96, NativeMethods.GetDpiForWindow(handle)) / 96.0;
-                Fit(window, new Size((work.Width - Edge * 2) / scale, (work.Height - Edge * 2) / scale), preferredWidth);
+                Fit(window, new Size((work.Width - Edge * 2) / scale, (work.Height - Edge * 2) / scale), preferredWidth?.Invoke() ?? initialWidth);
                 window.UpdateLayout();
                 if (window.IsVisible)
                 {

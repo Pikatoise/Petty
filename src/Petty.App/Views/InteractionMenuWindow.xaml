@@ -33,6 +33,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />
                     <ColumnDefinition />
+                    <ColumnDefinition x:Name="LetterColumn" Width="0" />
                 </Grid.ColumnDefinitions>
                 <Button
                     x:Name="PlayButton"
@@ -64,6 +65,24 @@
                     HorizontalAlignment="Stretch">
                     <ui:SymbolIcon
                         Symbol="HandRight24"
+                        FontSize="18"
+                        IsHitTestVisible="False" />
+                </Button>
+                <Button
+                    x:Name="LetterButton"
+                    Grid.Column="2"
+                    ToolTip="{DynamicResource OnlineLetter}"
+                    AutomationProperties.Name="{DynamicResource OnlineLetter}"
+                    Style="{StaticResource CozyButton}"
+                    MinWidth="0"
+                    MinHeight="0"
+                    Click="OnLetter"
+                    Padding="2"
+                    Margin="3,0,0,0"
+                    HorizontalAlignment="Stretch"
+                    Visibility="Collapsed">
+                    <ui:SymbolIcon
+                        Symbol="Mail24"
                         FontSize="18"
                         IsHitTestVisible="False" />
                 </Button>

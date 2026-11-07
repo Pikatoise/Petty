@@ -2,6 +2,12 @@
   "version": 1,
   "isRoot": true,
   "tools": {
+    "dotnet-ef": {
+      "version": "10.0.14",
+      "commands": [
+        "dotnet-ef"
+      ]
+    },
     "xamlstyler.console": {
       "version": "3.2501.8",
       "commands": [

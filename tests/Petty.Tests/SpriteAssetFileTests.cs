@@ -167,7 +167,7 @@ public class SpriteAssetFileTests
 
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "Petty.slnx")))
+            if (File.Exists(Path.Combine(directory.FullName, "Petty.Desktop.slnx")))
             {
                 return directory.FullName;
             }

@@ -28,6 +28,7 @@ public partial class PetWindow : Window
     private bool _placementLogged;
     private bool _applyingPlacement;
     private double _dpiScale = 1;
+    private (int Left, int Top, int Width, int Height)? _lastPlacement;
 
     public PetWindow(SpriteSheet sheet, IAppLog log)
     {
@@ -88,6 +89,7 @@ public partial class PetWindow : Window
 
         _physicalWidth = width;
         _physicalHeight = height;
+        _lastPlacement = null;
         ApplyDpiSize();
     }
 
@@ -112,6 +114,7 @@ public partial class PetWindow : Window
             throw new InvalidOperationException("The window has not been initialised yet.");
         }
 
+        _lastPlacement = null;
         Attachment = mode == DesktopLayerMode.Disabled
             ? DesktopAttachment.Disabled()
             : DesktopWindowService.Attach(_handle, log, mode);
@@ -150,11 +153,20 @@ public partial class PetWindow : Window
         PlacementFloorY = floorY;
         ExpectedTop = topPixels;
 
+        (int Left, int Top, int Width, int Height) placement = (left, topPixels, _physicalWidth, _physicalHeight);
+        if (_lastPlacement is { } previous && previous == placement)
+        {
+            return;
+        }
+
         _applyingPlacement = true;
 
         try
         {
-            DesktopWindowService.PlaceAt(_handle, left, topPixels, _physicalWidth, _physicalHeight);
+            if (DesktopWindowService.PlaceAt(_handle, left, topPixels, _physicalWidth, _physicalHeight))
+            {
+                _lastPlacement = placement;
+            }
 
             if (!_placementLogged)
             {
@@ -208,6 +220,7 @@ public partial class PetWindow : Window
 
     private void OnDpiChanged(object sender, DpiChangedEventArgs e)
     {
+        _lastPlacement = null;
         _dpiScale = e.NewDpi.DpiScaleX > 0 ? e.NewDpi.DpiScaleX : 1;
         _log.Info($"DPI changed to {_dpiScale:F2}.");
         ApplyDpiSize();
@@ -222,6 +235,7 @@ public partial class PetWindow : Window
             return;
         }
 
+        _lastPlacement = null;
         NativeMethods.Rect rect = DesktopWindowService.GetScreenRect(_handle);
         _log.Warn($"The window moved outside the placement path to {rect.Left},{rect.Top}.");
     }
@@ -233,6 +247,7 @@ public partial class PetWindow : Window
             return;
         }
 
+        _lastPlacement = null;
         NativeMethods.Rect rect = DesktopWindowService.GetScreenRect(_handle);
         _log.Info(
             $"Window size changed to {e.NewSize.Width:F1}x{e.NewSize.Height:F1} DIP " +

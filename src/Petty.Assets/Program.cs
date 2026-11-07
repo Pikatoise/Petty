@@ -76,11 +76,13 @@ try
     if (!verifyOnly)
     {
         BreedPackBuilder.Generate(breeds, outputDirectory, regenerate);
+        BreedPackBuilder.Generate(breeds, outputDirectory, regenerate, mail: true);
     }
 
     if (previewDirectory is not null)
     {
         BreedPackBuilder.WritePreview(breeds, previewDirectory);
+        BreedPackBuilder.WritePreview(breeds, previewDirectory, mail: true);
     }
 
     bool passed = shared.All(File.Exists);
@@ -122,6 +124,24 @@ try
         }
     }
 
+    string mailRoot = Path.Combine(outputDirectory, "mail-packs");
+    if (Directory.Exists(mailRoot))
+    {
+        passed &= ValidatePacks(Directory.EnumerateDirectories(mailRoot), [], mail: true) == 0;
+    }
+    foreach (BreedDesign breed in breeds)
+    {
+        foreach (CoatDesign coat in breed.Coats)
+        {
+            string id = breed.Id + "-" + coat.Id + "-mail";
+            if (!File.Exists(Path.Combine(mailRoot, breed.Id, id + ".json")))
+            {
+                Console.Error.WriteLine($"Missing mail coat: {id}");
+                passed = false;
+            }
+        }
+    }
+
     Console.WriteLine(passed ? "ASSET VALIDATION PASSED" : "ASSET VALIDATION FAILED");
     return passed ? 0 : 1;
 }
@@ -131,7 +151,7 @@ catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or J
     return 1;
 }
 
-static int ValidatePacks(IEnumerable<string> directories, IEnumerable<string> existingIds)
+static int ValidatePacks(IEnumerable<string> directories, IEnumerable<string> existingIds, bool mail = false)
 {
     var ids = new HashSet<string>(existingIds, StringComparer.OrdinalIgnoreCase);
     bool passed = true;
@@ -167,7 +187,7 @@ static int ValidatePacks(IEnumerable<string> directories, IEnumerable<string> ex
                 passed = false;
                 continue;
             }
-            ValidationReport report = AssetValidator.ValidateAtlas(directory, id);
+            ValidationReport report = AssetValidator.ValidateAtlas(directory, id, mail: mail);
             foreach (string error in report.Errors)
             {
                 Console.Error.WriteLine($"{id}: {error}");

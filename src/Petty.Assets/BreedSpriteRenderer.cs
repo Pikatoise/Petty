@@ -9,11 +9,24 @@ public static class BreedSpriteRenderer
 
     public static PixelCanvas Render(BreedDesign b, CoatDesign coat, string clip, int frame)
     {
+        bool mail = clip.StartsWith("mail-", StringComparison.Ordinal);
+        int sit = clip == "mail-sit" ? Math.Min(3, frame / 2)
+            : clip == "mail-idle" ? 3
+            : clip == "mail-exit" && frame < 4 ? 3 - frame : 0;
+        bool rising = clip == "mail-exit" && frame < 4;
+        if (clip == "mail-exit" && !rising)
+        {
+            frame -= 4;
+        }
+        if (mail)
+        {
+            clip = clip[5..];
+        }
         var c = new PixelCanvas(32, 32);
         uint[] p = coat.Palette;
         int phase = frame % 8;
         int stride = new[] { -2, -1, 1, 2, 2, 1, -1, -2 }[phase];
-        bool moving = clip is "walk" or "run" or "exit";
+        bool moving = !rising && clip is "walk" or "run" or "exit";
         bool run = clip == "run";
         bool sleep = clip == "sleep";
         bool play = clip == "play";
@@ -21,9 +34,12 @@ public static class BreedSpriteRenderer
         bool tired = clip == "tired";
         int bob = moving && phase % 4 == 2 ? -1 : 0;
         int lift = run ? new[] { 0, 1, 2, 2, 1, 0, 0, 0 }[phase] : 0;
-        int bodyY = b.BodyY + bob - lift;
+        int bodyY = b.BodyY + bob - lift - sit / 2;
+        int bodyX = b.BodyX + sit;
+        int bodyWidth = b.Width - sit;
+        int bodyHeight = sit == 0 ? b.Height : Math.Min(24 - bodyY, b.Height + sit / 2);
         int hx = b.HeadX;
-        int hy = b.HeadY + bob - lift;
+        int hy = b.HeadY + bob - lift + sit / 2;
         if (clip == "eat")
         {
             hy = 17 + frame % 2;
@@ -57,14 +73,22 @@ public static class BreedSpriteRenderer
         else
         {
             Tail(c, b, coat, p, bodyY, frame, curled: false);
-            int back = b.BodyX + 3;
-            int front = b.BodyX + b.Width - 3;
+            int back = bodyX + 3;
+            int front = bodyX + bodyWidth - 3;
             // Far-side contact pairs precede the torso; their phase opposes near legs.
             Leg(c, coat, p, back - 1, bodyY + b.Height - 2, moving ? -stride : 0, 25 - lift, true);
             Leg(c, coat, p, front - 1, bodyY + b.Height - 2, moving ? stride : 0, 25 - lift, true);
-            Body(c, b, coat, p, b.BodyX, bodyY, b.Width, b.Height, clip == "idle" && frame % 4 == 1);
+            Body(c, b, coat, p, bodyX, bodyY, bodyWidth, bodyHeight, clip == "idle" && frame % 4 == 1);
             int reach = run ? stride * 2 : stride;
-            Leg(c, coat, p, back, bodyY + b.Height - 2, moving ? reach : 0, 25 - lift - (moving && stride < 0 ? 1 : 0), false);
+            if (sit >= 2)
+            {
+                Body(c, b, coat, p, bodyX, 21, 6, 4, false);
+                c.FillRect(bodyX + 2, 24, 4, 2, Color(coat, p, "paw", 0, 1, 2, 2, 0));
+            }
+            else
+            {
+                Leg(c, coat, p, back, bodyY + b.Height - 2, moving ? reach : 0, 25 - lift - (moving && stride < 0 ? 1 : 0), false);
+            }
             if (play && frame % 6 >= 3)
             {
                 int raised = Math.Max(20, bodyY + b.Height - 1);
@@ -82,6 +106,20 @@ public static class BreedSpriteRenderer
         if (clip == "eat" && frame % 2 == 1)
         {
             c[hx + 8, hy + 7] = Pink;
+        }
+
+        if (mail)
+        {
+            // Bake the satchel into each pose on the same logical pixel grid.
+            int x = bodyX + bodyWidth / 3 - 1;
+            int y = Math.Min(18, bodyY + 2);
+            Line(c, x, y + 3, Math.Min(hx - 1, x + 6), bodyY, Ink, 2);
+            Line(c, x, y + 3, Math.Min(hx - 1, x + 6), bodyY, 0xFFB98755, 1);
+            c.FillRect(x - 1, y, 9, 7, Ink);
+            c.FillRect(x, y + 1, 7, 5, 0xFF98643E);
+            c.FillRect(x, y + 1, 7, 2, 0xFFCD9A61);
+            c.FillRect(x + 2, y + 2, 3, 3, 0xFFF1DFC0);
+            c[x + 3, y + 3] = 0xFF98643E;
         }
 
         return c.Upscale(2);

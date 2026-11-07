@@ -9,7 +9,7 @@ namespace Petty.App.Views;
 
 public enum PetInteraction
 {
-    Play, Pet
+    Play, Pet, Letter
 }
 
 public partial class InteractionMenuWindow : Window
@@ -37,6 +37,16 @@ public partial class InteractionMenuWindow : Window
     public IntPtr Handle => _handle;
 
     public void SetPlayEnabled(bool enabled) => PlayButton.IsEnabled = enabled;
+
+    public double ContentWidth { get; private set; } = MenuWidth;
+
+    public void SetLetterEnabled(bool enabled)
+    {
+        LetterButton.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        LetterColumn.Width = enabled ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        ContentWidth = enabled ? 122 : MenuWidth;
+        MenuBorder.Width = ContentWidth;
+    }
 
     public void Attach(DesktopLayerMode mode, IntPtr petHandle)
     {
@@ -86,7 +96,7 @@ public partial class InteractionMenuWindow : Window
             return false;
         }
 
-        double radius = 8 * Math.Min(rect.Width / MenuWidth, rect.Height / MenuHeight);
+        double radius = 8 * Math.Min(rect.Width / ContentWidth, rect.Height / MenuHeight);
         double dx = Math.Max(0, radius - Math.Min(localX, rect.Width - 1 - localX));
         double dy = Math.Max(0, radius - Math.Min(localY, rect.Height - 1 - localY));
         return dx * dx + dy * dy <= radius * radius;
@@ -95,6 +105,7 @@ public partial class InteractionMenuWindow : Window
     private void OnPlay(object sender, RoutedEventArgs e) => ActionRequested?.Invoke(this, PetInteraction.Play);
 
     private void OnPet(object sender, RoutedEventArgs e) => ActionRequested?.Invoke(this, PetInteraction.Pet);
+    private void OnLetter(object sender, RoutedEventArgs e) => ActionRequested?.Invoke(this, PetInteraction.Letter);
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {

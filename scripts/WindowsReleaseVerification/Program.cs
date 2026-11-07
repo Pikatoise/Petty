@@ -232,7 +232,7 @@ internal static partial class Program
             Require(!((DispatcherTimer)Get(session, field)!).IsEnabled, $"Disposed session still runs {field}.");
         }
         Require(Get(session, "_menu") is null, "Disposed session retained its menu.");
-        Require(Get(session, "StateChanged") is null && Get(session, "ExitAnimationCompleted") is null,
+        Require(Get(session, "StateChanged") is null && Get(session, "ExitAnimationCompleted") is null && Get(session, "LetterRequested") is null && Get(session, "EnteringCompleted") is null,
             "Stopped session retained application callbacks.");
     }
 

@@ -1,0 +1,46 @@
+{
+  "character": "cardigan-corgi-black-tricolor-mail",
+  "speciesId": "dog",
+  "breedId": "cardigan-corgi",
+  "coatId": "black-tricolor",
+  "displayName": "Cardigan Welsh Corgi / black tricolor",
+  "isDefault": false,
+  "playContactX": null,
+  "playContactY": null,
+  "image": "cardigan-corgi-black-tricolor-mail.png",
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "columns": 8,
+  "rows": 5,
+  "groundRow": 53,
+  "animations": [
+    {
+      "name": "mail-walk",
+      "startIndex": 0,
+      "frameCount": 8,
+      "framesPerSecond": 10,
+      "loop": true
+    },
+    {
+      "name": "mail-sit",
+      "startIndex": 8,
+      "frameCount": 8,
+      "framesPerSecond": 10,
+      "loop": false
+    },
+    {
+      "name": "mail-idle",
+      "startIndex": 16,
+      "frameCount": 8,
+      "framesPerSecond": 6,
+      "loop": true
+    },
+    {
+      "name": "mail-exit",
+      "startIndex": 24,
+      "frameCount": 12,
+      "framesPerSecond": 10,
+      "loop": false
+    }
+  ]
+}

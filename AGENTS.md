@@ -1,104 +1,49 @@
-# Petty — agent instructions
+# Petty - project instructions
 
 ## Working agreement
 
-- Reply briefly in Russian. Write code, comments and documentation in English.
-- Follow .editorconfig for C# and Settings.XamlStyler for XAML. Use
-  scripts/format.ps1 to format and scripts/format.ps1 -Check to verify the agreed style.
+- Respond briefly in Russian. Write code, comments and documentation in English;
+  every Markdown file except `README.md` must be in English.
 - Commit, push and build distribution ZIPs only when explicitly requested.
-- Keep changes focused. Report what changed, checks run and remaining uncertainty.
-- Keep durable user/developer guidance in README.md and these instructions;
-  sprite-format details belong in assets/sprites/README.md. Do not recreate session
-  specifications, handoff archives, progress logs or a docs directory.
-- Use artifacts/ for disposable verification output; remove it after the task.
-  Retain only the newest requested portable release under artifacts/portable/.
-- Routine visual and desktop acceptance belongs to the owner. Automated or simulated
-  checks do not establish live hover, DPI, z-order, shell restart or logoff behavior.
+- Review proposed `README.md` changes with the owner before editing it.
+- Follow `.editorconfig` and `Settings.XamlStyler`. Use `scripts/format.ps1` to
+  format code and `scripts/format.ps1 -Check` to verify it.
+- Keep changes focused; report changes, checks and remaining uncertainty.
+- Keep developer setup in `DEVELOPMENT.md` and agent rules in these instructions.
+  `docs/` is temporary, git-ignored input; exclude it from commits and releases.
+  Avoid session handoff archives and progress logs.
+- Use `artifacts/` for disposable verification output and remove it after the task.
+  Retain only the newest requested portable release under `artifacts/portable/`.
+- Prefer built-in .NET and existing modules; justify additional dependencies.
 
-## Product and architecture
+## Read the relevant instructions
 
-Petty is a Windows 11 x64 desktop pet; Windows 10 is best effort. One active pet,
-primary monitor only, four cat breeds and four dog breeds with five coats each.
-Breed/coat definitions live in assets/breed-designs.json and external PNG/JSON packs.
-The current UI is Cozy Home, Russian/English, with a custom tray popup. No sounds,
-networking, accounts, runtime AI or automatic updater.
+- **Desktop:** read [Desktop instructions](src/Petty.App/AGENTS.md) before changing
+  `Petty.App`, `Petty.Core`, `Petty.Assets`, desktop tests, sprite assets or Windows
+  verification/publishing scripts.
+- **Backend:** read [Backend instructions](src/Petty.Server.Api/AGENTS.md) before
+  changing any `Petty.Server.*` project, server tests or deployment configuration.
+- **Shared online client or protocol:** read both documents when changing
+  `Petty.Online.Client` or REST/SignalR contracts consumed by the desktop.
 
-- Petty.Core: WPF/Win32-free domain, FSM, motion, clocks, scene math and persistence.
-- Petty.App: WPF/Win32 integration, rendering, windows, input and composition.
-- Petty.Assets: deterministic C# sprite generation and validation; never run by the app.
-- Petty.Tests: headless xUnit regression tests. scripts/ contains integration harnesses.
-- Prefer built-in .NET and existing modules; keep dependencies justified. Behavior
-  decides actions; animation renders them. Avoid growing App/PetSession or adding
-  speculative abstractions. Tune defaults in PetTuning, not UI handlers.
+These documents supplement this file. Their rules also apply to the related
+projects and scripts listed above, outside their own directories.
 
-## Behavior and data invariants
+## Project boundaries and validation
 
-- Creator selects species, breed, coat and name; coat arrows wrap. Existing pets
-  can be renamed; recreation requires confirmation and a successful save before
-  the current session is replaced. Closing Settings keeps the app running.
-- Needs decay during running time, including lock/fullscreen and pet sleep. Freeze
-  while closed or the PC sleeps/hibernates; no offline catch-up. Use monotonic active
-  time. Pets never die. Awake/sleep cycles are session-local.
-- Sleep blocks play; petting pauses and resumes remaining sleep. Food can wake a
-  hungry sleeper. Eating starts a fresh awake cycle. Actions cannot overlap;
-  eating and exit reject user actions. Exit has highest priority.
-- The hover menu follows at normal movement speed. Detect the exposed pet rectangle,
-  including transparent pixels, while preserving click-through. Hide immediately
-  on hover loss and during interactions/eating/exit. Do not freeze movement.
-- Bowl inventory is separate from satiety: +25/click, capacity 100, ignore clicks
-  during pouring; dragging never feeds. Pet and props share the eased floor.
-- Sprite cells are 64x64 classic pixel art, genuine alpha, nearest-neighbor scaling,
-  consistent ground alignment. Props stay separate. Validate PNG/grid/metadata and
-  pixels before use; cache decoded frozen frames and advance by elapsed time.
-- Preserve schema v1 and atomic state replacement with .bak recovery. Unsupported
-  newer saves and missing appearances must not be overwritten implicitly. Migrate
-  cat-orange-white to british-shorthair-blue only after replacement art loads,
-  preserving identity, needs and bowl data.
-- User data: %LOCALAPPDATA%\Petty, overridden by --data-dir or PETTY_DATA_DIR.
-  Verification uses isolated data; it must not change owner saves or autostart.
-- Maintain the single-instance mutex. Tray Exit animates departure; Windows
-  shutdown/logoff saves and closes promptly without animation or cancellation.
-  Fatal errors log and close. Stop timers, release native icons and unsubscribe
-  shell/power events. Explorer restart restores the existing tray/window integration.
-- Autostart defaults on after successful startup; repair moved paths when enabled,
-  respect disabled preferences and skip registry synchronization for isolated data.
-- Developer UI/tuning stays Debug-only, with separate dev-tuning.json. Never ship
-  owner data or Debug settings in portable output.
+Petty has a Windows desktop client and an independently buildable Windows/Linux
+backend. Optional accounts, friends and letters are implemented; local simulation
+and local saves remain independent of network availability. Sounds, runtime AI
+and an automatic updater are outside the product scope.
 
-## Verified Windows constraints
-
-- Default AboveDesktop: top-level, non-topmost window inserted above Progman using
-  GetWindow(progman, GW_HWNDPREV). WorkerW is experimental: reparented layered WPF
-  windows render nothing on the verified shell. Do not silently switch strategies.
-- WPF owns layered styles. Never replace the style word wholesale. The supported
-  read-modify-write adds WS_EX_TOOLWINDOW only. ShowInTaskbar=False uses a hidden
-  owner; inspect ancestry with GetAncestor, not GetParent.
-- WM_NCHITTEST returns HTTRANSPARENT on transparent pixels; WM_MOUSEACTIVATE returns
-  MA_NOACTIVATE. Pet/props stay out of Alt+Tab and the taskbar, behind normal apps.
-- The topmost taskbar covers the pet; standing on its upper edge is intentional.
-  WalkSurface combines monitor bounds/work area with a genuinely visible taskbar;
-  ignore auto-hide slivers and top bars. Preserve eased floor movement, full-width
-  walking, arrival-driven walk completion and monitor-relative bowl recovery.
-- Keep InvariantGlobalization=false for Petty.App: WPF text input needs real cultures.
-- Keep ShutdownMode.OnExplicitShutdown: cancelling first creation exits explicitly;
-  closing secondary windows does not end the app.
-
-## Validation
-
-Run from the repository root on Windows with .NET SDK 10:
-
-```powershell
-dotnet build Petty.slnx -c Release
-dotnet test Petty.slnx -c Debug
-dotnet test Petty.slnx -c Release
-dotnet run --project scripts/ContentVerification -c Release
-dotnet run --project src/Petty.Assets -c Release -- --verify
-```
-
-Run targeted tests during development; use both configurations when Debug guards
-or shared behavior change. ContentVerification covers runtime loading, every frame's
-alpha mask, deterministic generation and RU/EN creator workflows. For Windows lifecycle
-changes, use scripts/WindowsReleaseVerification with isolated data and report its
-simulated limits. Preserve regression checks for recovery, clock/sleep, interactions,
-metadata, localization and shell geometry. Remove redundant tests only when their
-assertions remain covered; test count itself is not a quality target.
+- `Petty.Desktop.slnx` builds the client; `Petty.Server.slnx` builds the backend.
+  Server projects must remain independent of Desktop, Core, Assets, WPF and Win32.
+- `Petty.Online.Client` is platform-neutral and independent of server assemblies,
+  WPF and the local pet model. Keep server configuration and credentials out of
+  `pet-state.json`.
+- Use .NET SDK 10. Run targeted checks during development and the relevant
+  solution/harness checks from the component instructions before completion.
+  Cross-component changes require both sets of checks.
+- Preserve regression coverage when removing redundant tests; test count is not
+  a quality target. Documentation-only changes need link/content checks rather
+  than application builds.

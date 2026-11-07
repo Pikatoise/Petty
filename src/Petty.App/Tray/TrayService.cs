@@ -8,7 +8,7 @@ using Petty.Core.Diagnostics;
 namespace Petty.App.Tray;
 
 /// <summary>
-/// Notification-area icon. Exactly two commands (settings, exit); no double-click
+/// Notification-area icon with account, settings and exit commands; no double-click
 /// action. The icon handle is created from the generated PNG and destroyed on dispose.
 /// </summary>
 public sealed class TrayService : IDisposable
@@ -40,6 +40,7 @@ public sealed class TrayService : IDisposable
     }
 
     public event EventHandler? SettingsRequested;
+    public event EventHandler? AccountRequested;
 
     public event EventHandler? ExitRequested;
 #if DEBUG
@@ -62,6 +63,7 @@ public sealed class TrayService : IDisposable
         _popup = popup;
         popup.Closed += (_, _) => _popup = null;
         popup.SettingsRequested += (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty);
+        popup.AccountRequested += (_, _) => AccountRequested?.Invoke(this, EventArgs.Empty);
         popup.ExitRequested += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
 #if DEBUG
         popup.DebugRequested += (_, _) => DebugRequested?.Invoke(this, EventArgs.Empty);

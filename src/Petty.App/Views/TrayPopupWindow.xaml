@@ -71,6 +71,12 @@
                 <StackPanel x:Name="ActionsPanel" Margin="5,4">
                     <Button
                         Style="{StaticResource TrayMenuItem}"
+                        Click="OnAccount"
+                        AutomationProperties.Name="{DynamicResource OnlineAccountAndFriends}">
+                        <TextBlock Text="{DynamicResource OnlineAccountAndFriends}" TextWrapping="Wrap" />
+                    </Button>
+                    <Button
+                        Style="{StaticResource TrayMenuItem}"
                         Click="OnSettings"
                         AutomationProperties.Name="{DynamicResource TraySettings}">
                         <TextBlock Text="{DynamicResource TraySettings}" TextWrapping="Wrap" />

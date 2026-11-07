@@ -19,10 +19,10 @@ public static class AssetValidator
 
     private static readonly HashSet<string> StandingClips = new(StringComparer.OrdinalIgnoreCase)
     {
-        "idle", "walk", "eat", "tired", "exit",
+        "idle", "walk", "eat", "tired", "exit", "mail-walk", "mail-sit", "mail-idle", "mail-exit",
     };
 
-    public static ValidationReport ValidateAtlas(string directory, string id, uint[]? palette = null)
+    public static ValidationReport ValidateAtlas(string directory, string id, uint[]? palette = null, bool mail = false)
     {
         var errors = new List<string>();
         var notes = new List<string>();
@@ -56,7 +56,7 @@ public static class AssetValidator
             return new ValidationReport(false, errors, notes);
         }
 
-        errors.AddRange(SpriteMetadataValidator.Validate(metadata, requirePet: true));
+        errors.AddRange(SpriteMetadataValidator.Validate(metadata, requirePet: !mail, mail: mail));
         if (metadata.Character != id || metadata.Image != id + ".png")
         {
             errors.Add("Metadata character or image does not match the variant ID.");
@@ -192,7 +192,7 @@ public static class AssetValidator
             }
         }
 
-        CheckWalkLoop(atlas, metadata, errors, notes);
+        CheckWalkLoop(atlas, metadata, errors, notes, mail);
         notes.Add($"atlas {atlas.Width}x{atlas.Height}, {metadata.Animations.Count} clips, {occupiedCells.Count} frames");
         notes.Add($"palette colours used: {CountPaletteColors(atlas)}");
         return new ValidationReport(errors.Count == 0, errors, notes);
@@ -328,9 +328,10 @@ public static class AssetValidator
         PixelCanvas atlas,
         SpriteSheetMetadata metadata,
         List<string> errors,
-        List<string> notes)
+        List<string> notes,
+        bool mail)
     {
-        AnimationClipMetadata? walk = metadata.Animations.FirstOrDefault(a => a.Name.Equals("walk", StringComparison.OrdinalIgnoreCase));
+        AnimationClipMetadata? walk = metadata.Animations.FirstOrDefault(a => a.Name.Equals(mail ? "mail-walk" : "walk", StringComparison.OrdinalIgnoreCase));
         if (walk is null || walk.FrameCount < 2)
         {
             return;

@@ -22,6 +22,7 @@ public partial class TrayPopupWindow : Window
     }
 
     public event EventHandler? SettingsRequested;
+    public event EventHandler? AccountRequested;
     public event EventHandler? ExitRequested;
 #if DEBUG
     public event EventHandler? DebugRequested;
@@ -45,5 +46,10 @@ public partial class TrayPopupWindow : Window
     {
         Close();
         ExitRequested?.Invoke(this, EventArgs.Empty);
+    }
+    private void OnAccount(object sender, RoutedEventArgs e)
+    {
+        Close();
+        AccountRequested?.Invoke(this, EventArgs.Empty);
     }
 }

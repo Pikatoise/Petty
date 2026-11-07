@@ -2,16 +2,20 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
+using Petty.App.Delivery;
 using Petty.App.Desktop;
+using Petty.App.Online;
 using Petty.App.Pet;
 using Petty.App.Sprites;
 using Petty.App.Tray;
 using Petty.App.Views;
+using Petty.App.Views.Online;
 using Petty.Core.Diagnostics;
 using Petty.Core.Domain;
 using Petty.Core.Persistence;
 using Petty.Core.Preferences;
 using Petty.Core.Runtime;
+using Petty.Online.Client;
 
 namespace Petty.App;
 
@@ -52,6 +56,12 @@ public partial class App : Application
     private bool _shutdownStarted;
     private Localization? _localization;
     private ShellRestartWatcher? _shellWatcher;
+    private OnlineWindows? _onlineWindows;
+    private PostmanCoordinator? _postman;
+    internal OnlineCoordinator? Online
+    {
+        get; private set;
+    }
 #if DEBUG
     private DebugTuningStore? _debugStore;
     private DebugTuning _debugTuning = new();
@@ -121,6 +131,17 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _postman?.Dispose();
+        _postman = null;
+        _onlineWindows?.Dispose();
+        _onlineWindows = null;
+        // The coordinator never awaits the Dispatcher; all network awaits run off the UI thread.
+        try
+        {
+            Online?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+        catch (Exception) { _log?.Warn("Online shutdown did not complete."); }
+        Online = null;
         _shellWatcher?.Dispose();
         _shellWatcher = null;
         StopAppTimers();
@@ -145,6 +166,7 @@ public partial class App : Application
     {
         _log?.Info($"Windows session ending ({e.ReasonSessionEnding}); saving without departure animation.");
         _shutdownStarted = true;
+        _postman?.SetHomeReady(false);
         StopAppTimers();
         SaveState("session-ending");
         // WPF calls Shutdown after this non-cancelled event; OnExit disposes resources.
@@ -340,6 +362,9 @@ public partial class App : Application
 #endif
         _session.ExitAnimationCompleted += OnExitAnimationCompleted;
         _session.StateChanged += OnSessionStateChanged;
+        _session.LetterRequested += OnLetterRequested;
+        _session.EnteringCompleted += OnHomeEntered;
+        _session.SetLetterAvailable(Online?.Account is not null && Online.Client.SessionId is not null);
         _session.Start();
 
         if (_autoSaveTimer is null)
@@ -356,6 +381,31 @@ public partial class App : Application
 
         _shellWatcher ??= new ShellRestartWatcher(RestoreShell,
             () => _options.DesktopLayer == DesktopLayerMode.AboveDesktop ? _window?.Handle ?? IntPtr.Zero : IntPtr.Zero);
+        try
+        {
+            Online ??= OnlineCoordinator.FromEnvironment(_paths!.DataDirectory,
+                action => Dispatcher.BeginInvoke(action), () => _log?.Warn("Online service unavailable; local pet remains active."));
+            if (Online is not null)
+            {
+                _onlineWindows ??= new OnlineWindows(Online, available => _session?.SetLetterAvailable(available));
+                _postman ??= new PostmanCoordinator(Online, _displayService, _options.DesktopLayer, _log!, () =>
+                {
+                    if (_bowlWindow is null)
+                    {
+                        return [];
+                    }
+                    (int Left, int Top, int Width, int Height) rect = _bowlWindow.ScreenRect;
+                    return [new ScreenRect(rect.Left, rect.Top, rect.Width, rect.Height)];
+                });
+                _postman.SetHomeReady(_session.HasEntered);
+            }
+            Online?.UpdatePet(new PetProfile(runtime.Snapshot.PetName, runtime.Snapshot.AssetId));
+            _ = Online?.StartAsync();
+        }
+        catch (Exception)
+        {
+            _log?.Warn("Online configuration unavailable; local pet remains active.");
+        }
     }
 
     private void SynchronizeAutostart()
@@ -395,6 +445,7 @@ public partial class App : Application
         }
 
         _session?.RestoreShell();
+        _postman?.RestoreShell();
         _log?.Info("Shell recovery: desktop windows reattached; tray icon restoration is handled by NotifyIcon.");
     }
 
@@ -430,6 +481,7 @@ public partial class App : Application
         string iconPath = Path.Combine(_assetDirectory!, TrayService.TrayIconFileName);
         _tray = new TrayService(iconPath, _log!);
         _tray.SettingsRequested += (_, _) => ShowSettings();
+        _tray.AccountRequested += (_, _) => ShowOnlineAccount();
         _tray.ExitRequested += (_, _) => RequestExitFromTray();
 #if DEBUG
         _tray.DebugRequested += (_, _) => ShowDebugWindow();
@@ -480,6 +532,7 @@ public partial class App : Application
         _settings = new SettingsWindow(_runtime.Snapshot.PetName, _variants.FirstOrDefault(v => v.AssetId == _runtime.Snapshot.AssetId)?.SpeciesId ?? "cat", _runtime.Snapshot.BreedId, _localization!, _log!);
         _settings.RenameRequested += OnRenameRequested;
         _settings.NewPetRequested += OnNewPetRequested;
+        _settings.AccountRequested += (_, _) => ShowOnlineAccount();
         _settings.TutorialRequested += (_, _) =>
         {
             var tutorial = new TutorialWindow(_variants, _assetDirectory!, firstRun: false)
@@ -492,6 +545,18 @@ public partial class App : Application
         _settings.Closed += (_, _) => _settings = null;
         _settings.Show();
         _settings.Activate();
+    }
+
+    private void ShowOnlineAccount()
+    {
+        if (_onlineWindows is not null)
+        {
+            _onlineWindows.ShowAccount();
+        }
+        else
+        {
+            MessageBox.Show(Localization.Text("OnlineNotConfigured"), Localization.Text("OnlineAccount"));
+        }
     }
 
     private bool OnRenameRequested(string name)
@@ -509,6 +574,7 @@ public partial class App : Application
             return false;
         }
         _log?.Info($"Renamed the pet to '{name}'.");
+        Online?.UpdatePet(new PetProfile(name, _runtime.Snapshot.AssetId));
         return true;
     }
 
@@ -558,6 +624,7 @@ public partial class App : Application
 
     private void RequestExitFromTray()
     {
+        _postman?.SetHomeReady(false);
         _settings?.Close();
 
         if (_session is null || !_session.RequestExit())
@@ -569,6 +636,7 @@ public partial class App : Application
     private void OnExitTimerTick(object? sender, EventArgs e)
     {
         _exitTimer?.Stop();
+        _postman?.SetHomeReady(false);
 
         if (_session is null || !_session.RequestExit())
         {
@@ -608,6 +676,7 @@ public partial class App : Application
         }
 
         _shutdownStarted = true;
+        _postman?.SetHomeReady(false);
 
         StopAppTimers();
         _log?.Info("Shutdown requested.");
@@ -658,9 +727,12 @@ public partial class App : Application
     }
 
     private void OnSessionStateChanged(object? sender, string reason) => SaveState(reason);
+    private void OnLetterRequested(object? sender, EventArgs e) => _onlineWindows?.ShowCompose();
+    private void OnHomeEntered(object? sender, EventArgs e) => _postman?.SetHomeReady(true);
 
     private void StopSession()
     {
+        _postman?.SetHomeReady(false);
         if (_session is null)
         {
             return;
@@ -668,6 +740,8 @@ public partial class App : Application
 
         _session.ExitAnimationCompleted -= OnExitAnimationCompleted;
         _session.StateChanged -= OnSessionStateChanged;
+        _session.LetterRequested -= OnLetterRequested;
+        _session.EnteringCompleted -= OnHomeEntered;
         _session.Dispose();
         _session = null;
     }

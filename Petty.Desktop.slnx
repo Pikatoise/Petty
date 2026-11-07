@@ -6,8 +6,10 @@
     <Project Path="src/Petty.App/Petty.App.csproj" />
     <Project Path="src/Petty.Assets/Petty.Assets.csproj" />
     <Project Path="src/Petty.Core/Petty.Core.csproj" />
+    <Project Path="src/Petty.Online.Client/Petty.Online.Client.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Petty.Tests/Petty.Tests.csproj" />
+    <Project Path="tests/Petty.Online.Tests/Petty.Online.Tests.csproj" />
   </Folder>
 </Solution>

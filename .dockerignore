@@ -1,0 +1,14 @@
+**
+!Directory.Build.props
+!src/
+!src/Petty.Server.*/
+!src/Petty.Server.*/**
+!deploy/
+!deploy/Dockerfile
+**/bin/**
+**/obj/**
+**/*.user
+**/*.pfx
+**/*.pem
+**/.env*
+**/appsettings.*.json

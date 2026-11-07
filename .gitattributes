@@ -1,3 +1,8 @@
 * text=auto
 *.png binary
 *.ico binary
+
+# Linux deployment inputs must remain executable by POSIX shells.
+*.sh text eol=lf
+deploy/Dockerfile text eol=lf
+deploy/Caddyfile text eol=lf

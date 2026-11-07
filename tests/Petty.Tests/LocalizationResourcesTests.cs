@@ -8,7 +8,7 @@ public class LocalizationResourcesTests
     public void EnglishAndRussianResourceKeysMatch()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Petty.slnx")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Petty.Desktop.slnx")))
         {
             directory = directory.Parent;
         }

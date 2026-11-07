@@ -61,6 +61,9 @@ public partial class SettingsWindow : Window
     public event EventHandler? NewPetRequested;
 
     public event EventHandler? TutorialRequested;
+    public event EventHandler? AccountRequested;
+
+    private void OnAccount(object sender, RoutedEventArgs e) => AccountRequested?.Invoke(this, EventArgs.Empty);
 
     private void OnTutorial(object sender, RoutedEventArgs e) => TutorialRequested?.Invoke(this, EventArgs.Empty);
 
