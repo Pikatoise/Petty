@@ -32,9 +32,8 @@ public class OnlineWindow : Window
         SetResourceReference(ForegroundProperty, "CozyText");
         Resources.MergedDictionaries.Add(new ResourceDictionary
         {
-            Source = new Uri("/Petty;component/Views/Online/OnlineControls.xaml", UriKind.Relative)
+            Source = new Uri("/Petty;component/Resources/OnlineControls.xaml", UriKind.Relative)
         });
-        AdaptiveWindowLayout.Attach(this);
         Closed += (_, _) =>
         {
             _closed.Cancel();
@@ -47,6 +46,7 @@ public class OnlineWindow : Window
 
     private protected void InitializeOnline(OnlineCoordinator online, bool requiresAccount = true)
     {
+        AdaptiveWindowLayout.Attach(this);
         _online = online;
         _requiresAccount = requiresAccount;
         _session = online.Client.SessionId;

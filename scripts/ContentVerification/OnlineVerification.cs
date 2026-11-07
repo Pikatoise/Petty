@@ -64,6 +64,29 @@ internal static partial class Program
         using var windows = new OnlineWindows(coordinator, _ => { });
         var account = new AccountWindow(coordinator, windows);
         Render(account, Path.Combine(output, $"online-{language}-account.png"));
+        Require(account.ResizeMode == ResizeMode.NoResize && account.Width <= 380,
+            "Authentication window is resizable or too wide.");
+        Require(((FrameworkElement)account.FindName("ConfirmationPanel")).Visibility == Visibility.Collapsed,
+            "Sign-in page shows password confirmation.");
+        account.Close();
+        account = new AccountWindow(coordinator, windows);
+        ((RadioButton)account.FindName("RegistrationTab")).IsChecked = true;
+        Require(((FrameworkElement)account.FindName("ConfirmationPanel")).Visibility == Visibility.Visible &&
+            ((Button)account.FindName("RegisterButton")).IsDefault &&
+            ((Button)account.FindName("SignInButton")).Visibility == Visibility.Collapsed,
+            "Registration navigation did not switch the form and default action.");
+        Render(account, Path.Combine(output, $"online-{language}-registration.png"));
+        var navigation = (FrameworkElement)account.FindName("AuthNavigation");
+        Require(navigation.ActualHeight > 0 && navigation.TranslatePoint(new Point(0, navigation.ActualHeight), (UIElement)account.Content).Y <=
+            ((FrameworkElement)account.Content).ActualHeight + 1,
+            "Registration navigation is clipped outside the window.");
+        ((PasswordBox)account.FindName("PasswordBox")).Password = "test-password";
+        ((PasswordBox)account.FindName("ConfirmBox")).Password = "test-password";
+        ((RadioButton)account.FindName("SignInTab")).IsChecked = true;
+        Require(((PasswordBox)account.FindName("PasswordBox")).Password.Length == 0 &&
+            ((PasswordBox)account.FindName("ConfirmBox")).Password.Length == 0 &&
+            ((Button)account.FindName("SignInButton")).IsDefault,
+            "Switching authentication pages retained passwords or the wrong default action.");
         account.Close();
         client.RestoreAsync().GetAwaiter().GetResult();
         coordinator.Publish(new AccountProfile(Guid.NewGuid(), "verification", "Milo", "british-shorthair-blue", null),

@@ -8,8 +8,12 @@
     <sys:String x:Key="OnlineSignedOut">An account is optional. Sign in to add friends and send letters.</sys:String>
     <sys:String x:Key="OnlineLogin">Login</sys:String>
     <sys:String x:Key="OnlinePassword">Password</sys:String>
-    <sys:String x:Key="OnlineConfirmPassword">Confirm password (registration)</sys:String>
-    <sys:String x:Key="OnlineRegistrationNotice">Use 3–32 Latin letters, digits or underscores for your login and 12–128 characters for your password. There is no email or password recovery: keep your credentials safe. Signing in replaces your session on another device.</sys:String>
+    <sys:String x:Key="OnlineConfirmPassword">Confirm password</sys:String>
+    <sys:String x:Key="OnlineSignInPage">Sign in</sys:String>
+    <sys:String x:Key="OnlineRegistrationPage">Registration</sys:String>
+    <sys:String x:Key="OnlineLoginHint">3–32 Latin letters, digits or underscores.</sys:String>
+    <sys:String x:Key="OnlinePasswordHint">12–128 characters.</sys:String>
+    <sys:String x:Key="OnlineConfirmPasswordHint">Enter the same password again.</sys:String>
     <sys:String x:Key="OnlineSignIn">Sign in</sys:String>
     <sys:String x:Key="OnlineRegister">Register</sys:String>
     <sys:String x:Key="OnlineLogout">Sign out</sys:String>

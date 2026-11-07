@@ -3,9 +3,59 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:online="clr-namespace:Petty.App.Views.Online"
-    Title="{DynamicResource OnlineAccount}">
-    <Border Padding="24">
-        <DockPanel>
+    Title="{DynamicResource OnlineAccount}"
+    Width="380"
+    Height="480"
+    ResizeMode="NoResize">
+    <online:OnlineWindow.Resources>
+        <Style x:Key="AuthTab" TargetType="RadioButton">
+            <Setter Property="Padding" Value="12,14" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="{StaticResource CozySurface}" />
+            <Setter Property="Foreground" Value="{StaticResource CozyMuted}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" Value="{StaticResource CozyAccent}" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </online:OnlineWindow.Resources>
+    <DockPanel>
+        <UniformGrid
+            x:Name="AuthNavigation"
+            DockPanel.Dock="Bottom"
+            Rows="1">
+            <RadioButton
+                x:Name="SignInTab"
+                Style="{StaticResource AuthTab}"
+                Content="{DynamicResource OnlineSignInPage}"
+                GroupName="AuthPage"
+                IsChecked="True"
+                Checked="OnAuthPageChanged" />
+            <RadioButton
+                x:Name="RegistrationTab"
+                Style="{StaticResource AuthTab}"
+                Content="{DynamicResource OnlineRegistrationPage}"
+                GroupName="AuthPage"
+                Checked="OnAuthPageChanged" />
+        </UniformGrid>
+        <DockPanel Margin="24,20">
             <TextBlock
                 x:Name="StatusText"
                 DockPanel.Dock="Bottom"
@@ -14,7 +64,8 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
                     <TextBlock
-                        Text="{DynamicResource OnlineAccount}"
+                        x:Name="PageTitle"
+                        Text="{DynamicResource OnlineSignInPage}"
                         FontSize="22"
                         FontWeight="SemiBold"
                         Margin="0,0,0,16" />
@@ -22,30 +73,36 @@
                     <StackPanel x:Name="CredentialsPanel">
                         <Label Content="{DynamicResource OnlineLogin}" Target="{Binding ElementName=LoginBox}" />
                         <TextBox
+                            ToolTip="{DynamicResource OnlineLoginHint}"
                             x:Name="LoginBox"
                             MaxLength="32"
                             AutomationProperties.Name="{DynamicResource OnlineLogin}" />
                         <Label Content="{DynamicResource OnlinePassword}" Target="{Binding ElementName=PasswordBox}" />
                         <PasswordBox
+                            ToolTip="{DynamicResource OnlinePasswordHint}"
                             x:Name="PasswordBox"
                             MaxLength="128"
                             AutomationProperties.Name="{DynamicResource OnlinePassword}" />
-                        <Label Content="{DynamicResource OnlineConfirmPassword}" Target="{Binding ElementName=ConfirmBox}" />
-                        <PasswordBox
-                            x:Name="ConfirmBox"
-                            MaxLength="128"
-                            AutomationProperties.Name="{DynamicResource OnlineConfirmPassword}" />
-                        <TextBlock
-                            Text="{DynamicResource OnlineRegistrationNotice}"
-                            Foreground="{StaticResource CozyMuted}"
-                            Margin="0,0,0,12" />
-                        <WrapPanel>
+                        <StackPanel x:Name="ConfirmationPanel" Visibility="Collapsed">
+                            <Label Content="{DynamicResource OnlineConfirmPassword}" Target="{Binding ElementName=ConfirmBox}" />
+                            <PasswordBox
+                                x:Name="ConfirmBox"
+                                MaxLength="128"
+                                ToolTip="{DynamicResource OnlineConfirmPasswordHint}"
+                                AutomationProperties.Name="{DynamicResource OnlineConfirmPassword}" />
+                        </StackPanel>
+                        <StackPanel>
                             <Button
+                                x:Name="SignInButton"
                                 Content="{DynamicResource OnlineSignIn}"
                                 Click="OnLogin"
                                 IsDefault="True" />
-                            <Button Content="{DynamicResource OnlineRegister}" Click="OnRegister" />
-                        </WrapPanel>
+                            <Button
+                                x:Name="RegisterButton"
+                                Visibility="Collapsed"
+                                Content="{DynamicResource OnlineRegister}"
+                                Click="OnRegister" />
+                        </StackPanel>
                     </StackPanel>
                     <WrapPanel x:Name="AccountActions" Visibility="Collapsed">
                         <Button Content="{DynamicResource OnlineFriends}" Click="OnFriends" />
@@ -57,5 +114,5 @@
                 </StackPanel>
             </ScrollViewer>
         </DockPanel>
-    </Border>
+    </DockPanel>
 </online:OnlineWindow>

@@ -8,8 +8,12 @@
     <sys:String x:Key="OnlineSignedOut">Аккаунт необязателен. Войдите, чтобы добавлять друзей и отправлять письма.</sys:String>
     <sys:String x:Key="OnlineLogin">Логин</sys:String>
     <sys:String x:Key="OnlinePassword">Пароль</sys:String>
-    <sys:String x:Key="OnlineConfirmPassword">Повтор пароля (для регистрации)</sys:String>
-    <sys:String x:Key="OnlineRegistrationNotice">Логин: 3–32 латинские буквы, цифры или знак подчёркивания. Пароль: 12–128 символов. Почты и восстановления пароля нет — сохраните данные для входа. Вход завершает сеанс на другом устройстве.</sys:String>
+    <sys:String x:Key="OnlineConfirmPassword">Повторите пароль</sys:String>
+    <sys:String x:Key="OnlineSignInPage">Вход</sys:String>
+    <sys:String x:Key="OnlineRegistrationPage">Регистрация</sys:String>
+    <sys:String x:Key="OnlineLoginHint">3–32 латинские буквы, цифры или знак подчёркивания.</sys:String>
+    <sys:String x:Key="OnlinePasswordHint">12–128 символов.</sys:String>
+    <sys:String x:Key="OnlineConfirmPasswordHint">Введите тот же пароль ещё раз.</sys:String>
     <sys:String x:Key="OnlineSignIn">Войти</sys:String>
     <sys:String x:Key="OnlineRegister">Зарегистрироваться</sys:String>
     <sys:String x:Key="OnlineLogout">Выйти из аккаунта</sys:String>

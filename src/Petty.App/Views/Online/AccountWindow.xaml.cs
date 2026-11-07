@@ -7,6 +7,26 @@ public partial class AccountWindow : OnlineWindow
 {
     private readonly OnlineWindows _windows;
 
+    private void OnAuthPageChanged(object sender, RoutedEventArgs e)
+    {
+        if (!IsInitialized)
+        {
+            return;
+        }
+        bool registering = RegistrationTab.IsChecked == true;
+        ConfirmationPanel.Visibility = registering ? Visibility.Visible : Visibility.Collapsed;
+        RegisterButton.Visibility = ConfirmationPanel.Visibility;
+        RegisterButton.IsDefault = registering;
+        SignInButton.Visibility = registering ? Visibility.Collapsed : Visibility.Visible;
+        SignInButton.IsDefault = !registering;
+        PageTitle.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty,
+            registering ? "OnlineRegistrationPage" : "OnlineSignInPage");
+        StatusText.Text = string.Empty;
+        PasswordBox.Clear();
+        ConfirmBox.Clear();
+        LoginBox.Focus();
+    }
+
     internal AccountWindow(OnlineCoordinator online, OnlineWindows windows)
     {
         _windows = windows;
@@ -28,6 +48,16 @@ public partial class AccountWindow : OnlineWindow
         bool signedIn = Online.Client.SessionId is not null;
         CredentialsPanel.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
         AccountActions.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
+        AuthNavigation.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
+        AccountText.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
+        if (signedIn)
+        {
+            PageTitle.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "OnlineAccount");
+        }
+        else
+        {
+            OnAuthPageChanged(this, new RoutedEventArgs());
+        }
         if (signedIn && Online.PublishedSessionId == Online.Client.SessionId && Online.Account is { } account)
         {
             AccountText.Text = account.Login;
@@ -66,6 +96,7 @@ public partial class AccountWindow : OnlineWindow
         }
         if (await RunAsync(() => Online.Client.RegisterAsync(login, password, confirmation, Lifetime)))
         {
+            SignInTab.IsChecked = true;
             Status("OnlineRegistered");
         }
     }
